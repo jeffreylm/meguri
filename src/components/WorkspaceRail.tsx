@@ -498,10 +498,7 @@ export function WorkspaceRail() {
             className="-mt-1.5 flex w-full shrink-0 select-text flex-col px-1 text-center font-mono text-[10px] leading-3 text-fg"
           >
             <span className="truncate">v{info.version}</span>
-            <span aria-hidden="true" className="truncate text-muted">
-              {info.buildId}
-            </span>
-            <span className="sr-only">
+            <span className="truncate text-muted">
               {t("about.build", { build: info.buildId })}
             </span>
           </div>

@@ -2,13 +2,14 @@ import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "node:path";
+import { build } from "./package.json";
 
 // Build the main process (Node) / preload / renderer (React) with a single config.
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
-    // Stamp the build once. Relaunching the bundle keeps the same identifier.
-    define: { __MEGURI_BUILD_ID__: JSON.stringify(Date.now().toString(36)) },
+    // The packager uses the same value for the application bundle.
+    define: { __MEGURI_BUILD_ID__: JSON.stringify(build.buildVersion) },
     build: {
       outDir: "out/main",
       lib: {

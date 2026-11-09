@@ -31,9 +31,11 @@ launching, so Electron does not accidentally start in node mode.
 - TypeScript uses separate tsconfigs for `src` and `electron`, both `strict` with
   `noUnusedLocals` / `noUnusedParameters`.
 
-The main bundle gets a short build ID when Vite loads its configuration.
-**Settings → App → About** and the left rail read the same ID from the running
-bundle, alongside the release version. Starting an existing bundle keeps its ID.
+The personal fork records the build number in `build.buildVersion` in
+`package.json`. **Settings → App → About**, the left rail, and the packaged
+macOS app all use that number. Increment it before packaging each new build
+shared for testing. Keep the sequence going when the release version changes.
+Starting an existing bundle keeps its number.
 
 ## Testing
 
