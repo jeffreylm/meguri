@@ -7,6 +7,8 @@ export interface SourceReviewRow {
   id: number;
   workspaceId: string;
   relPath: string;
+  width: number | null;
+  height: number | null;
   metaKey: string;
   saved: PexelsSource | null;
   suggestion: PexelsSource | null;

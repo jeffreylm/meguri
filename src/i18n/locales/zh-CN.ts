@@ -14,6 +14,7 @@ export const zhCN: Record<TranslationKey, string> = {
   "source.globalHint": "包括所有已扫描文件夹中符合当前全局视图条件的视频。",
   "source.globalOverLimit":
     "此视图匹配了超过 5,000 个视频。请缩小筛选范围，或选择部分视频进行核对。",
+  "source.resolutionUnknown": "分辨率未知",
   "source.libraryPreview": "媒体库片段",
   "source.pexelsPreview": "Pexels 预览",
   "source.previewUnavailable": "无法显示预览",

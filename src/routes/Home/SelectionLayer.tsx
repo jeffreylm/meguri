@@ -157,11 +157,7 @@ export function SourceReviewAction({
       <Button
         size="sm"
         variant="outline"
-        className={
-          global
-            ? "h-7 shrink-0 border border-primary/70 bg-primary/15 font-semibold text-bright-fg hover:bg-primary/25"
-            : "shrink-0 border border-muted/35 bg-surface"
-        }
+        className="h-7 shrink-0 border border-primary/70 bg-primary/15 font-semibold text-bright-fg hover:bg-primary/25"
         aria-label={label}
         title={
           tooMany ? t("select.bulkFileLimit", { max: MAX_BULK_FILES }) : label
@@ -174,9 +170,7 @@ export function SourceReviewAction({
         }
       >
         <Link2 aria-hidden />
-        <span className={global ? "hidden lg:inline" : "hidden xl:inline"}>
-          {label}
-        </span>
+        <span className="hidden lg:inline">{label}</span>
       </Button>
       {scope && (
         <PexelsSourceReview

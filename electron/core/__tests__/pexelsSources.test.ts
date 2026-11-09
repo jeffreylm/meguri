@@ -68,6 +68,8 @@ describe("Pexels catalogue metadata", () => {
     try {
       const suggested = insertFile(db, rootId, {
         relPath: "Stock/Day 1/pexels-tima-miroshnichenko-5586539.mp4",
+        width: 2560,
+        height: 1440,
       });
       const unknown = insertFile(db, rootId, { relPath: "Stock/unknown.mp4" });
       const deleted = insertFile(db, rootId, { relPath: "Stock/deleted.mp4" });
@@ -85,8 +87,22 @@ describe("Pexels catalogue metadata", () => {
         limit: 10,
       });
       expect(preview).toMatchObject([
-        { id: suggested, workspaceId: "w", saved: null, suggestion: { url } },
-        { id: unknown, workspaceId: "w", saved: null, suggestion: null },
+        {
+          id: suggested,
+          workspaceId: "w",
+          width: 2560,
+          height: 1440,
+          saved: null,
+          suggestion: { url },
+        },
+        {
+          id: unknown,
+          workspaceId: "w",
+          width: null,
+          height: null,
+          saved: null,
+          suggestion: null,
+        },
       ]);
       expect(
         previewPexelsSources(db, "w", { folder: "Stock", limit: 1 }),

@@ -16,7 +16,7 @@ type SourceRow = Omit<
 };
 
 const SOURCE_ROWS = `
-  SELECT f.id, f.rel_path AS relPath, f.meta_key AS metaKey, s.video_id AS videoId, s.url
+  SELECT f.id, f.rel_path AS relPath, f.width, f.height, f.meta_key AS metaKey, s.video_id AS videoId, s.url
   FROM files f LEFT JOIN pexels_sources s ON s.meta_key = f.meta_key
   WHERE f.kind = 'video' AND f.deleted_at IS NULL`;
 
@@ -41,10 +41,12 @@ export function previewPexelsSources(
       )
       .all(...args, scope.limit) as SourceRow[];
   }
-  return rows.map(({ id, relPath, metaKey, videoId, url }) => ({
+  return rows.map(({ id, relPath, width, height, metaKey, videoId, url }) => ({
     id,
     workspaceId,
     relPath,
+    width,
+    height,
     metaKey,
     saved: videoId && url ? { videoId, url } : null,
     suggestion: url ? null : suggestPexelsSource(path.basename(relPath)),

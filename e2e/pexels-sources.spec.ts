@@ -67,15 +67,13 @@ test("recovers reviewed Pexels links from a folder and selected clips, and remem
     await page.getByTestId("folder-card").filter({ hasText: "Batch" }).click();
 
     const review = page.getByRole("dialog", { name: "Recover source links" });
+    const toolbar = page.locator("header");
     const closeReview = () =>
       review
         .locator('[data-slot="dialog-footer"]')
         .getByRole("button", { name: "Close", exact: true })
         .click();
-    await page
-      .getByRole("navigation")
-      .getByRole("button", { name: "Recover folder links" })
-      .click();
+    await toolbar.getByRole("button", { name: "Recover folder links" }).click();
     await expect(
       review.getByText("Source unknown", { exact: true }),
     ).toBeVisible();
@@ -94,6 +92,18 @@ test("recovers reviewed Pexels links from a folder and selected clips, and remem
     const localPreview = proposed.getByRole("img", { name: "Library clip" });
     const pexelsPreview = proposed.getByRole("img", { name: "Pexels preview" });
     await proposed.scrollIntoViewIfNeeded();
+    await expect(
+      proposed.getByText("320 × 180", { exact: true }),
+    ).toBeVisible();
+    await expect(proposed.locator('[data-slot="file-extension"]')).toHaveText(
+      "MP4",
+    );
+    const fileTitle = proposed.getByTitle(path.join("Batch", suggested), {
+      exact: true,
+    });
+    expect(
+      await fileTitle.evaluate((element) => element.firstChild?.textContent),
+    ).toBe(path.join("Batch", path.parse(suggested).name));
     await expect(localPreview).toHaveAttribute("src", /\/thumb\/\d+/);
     await expect(localPreview).not.toHaveJSProperty("naturalWidth", 0);
     await expect(pexelsPreview).toHaveAttribute(
@@ -140,8 +150,7 @@ test("recovers reviewed Pexels links from a folder and selected clips, and remem
     });
     await pick.hover();
     await pick.getByRole("button", { name: "Select", exact: true }).click();
-    await page
-      .getByRole("navigation")
+    await toolbar
       .getByRole("button", { name: "Recover selected links" })
       .click();
     await expect(review.getByRole("listitem")).toHaveCount(1);
@@ -196,10 +205,7 @@ test("recovers reviewed Pexels links from a folder and selected clips, and remem
     await closeReview();
     await page.getByRole("button", { name: "Exit selection" }).click();
 
-    await page
-      .getByRole("navigation")
-      .getByRole("button", { name: "Recover folder links" })
-      .click();
+    await toolbar.getByRole("button", { name: "Recover folder links" }).click();
     await expect(
       review.getByText(/^Source already saved · Pexels/),
     ).toHaveCount(2);

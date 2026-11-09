@@ -99,18 +99,19 @@ for example to check whether Pexels offers a 4K download of your HD clip. The
 **Open source** button. Use **Add source** or **Edit source** to paste the
 address of the video page, for example `https://www.pexels.com/video/2499611/`.
 
-To review selected clips, click **Recover selected links** in the selection bar.
-In **Show by folder**, the folder header offers the same action while clips are
-selected. With no selection, choose **Recover folder links** to review all
-indexed videos in that folder and its subfolders, regardless of the current
-browsing filters. In **Global**, use **Recover matching links** in the top
-toolbar to review videos across all scanned folders that match the active
-Smart bin and browsing filters. The toolbar switches to **Recover selected
-links** when you select clips. Narrow the filters or select clips if more than
-5,000 videos match.
+The recovery button stays in the top toolbar when you switch between
+**Local** and **Global**. In **Local**, **Recover folder links** reviews indexed
+videos in the current folder and its subfolders, regardless of browsing
+filters. If folder view is off, it starts at the scanned folder's root. In
+**Global**, **Recover matching links** reviews videos across all scanned
+folders that match the active Smart bin and browsing filters. Both switch to
+**Recover selected links** when you select clips. That action is also in the
+selection bar. Narrow the scope or select clips if more than 5,000 videos match.
 
 Each row shows your library thumbnail on the left and a Pexels preview on the
-right. Compare them before accepting a suggestion. The stills may come from
+right. The dimensions and format badge under the library thumbnail describe
+the copy already on your disk, so you can see whether you have the resolution
+you want before opening the source. Compare them before accepting a suggestion. The stills may come from
 different moments in the clip. If the right-hand preview is unavailable, use
 **Open source** to check the video in your browser. For an unknown source,
 paste a Pexels video URL and leave the field to load its preview.

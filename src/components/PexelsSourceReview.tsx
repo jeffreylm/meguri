@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ExternalLink, ImageOff } from "lucide-react";
 import { toast } from "sonner";
@@ -11,8 +11,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { FileExtensionBadge } from "@/components/MediaFileName";
 import { Input } from "@/components/ui/input";
 import { useAppStatus } from "@/hooks/useAppStatus";
+import { fileNameParts } from "@/lib/relPath";
 import { thumbUrl } from "@/lib/thumbUrl";
 import { useI18n } from "@/i18n/I18nProvider";
 import { api } from "@/ipc/client";
@@ -53,11 +55,13 @@ function ReviewThumbnail({
   src,
   fallbackSrc,
   emptyText,
+  metadata,
 }: {
   label: string;
   src: string | null;
   fallbackSrc?: string;
   emptyText?: string;
+  metadata?: ReactNode;
 }) {
   const { t } = useI18n();
   const [errors, setErrors] = useState(0);
@@ -86,6 +90,7 @@ function ReviewThumbnail({
           </div>
         )}
       </div>
+      {metadata}
     </figure>
   );
 }
@@ -261,16 +266,28 @@ export function PexelsSourceReview({
               const label = acrossWorkspaces
                 ? `${workspaceLabels.get(row.workspaceId) ?? row.workspaceId} / ${row.relPath}`
                 : row.relPath;
+              const { extension } = fileNameParts(row.relPath);
+              const dimensions =
+                row.width && row.height
+                  ? `${row.width} × ${row.height}`
+                  : t("source.resolutionUnknown");
               return (
                 <li key={key} className="space-y-2 px-3 py-2.5">
                   <div title={label} className="break-all text-sm font-medium">
-                    {label}
+                    {extension ? label.slice(0, -extension.length) : label}
+                    <span className="sr-only">{extension}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <ReviewThumbnail
                       key={localPreview ?? "local"}
                       label={t("source.libraryPreview")}
                       src={localPreview}
+                      metadata={
+                        <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-fg tabular-nums">
+                          <span>{dimensions}</span>
+                          <FileExtensionBadge relPath={row.relPath} />
+                        </div>
+                      }
                     />
                     <ReviewThumbnail
                       key={source?.videoId ?? "source"}

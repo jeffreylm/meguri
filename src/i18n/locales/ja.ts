@@ -14,6 +14,7 @@ export const ja = {
     "すべてのスキャン済みフォルダから、現在のグローバルビューに一致する動画が対象です。",
   "source.globalOverLimit":
     "このビューに一致する動画が5,000件を超えています。フィルターで絞り込むか、確認する動画を選んでください。",
+  "source.resolutionUnknown": "解像度不明",
   "source.libraryPreview": "ライブラリの動画",
   "source.pexelsPreview": "Pexelsのプレビュー",
   "source.previewUnavailable": "プレビューを表示できません",

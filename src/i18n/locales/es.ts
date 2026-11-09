@@ -15,6 +15,7 @@ export const es: Record<TranslationKey, string> = {
     "Incluye los vídeos que coinciden con la vista Global actual en todas las carpetas analizadas.",
   "source.globalOverLimit":
     "Más de 5000 vídeos coinciden con esta vista. Acota los filtros o selecciona algunos clips.",
+  "source.resolutionUnknown": "Resolución desconocida",
   "source.libraryPreview": "Clip de la biblioteca",
   "source.pexelsPreview": "Vista previa de Pexels",
   "source.previewUnavailable": "Vista previa no disponible",

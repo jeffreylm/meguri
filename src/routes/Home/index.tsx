@@ -972,10 +972,15 @@ export default function Home() {
           onToggleByFolder={toggleByFolder}
           folderAvailable={folderAvailable}
           sourceAction={
-            workspaceId === ALL_ID &&
-            status.data?.ready && (
+            status.data?.ready &&
+            workspaceId &&
+            (workspaceId === ALL_ID || folderAvailable) && (
               <SourceReviewAction
-                fallback={{ globalQuery: searchQuery }}
+                fallback={
+                  workspaceId === ALL_ID
+                    ? { globalQuery: searchQuery }
+                    : { workspaceId, folder: folderView ? folderNav.path : "" }
+                }
                 thumbVersion={thumbVersion}
               />
             )
@@ -1050,14 +1055,6 @@ export default function Home() {
 
         {folderView && (
           <FolderHeader
-            sourceAction={
-              workspaceId && (
-                <SourceReviewAction
-                  fallback={{ workspaceId, folder: folderNav.path }}
-                  thumbVersion={thumbVersion}
-                />
-              )
-            }
             workspaceId={workspaceId ?? undefined}
             rootLabel={activeWorkspace?.label ?? t("folder.root")}
             path={folderNav.path}
