@@ -76,12 +76,17 @@ test("recovers reviewed Pexels links from a folder and selected clips, and remem
       review.getByText("Source unknown", { exact: true }),
     ).toBeVisible();
     const suggestion = review.getByRole("checkbox", {
-      name: new RegExp(suggested),
+      name: `Save this link — ${path.join("Batch", suggested)}`,
     });
     await expect(suggestion).not.toBeChecked();
     const proposed = review
       .getByRole("listitem")
       .filter({ hasText: suggested });
+    await expect(
+      proposed.getByText("Suggested from filename · Pexels 5586539", {
+        exact: true,
+      }),
+    ).toBeVisible();
     const localPreview = proposed.getByRole("img", { name: "Library clip" });
     const pexelsPreview = proposed.getByRole("img", { name: "Pexels preview" });
     await proposed.scrollIntoViewIfNeeded();
@@ -141,7 +146,9 @@ test("recovers reviewed Pexels links from a folder and selected clips, and remem
       review.getByText("Source already saved", { exact: true }),
     ).toHaveCount(2);
     await expect(
-      review.getByRole("checkbox", { name: new RegExp(unselected) }),
+      review.getByRole("checkbox", {
+        name: `Save this link — ${path.join("Batch", unselected)}`,
+      }),
     ).not.toBeChecked();
     await review.getByRole("button", { name: "Cancel", exact: true }).click();
 

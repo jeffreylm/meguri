@@ -13,7 +13,7 @@ export const es: Record<TranslationKey, string> = {
   "source.open": "Abrir fuente",
   "source.openFailed": "No se pudo abrir la página de Pexels.",
   "source.reviewHint":
-    "Revisa las sugerencias basadas en el nombre de archivo o pega la URL de un vídeo de Pexels. Los enlaces se guardan en el catálogo.",
+    "Compara las vistas previas o pega la URL de un vídeo de Pexels. Marca «Guardar este enlace» en cada coincidencia y pulsa «Guardar enlaces».",
   "source.folderHint": "Incluye los vídeos de las subcarpetas.",
   "source.readFailed": "No se pudieron leer los enlaces de origen.",
   "source.overLimit":
@@ -22,6 +22,7 @@ export const es: Record<TranslationKey, string> = {
   "source.selectSuggestions": "Seleccionar todas las sugerencias",
   "source.clearSuggestions": "Desmarcar todas las sugerencias",
   "source.alreadySaved": "Fuente ya guardada",
+  "source.saveThisLink": "Guardar este enlace",
   "source.suggested": "Sugerencia por nombre de archivo",
   "source.unknown": "Fuente desconocida",
   "source.url": "URL del vídeo de Pexels",

@@ -11,7 +11,7 @@ export const ja = {
   "source.open": "出典を開く",
   "source.openFailed": "Pexelsのページを開けませんでした。",
   "source.reviewHint":
-    "ファイル名からの候補を確認するか、Pexelsの動画ページのURLを貼り付けてください。リンクはカタログに保存されます。",
+    "プレビューを比較するか、Pexelsの動画ページのURLを貼り付けてください。一致した候補の「このリンクを保存」にチェックを入れ、「リンクを保存」を押してください。",
   "source.folderHint": "サブフォルダの動画も含まれます。",
   "source.readFailed": "出典リンクを読み込めませんでした。",
   "source.overLimit":
@@ -20,6 +20,7 @@ export const ja = {
   "source.selectSuggestions": "すべての候補を選択",
   "source.clearSuggestions": "候補の選択をすべて解除",
   "source.alreadySaved": "出典を保存済み",
+  "source.saveThisLink": "このリンクを保存",
   "source.suggested": "ファイル名からの候補",
   "source.unknown": "出典不明",
   "source.url": "Pexels動画のURL",

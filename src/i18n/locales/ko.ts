@@ -12,7 +12,7 @@ export const ko: Record<TranslationKey, string> = {
   "source.open": "출처 열기",
   "source.openFailed": "Pexels 페이지를 열 수 없습니다.",
   "source.reviewHint":
-    "파일 이름에서 찾은 후보를 검토하거나 Pexels 동영상 페이지의 URL을 붙여넣으세요. 링크는 카탈로그에 저장됩니다.",
+    "미리보기를 비교하거나 Pexels 동영상 페이지의 URL을 붙여넣으세요. 일치하는 항목마다 ‘이 링크 저장’을 선택한 뒤 ‘링크 저장’을 누르세요.",
   "source.folderHint": "하위 폴더의 동영상도 포함됩니다.",
   "source.readFailed": "출처 링크를 불러올 수 없습니다.",
   "source.overLimit":
@@ -21,6 +21,7 @@ export const ko: Record<TranslationKey, string> = {
   "source.selectSuggestions": "모든 후보 선택",
   "source.clearSuggestions": "모든 후보 선택 해제",
   "source.alreadySaved": "출처 저장됨",
+  "source.saveThisLink": "이 링크 저장",
   "source.suggested": "파일 이름에서 찾은 후보",
   "source.unknown": "출처를 알 수 없음",
   "source.url": "Pexels 동영상 URL",

@@ -116,8 +116,9 @@ paste a Pexels video URL and leave the field to load its preview.
 - **Suggested from filename** means Meguri recognized a Pexels download name
   such as `pexels-tima-miroshnichenko-5586539.mp4` or
   `2169880-hd_1920_1080_30fps.mp4`. It also recognizes older names such as
-  `Pexels Videos 2380095.mp4` and `production ID 4098433.mp4`. Open the
-  suggestion to check it, then tick the box if it's the right video.
+  `Pexels Videos 2380095.mp4` and `production ID 4098433.mp4`. This note appears
+  below the Pexels preview. If the video matches, tick **Save this link** to
+  include it when you click **Save links**.
 - **Source unknown** means you can paste a video page URL if you have it.
   Leave the field empty to skip the clip.
 

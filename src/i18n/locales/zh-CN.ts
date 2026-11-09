@@ -12,7 +12,7 @@ export const zhCN: Record<TranslationKey, string> = {
   "source.open": "打开来源",
   "source.openFailed": "无法打开 Pexels 页面。",
   "source.reviewHint":
-    "请核对根据文件名推测的链接，或粘贴 Pexels 视频页面的网址。链接会保存在媒体库中。",
+    "对比预览，或粘贴 Pexels 视频页面的网址。为每个匹配项勾选“保存此链接”，然后点击“保存链接”。",
   "source.folderHint": "包括子文件夹中的视频。",
   "source.readFailed": "无法读取来源链接。",
   "source.overLimit":
@@ -21,6 +21,7 @@ export const zhCN: Record<TranslationKey, string> = {
   "source.selectSuggestions": "选择所有建议",
   "source.clearSuggestions": "取消选择所有建议",
   "source.alreadySaved": "已保存来源",
+  "source.saveThisLink": "保存此链接",
   "source.suggested": "根据文件名推测",
   "source.unknown": "来源未知",
   "source.url": "Pexels 视频网址",

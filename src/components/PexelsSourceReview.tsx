@@ -252,7 +252,13 @@ export function PexelsSourceReview({
                       emptyText={t("source.previewNeedsLink")}
                     />
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div
+                    className={
+                      suggestion
+                        ? "grid grid-cols-2 items-start gap-3"
+                        : "flex flex-wrap items-center gap-2"
+                    }
+                  >
                     {row.saved ? (
                       <>
                         <span className="text-sm text-fg">
@@ -262,11 +268,11 @@ export function PexelsSourceReview({
                       </>
                     ) : suggestion ? (
                       <>
-                        <label className="flex items-center gap-2 text-sm">
+                        <label className="flex min-h-8 cursor-pointer items-center gap-2 text-sm font-medium text-fg">
                           <input
                             type="checkbox"
                             checked={!!value}
-                            aria-label={`${t("source.suggested")} — ${label}`}
+                            aria-label={`${t("source.saveThisLink")} — ${label}`}
                             disabled={save.isPending}
                             onChange={(event) => {
                               const next = event.currentTarget.checked
@@ -279,9 +285,15 @@ export function PexelsSourceReview({
                             }}
                             className="size-4 accent-primary"
                           />
-                          {t("source.suggested")} · Pexels {suggestion.videoId}
+                          {t("source.saveThisLink")}
                         </label>
-                        <OpenPexelsSource url={suggestion.url} />
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="text-xs text-muted">
+                            {t("source.suggested")} · Pexels{" "}
+                            {suggestion.videoId}
+                          </span>
+                          <OpenPexelsSource url={suggestion.url} />
+                        </div>
                       </>
                     ) : (
                       <>
