@@ -157,7 +157,7 @@ export function SourceReviewAction({
       <Button
         size="sm"
         variant="outline"
-        className="h-7 shrink-0 border border-primary/70 bg-primary/15 font-semibold text-bright-fg hover:bg-primary/25"
+        className="shrink-0 border border-muted/35 bg-surface"
         aria-label={label}
         title={
           tooMany ? t("select.bulkFileLimit", { max: MAX_BULK_FILES }) : label

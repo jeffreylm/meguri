@@ -72,8 +72,11 @@ test("global smart bins retain scope, resolution, type and ratings after restart
     await expect(
       page.getByRole("button", { name: "Global", exact: true }),
     ).toHaveAttribute("aria-pressed", "true");
-    const header = page.locator("header");
-    const recoverMatches = header.getByRole("button", {
+    const recoveryRow = page.getByRole("region", {
+      name: "Recover source links",
+      exact: true,
+    });
+    const recoverMatches = recoveryRow.getByRole("button", {
       name: "Recover matching links",
     });
     const sourceReview = page.getByRole("dialog", {
@@ -153,7 +156,7 @@ test("global smart bins retain scope, resolution, type and ratings after restart
     await fourKClip
       .getByRole("button", { name: "Select", exact: true })
       .click();
-    await header
+    await recoveryRow
       .getByRole("button", { name: "Recover selected links" })
       .click();
     await expect(

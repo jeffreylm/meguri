@@ -17,7 +17,7 @@ import {
   type InfiniteData,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { FolderPlus, PlayCircle, Sparkles } from "lucide-react";
+import { Folder, FolderPlus, Globe, PlayCircle, Sparkles } from "lucide-react";
 import { api, events, ALL_ID, type ThumbDone } from "@/ipc/client";
 import { COLLECTION_ID_PREFIX, WATCH_LATER_ID } from "@shared/workspaceIds";
 import type {
@@ -916,6 +916,18 @@ export default function Home() {
       : activeWorkspace
         ? `${activeWorkspace.label}${folderView && folderNav.path ? ` / ${folderNav.path}` : ""}`
         : (activeCollection?.name ?? t("smartBin.locationPending"));
+  const sourceReviewAction =
+    workspaceId &&
+    (workspaceId === ALL_ID ? status.data?.ready : folderAvailable) ? (
+      <SourceReviewAction
+        fallback={
+          workspaceId === ALL_ID
+            ? { globalQuery: searchQuery }
+            : { workspaceId, folder: folderView ? folderNav.path : "" }
+        }
+        thumbVersion={thumbVersion}
+      />
+    ) : null;
   const setScopeMode = (mode: LibraryScope) => {
     if (mode === "global") onOpenLocation(ALL_ID);
     else if (localTarget)
@@ -971,20 +983,6 @@ export default function Home() {
           folderView={folderView}
           onToggleByFolder={toggleByFolder}
           folderAvailable={folderAvailable}
-          sourceAction={
-            status.data?.ready &&
-            workspaceId &&
-            (workspaceId === ALL_ID || folderAvailable) && (
-              <SourceReviewAction
-                fallback={
-                  workspaceId === ALL_ID
-                    ? { globalQuery: searchQuery }
-                    : { workspaceId, folder: folderView ? folderNav.path : "" }
-                }
-                thumbVersion={thumbVersion}
-              />
-            )
-          }
           scanning={scanning}
           ready={status.data?.ready ?? false}
           onScan={() => void onScan()}
@@ -1053,8 +1051,9 @@ export default function Home() {
           />
         )}
 
-        {folderView && (
+        {folderView ? (
           <FolderHeader
+            sourceAction={sourceReviewAction}
             workspaceId={workspaceId ?? undefined}
             rootLabel={activeWorkspace?.label ?? t("folder.root")}
             path={folderNav.path}
@@ -1099,7 +1098,25 @@ export default function Home() {
                 : undefined
             }
           />
-        )}
+        ) : sourceReviewAction ? (
+          <section
+            aria-label={t("source.recover")}
+            className="flex h-14 min-w-0 shrink-0 items-center gap-3 border-b border-border bg-bg px-4"
+          >
+            {workspaceId === ALL_ID ? (
+              <Globe aria-hidden className="size-5 shrink-0 text-muted" />
+            ) : (
+              <Folder
+                aria-hidden
+                className="size-5 shrink-0 fill-accent2 text-accent2"
+              />
+            )}
+            <span className="min-w-0 flex-1 truncate text-base font-bold text-bright-fg">
+              {locationLabel}
+            </span>
+            {sourceReviewAction}
+          </section>
+        ) : null}
 
         <ScanProgress
           onThumbDone={onThumbDone}

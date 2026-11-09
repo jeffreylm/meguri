@@ -67,13 +67,15 @@ test("recovers reviewed Pexels links from a folder and selected clips, and remem
     await page.getByTestId("folder-card").filter({ hasText: "Batch" }).click();
 
     const review = page.getByRole("dialog", { name: "Recover source links" });
-    const toolbar = page.locator("header");
+    const folderRow = page.getByRole("navigation", { name: "Folder path" });
     const closeReview = () =>
       review
         .locator('[data-slot="dialog-footer"]')
         .getByRole("button", { name: "Close", exact: true })
         .click();
-    await toolbar.getByRole("button", { name: "Recover folder links" }).click();
+    await folderRow
+      .getByRole("button", { name: "Recover folder links" })
+      .click();
     await expect(
       review.getByText("Source unknown", { exact: true }),
     ).toBeVisible();
@@ -150,7 +152,7 @@ test("recovers reviewed Pexels links from a folder and selected clips, and remem
     });
     await pick.hover();
     await pick.getByRole("button", { name: "Select", exact: true }).click();
-    await toolbar
+    await folderRow
       .getByRole("button", { name: "Recover selected links" })
       .click();
     await expect(review.getByRole("listitem")).toHaveCount(1);
@@ -205,7 +207,9 @@ test("recovers reviewed Pexels links from a folder and selected clips, and remem
     await closeReview();
     await page.getByRole("button", { name: "Exit selection" }).click();
 
-    await toolbar.getByRole("button", { name: "Recover folder links" }).click();
+    await folderRow
+      .getByRole("button", { name: "Recover folder links" })
+      .click();
     await expect(
       review.getByText(/^Source already saved · Pexels/),
     ).toHaveCount(2);
