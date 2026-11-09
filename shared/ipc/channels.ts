@@ -412,6 +412,7 @@ export const ChannelInputs = {
   file_get: FileTarget,
   pexels_sources_preview: z.union([
     z.object({ targets: BulkTargets }),
+    z.object({ globalQuery: SearchQuerySchema }),
     z.object({
       workspaceId: z.string().min(1).max(MAX_WORKSPACE_ID),
       folder: FolderPathSchema,

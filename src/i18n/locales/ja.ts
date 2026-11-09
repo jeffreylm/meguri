@@ -9,6 +9,11 @@ export const ja = {
   "source.selectionHint": "選択した動画のみが対象です。",
   "source.updated": "出典リンクを更新しました。",
   "source.removed": "出典リンクを削除しました。",
+  "source.recoverMatching": "一致する動画の出典を復元",
+  "source.globalHint":
+    "すべてのスキャン済みフォルダから、現在のグローバルビューに一致する動画が対象です。",
+  "source.globalOverLimit":
+    "このビューに一致する動画が5,000件を超えています。フィルターで絞り込むか、確認する動画を選んでください。",
   "source.libraryPreview": "ライブラリの動画",
   "source.pexelsPreview": "Pexelsのプレビュー",
   "source.previewUnavailable": "プレビューを表示できません",

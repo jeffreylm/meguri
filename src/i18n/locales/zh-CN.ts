@@ -10,6 +10,10 @@ export const zhCN: Record<TranslationKey, string> = {
   "source.selectionHint": "仅包括选中的视频。",
   "source.updated": "来源链接已更新。",
   "source.removed": "来源链接已移除。",
+  "source.recoverMatching": "找回匹配视频的来源",
+  "source.globalHint": "包括所有已扫描文件夹中符合当前全局视图条件的视频。",
+  "source.globalOverLimit":
+    "此视图匹配了超过 5,000 个视频。请缩小筛选范围，或选择部分视频进行核对。",
   "source.libraryPreview": "媒体库片段",
   "source.pexelsPreview": "Pexels 预览",
   "source.previewUnavailable": "无法显示预览",

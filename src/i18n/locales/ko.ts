@@ -10,6 +10,11 @@ export const ko: Record<TranslationKey, string> = {
   "source.selectionHint": "선택한 동영상만 포함됩니다.",
   "source.updated": "출처 링크를 수정했습니다.",
   "source.removed": "출처 링크를 삭제했습니다.",
+  "source.recoverMatching": "일치하는 동영상 출처 복구",
+  "source.globalHint":
+    "스캔한 모든 폴더에서 현재 전체 보기에 일치하는 동영상이 포함됩니다.",
+  "source.globalOverLimit":
+    "이 보기에 일치하는 동영상이 5,000개 넘게 있습니다. 필터를 좁히거나 검토할 클립을 선택하세요.",
   "source.libraryPreview": "라이브러리 클립",
   "source.pexelsPreview": "Pexels 미리보기",
   "source.previewUnavailable": "미리보기를 표시할 수 없습니다",

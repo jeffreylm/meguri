@@ -91,7 +91,7 @@ import { useFolderNavKeys } from "./useFolderNavKeys";
 import { useFolderPlaylist } from "./useFolderPlaylist";
 import { useTour } from "@/tour/TourProvider";
 import { HomeHeader } from "./HomeHeader";
-import { FolderSourceAction, SelectionLayer } from "./SelectionLayer";
+import { SelectionLayer, SourceReviewAction } from "./SelectionLayer";
 import {
   VIEW_KEY,
   type ViewMode,
@@ -943,86 +943,6 @@ export default function Home() {
         locationLabel={locationLabel}
         onBrowse={library.leave}
       />
-      <HomeHeader
-        root={status.data?.root}
-        rootFetched={status.isFetched}
-        collection={activeCollection}
-        onEditCollection={() => setEditCollection(activeCollection)}
-        workspace={activeWorkspace}
-        onEditWorkspace={() => setEditWorkspace(activeWorkspace)}
-        view={view}
-        onSetView={setViewMode}
-        folderView={folderView}
-        onToggleByFolder={toggleByFolder}
-        folderAvailable={folderAvailable}
-        scanning={scanning}
-        ready={status.data?.ready ?? false}
-        onScan={() => void onScan()}
-        onScanWithDeleted={() => void onScan(true)}
-        onRebuild={() => void onRebuild()}
-        t={t}
-      />
-
-      {/* Selectable: this carries the raw main-process error users report. */}
-      {status.data?.initError && (
-        <div className="select-text border-b border-border bg-destructive px-4 py-2 text-sm text-destructive-foreground">
-          <p>{t("home.initError", { msg: status.data.initError })}</p>
-          {status.data.initErrorKind === "schema_mismatch" && (
-            <p className="mt-1 text-xs">
-              {t("home.initErrorSchemaMismatchHelp")}
-            </p>
-          )}
-        </div>
-      )}
-
-      {library.activeBin && (
-        <SmartBinContext
-          bin={library.activeBin}
-          omitted={library.omitted}
-          onLeave={library.leave}
-          activeFilters={library.controls}
-          onEnableFilter={library.enableOmitted}
-          onRemoveFilter={library.removeOmitted}
-        />
-      )}
-      <FilterBar
-        value={filterValue}
-        onChange={onFilterChange}
-        manualSortAvailable={!!activeCollection}
-        sortNote={view === "timeline" ? t("timeline.sortLocked") : undefined}
-        workspaceId={folderAvailable ? workspaceId : null}
-        onApplySaved={onApplySaved}
-        onToggleHeatmap={heatmap.toggle}
-        heatmapOpen={heatmap.open}
-        onClearFilters={
-          library.activeBin ||
-          smart.collections.some(
-            (bin) => bin.id === smart.defaultId && bin.scope,
-          )
-            ? library.clear
-            : undefined
-        }
-        allowedKinds={
-          library.activeBin ? binKinds(library.activeBin.query) : undefined
-        }
-        portableBins
-        showClearFilters={!!Object.keys(library.omitted ?? {}).length}
-      />
-
-      {/* The heatmap: a panel under the filter bar, over whichever view is
-          shown. It counts what the list would hold (the folder shown
-          included) and writes the days picked into the filter. */}
-      {heatmap.open && (status.data?.ready ?? false) && (
-        <HeatmapView
-          scope={status.data?.workspaceId ?? ""}
-          query={heatmapQuery}
-          ready={!!status.data?.workspaceId}
-          metric={heatmap.metric}
-          onMetricChange={heatmap.setMetric}
-          onRangeChange={heatmap.pickRange}
-        />
-      )}
-
       {/* The list row: the detail side peek (see MediaModal) docks here as a
           flex sibling of the list, under the header and filter bar and above
           the player and status bars, and the list narrows to make room. */}
@@ -1039,13 +959,101 @@ export default function Home() {
         expandFolders={expandFolders}
         readFiles={readFiles}
       >
+        <HomeHeader
+          root={status.data?.root}
+          rootFetched={status.isFetched}
+          collection={activeCollection}
+          onEditCollection={() => setEditCollection(activeCollection)}
+          workspace={activeWorkspace}
+          onEditWorkspace={() => setEditWorkspace(activeWorkspace)}
+          view={view}
+          onSetView={setViewMode}
+          folderView={folderView}
+          onToggleByFolder={toggleByFolder}
+          folderAvailable={folderAvailable}
+          sourceAction={
+            workspaceId === ALL_ID &&
+            status.data?.ready && (
+              <SourceReviewAction
+                fallback={{ globalQuery: searchQuery }}
+                thumbVersion={thumbVersion}
+              />
+            )
+          }
+          scanning={scanning}
+          ready={status.data?.ready ?? false}
+          onScan={() => void onScan()}
+          onScanWithDeleted={() => void onScan(true)}
+          onRebuild={() => void onRebuild()}
+          t={t}
+        />
+
+        {/* Selectable: this carries the raw main-process error users report. */}
+        {status.data?.initError && (
+          <div className="select-text border-b border-border bg-destructive px-4 py-2 text-sm text-destructive-foreground">
+            <p>{t("home.initError", { msg: status.data.initError })}</p>
+            {status.data.initErrorKind === "schema_mismatch" && (
+              <p className="mt-1 text-xs">
+                {t("home.initErrorSchemaMismatchHelp")}
+              </p>
+            )}
+          </div>
+        )}
+
+        {library.activeBin && (
+          <SmartBinContext
+            bin={library.activeBin}
+            omitted={library.omitted}
+            onLeave={library.leave}
+            activeFilters={library.controls}
+            onEnableFilter={library.enableOmitted}
+            onRemoveFilter={library.removeOmitted}
+          />
+        )}
+        <FilterBar
+          value={filterValue}
+          onChange={onFilterChange}
+          manualSortAvailable={!!activeCollection}
+          sortNote={view === "timeline" ? t("timeline.sortLocked") : undefined}
+          workspaceId={folderAvailable ? workspaceId : null}
+          onApplySaved={onApplySaved}
+          onToggleHeatmap={heatmap.toggle}
+          heatmapOpen={heatmap.open}
+          onClearFilters={
+            library.activeBin ||
+            smart.collections.some(
+              (bin) => bin.id === smart.defaultId && bin.scope,
+            )
+              ? library.clear
+              : undefined
+          }
+          allowedKinds={
+            library.activeBin ? binKinds(library.activeBin.query) : undefined
+          }
+          portableBins
+          showClearFilters={!!Object.keys(library.omitted ?? {}).length}
+        />
+
+        {/* The heatmap: a panel under the filter bar, over whichever view is
+          shown. It counts what the list would hold (the folder shown
+          included) and writes the days picked into the filter. */}
+        {heatmap.open && (status.data?.ready ?? false) && (
+          <HeatmapView
+            scope={status.data?.workspaceId ?? ""}
+            query={heatmapQuery}
+            ready={!!status.data?.workspaceId}
+            metric={heatmap.metric}
+            onMetricChange={heatmap.setMetric}
+            onRangeChange={heatmap.pickRange}
+          />
+        )}
+
         {folderView && (
           <FolderHeader
             sourceAction={
               workspaceId && (
-                <FolderSourceAction
-                  workspaceId={workspaceId}
-                  folder={folderNav.path}
+                <SourceReviewAction
+                  fallback={{ workspaceId, folder: folderNav.path }}
                   thumbVersion={thumbVersion}
                 />
               )

@@ -10,6 +10,11 @@ export const es: Record<TranslationKey, string> = {
   "source.selectionHint": "Incluye solo los vídeos seleccionados.",
   "source.updated": "Enlace de origen actualizado.",
   "source.removed": "Enlace de origen eliminado.",
+  "source.recoverMatching": "Recuperar enlaces de los resultados",
+  "source.globalHint":
+    "Incluye los vídeos que coinciden con la vista Global actual en todas las carpetas analizadas.",
+  "source.globalOverLimit":
+    "Más de 5000 vídeos coinciden con esta vista. Acota los filtros o selecciona algunos clips.",
   "source.libraryPreview": "Clip de la biblioteca",
   "source.pexelsPreview": "Vista previa de Pexels",
   "source.previewUnavailable": "Vista previa no disponible",

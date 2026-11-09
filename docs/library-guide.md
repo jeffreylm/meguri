@@ -103,8 +103,11 @@ To review selected clips, click **Recover selected links** in the selection bar.
 In **Show by folder**, the folder header offers the same action while clips are
 selected. With no selection, choose **Recover folder links** to review all
 indexed videos in that folder and its subfolders, regardless of the current
-browsing filters. Folders with more than 5,000 indexed videos need to be reviewed
-in smaller groups.
+browsing filters. In **Global**, use **Recover matching links** in the top
+toolbar to review videos across all scanned folders that match the active
+Smart bin and browsing filters. The toolbar switches to **Recover selected
+links** when you select clips. Narrow the filters or select clips if more than
+5,000 videos match.
 
 Each row shows your library thumbnail on the left and a Pexels preview on the
 right. Compare them before accepting a suggestion. The stills may come from

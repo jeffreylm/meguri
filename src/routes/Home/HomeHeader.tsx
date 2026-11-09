@@ -15,6 +15,7 @@ import {
   Tags as TagsIcon,
 } from "lucide-react";
 import { Link } from "react-router";
+import type { ReactNode } from "react";
 import type { UserCollection, WorkspaceInfo } from "@/ipc/types";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -56,6 +57,7 @@ export function HomeHeader({
   folderView,
   onToggleByFolder,
   folderAvailable,
+  sourceAction,
   scanning,
   ready,
   onScan,
@@ -78,6 +80,7 @@ export function HomeHeader({
   onToggleByFolder: () => void;
   /** Folders need one real workspace open (not All or a collection). */
   folderAvailable: boolean;
+  sourceAction?: ReactNode;
   scanning: boolean;
   ready: boolean;
   onScan: () => void;
@@ -249,6 +252,7 @@ export function HomeHeader({
         >
           <FolderTree className="size-4" />
         </button>
+        {sourceAction}
         <WatchFoldersControl ready={ready} />
         <ButtonGroup className="[&>button]:border [&>button]:border-muted/35 [&>button]:bg-surface [&>button:not(:first-child)]:relative [&>button:not(:first-child)]:z-[1]">
           <Button

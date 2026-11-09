@@ -114,7 +114,15 @@ export function PexelsSourceReview({
     queryKey: [PEXELS_SOURCE_QUERY, scope],
     queryFn: () => api.previewPexelsSources(scope),
   });
-  const acrossWorkspaces = "targets" in scope && scope.targets.length > 1;
+  const rows = review.data?.rows ?? [];
+  const global = "globalQuery" in scope;
+  const acrossWorkspaces = new Set(rows.map((row) => row.workspaceId)).size > 1;
+  const scopeHint =
+    "folder" in scope
+      ? "source.folderHint"
+      : global
+        ? "source.globalHint"
+        : "source.selectionHint";
   const workspaces = useQuery({
     queryKey: ["workspaces_list"],
     queryFn: api.workspacesList,
@@ -126,7 +134,6 @@ export function PexelsSourceReview({
       workspace.label,
     ]),
   );
-  const rows = review.data?.rows ?? [];
   const suggestions = rows.flatMap((row) =>
     row.suggestion ? [{ key: rowKey(row), url: row.suggestion.url }] : [],
   );
@@ -180,15 +187,16 @@ export function PexelsSourceReview({
         <DialogHeader className="pr-6">
           <DialogTitle>{t("source.recover")}</DialogTitle>
           <DialogDescription>
-            {t("source.reviewHint")}
-            {"folder" in scope
-              ? ` ${t("source.folderHint")}`
-              : ` ${t("source.selectionHint")}`}
+            {t("source.reviewHint")} {t(scopeHint)}
           </DialogDescription>
         </DialogHeader>
         {review.isPending && <p role="status">{t("folder.loading")}</p>}
         {review.isError && <p role="alert">{t("source.readFailed")}</p>}
-        {review.data?.overLimit && <p role="status">{t("source.overLimit")}</p>}
+        {review.data?.overLimit && (
+          <p role="status">
+            {t(global ? "source.globalOverLimit" : "source.overLimit")}
+          </p>
+        )}
         {review.isSuccess && !review.data.overLimit && rows.length === 0 && (
           <p role="status">{t("source.noVideos")}</p>
         )}

@@ -72,6 +72,28 @@ test("global smart bins retain scope, resolution, type and ratings after restart
     await expect(
       page.getByRole("button", { name: "Global", exact: true }),
     ).toHaveAttribute("aria-pressed", "true");
+    const header = page.locator("header");
+    const recoverMatches = header.getByRole("button", {
+      name: "Recover matching links",
+    });
+    const sourceReview = page.getByRole("dialog", {
+      name: "Recover source links",
+    });
+    const reviewRows = sourceReview.getByRole("listitem");
+    const closeSourceReview = () =>
+      sourceReview
+        .locator('[data-slot="dialog-footer"]')
+        .getByRole("button", { name: "Close", exact: true })
+        .click();
+    await recoverMatches.click();
+    await expect(reviewRows).toHaveCount(2);
+    await expect(
+      reviewRows.filter({ hasText: "Pexels A / clip-hd.mp4" }),
+    ).toHaveCount(1);
+    await expect(
+      reviewRows.filter({ hasText: "Pexels B / clip-4k.mp4" }),
+    ).toHaveCount(1);
+    await closeSourceReview();
     await page
       .getByRole("button", { name: "Create smart bin", exact: true })
       .click();
@@ -108,7 +130,43 @@ test("global smart bins retain scope, resolution, type and ratings after restart
     await expect(remove).toBeInViewport({ ratio: 1 });
     await expect(page.getByTestId("media-card")).toHaveCount(2);
     await expect(fileCard(page, "photo-4k.png")).toBeVisible();
-    await expect(fileCard(page, "clip-4k.mp4")).toBeVisible();
+    const fourKClip = fileCard(page, "clip-4k.mp4");
+    await expect(fourKClip).toBeVisible();
+    await recoverMatches.click();
+    await expect(reviewRows).toHaveCount(1);
+    await expect(reviewRows).toContainText("clip-4k.mp4");
+    await closeSourceReview();
+
+    const search = page.locator("#list-search-input");
+    await search.fill("photo");
+    await expect(page.getByTestId("media-card")).toHaveCount(1);
+    await expect(fileCard(page, "photo-4k.png")).toBeVisible();
+    await recoverMatches.click();
+    await expect(
+      sourceReview.getByText("No indexed videos to review."),
+    ).toBeVisible();
+    await closeSourceReview();
+    await search.clear();
+    await expect(fourKClip).toBeVisible();
+
+    await fourKClip.hover();
+    await fourKClip
+      .getByRole("button", { name: "Select", exact: true })
+      .click();
+    await header
+      .getByRole("button", { name: "Recover selected links" })
+      .click();
+    await expect(
+      sourceReview.getByText(/Includes only the selected videos/),
+    ).toBeVisible();
+    await expect(reviewRows).toHaveCount(1);
+    await closeSourceReview();
+    await page
+      .getByRole("region", { name: "Selection actions" })
+      .getByRole("button", { name: "Clear", exact: true })
+      .click();
+    await expect(recoverMatches).toBeEnabled();
+    await page.getByRole("button", { name: "Exit selection" }).click();
 
     await page.getByRole("button", { name: "Pexels A", exact: true }).click();
     // A folder change keeps the bin rules and narrows their search location.

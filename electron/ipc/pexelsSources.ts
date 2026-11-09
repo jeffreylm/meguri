@@ -4,17 +4,65 @@ import {
   previewPexelsSources,
   writePexelsSources,
 } from "../core/queries/pexelsSources.js";
+import type { SearchResult } from "../core/types.js";
 import type { IpcContext } from "./context.js";
-import { bulkTargetCores, coreById } from "./helpers.js";
+import { bulkTargetCores, coreById, queryTargets } from "./helpers.js";
 
-export function registerPexelsSourceHandlers({ ws }: IpcContext): void {
-  handle("pexels_sources_preview", (input) => {
+export function registerPexelsSourceHandlers({
+  ws,
+  queryClient,
+}: IpcContext): void {
+  const readTargets = (targets: { workspaceId: string; fileIds: number[] }[]) =>
+    bulkTargetCores(ws, targets).flatMap(({ workspaceId, core, fileIds }) =>
+      previewPexelsSources(core.db, workspaceId, { fileIds }),
+    );
+
+  handle("pexels_sources_preview", async (input) => {
     if ("targets" in input) {
-      const rows = bulkTargetCores(ws, input.targets).flatMap(
-        ({ workspaceId, core, fileIds }) =>
-          previewPexelsSources(core.db, workspaceId, { fileIds }),
-      );
-      return { rows, overLimit: false };
+      return { rows: readTargets(input.targets), overLimit: false };
+    }
+    if ("globalQuery" in input) {
+      // Use the same worker search as the All view, including its duplicate
+      // resolution and bin/filter intersection. Only video matches count
+      // toward the review cap. This starts at the first result, not at the
+      // renderer's current page or scroll position.
+      const targets = queryTargets(ws.allCores());
+      const query = {
+        ...input.globalQuery,
+        allOf: [...(input.globalQuery.allOf ?? []), { kind: "video" }],
+      };
+      const groups = new Map<string, Set<number>>();
+      let count = 0;
+      let cursor: SearchResult["nextCursor"] = null;
+      do {
+        const page: SearchResult = await queryClient.run<SearchResult>({
+          kind: "search",
+          targets,
+          query: {
+            ...query,
+            cursor: cursor ?? undefined,
+            limit: Math.min(500, MAX_BULK_FILES + 1 - count),
+          },
+        });
+        for (const { workspaceId, id } of page.items) {
+          let ids = groups.get(workspaceId);
+          if (!ids) groups.set(workspaceId, (ids = new Set()));
+          if (ids.has(id)) continue;
+          ids.add(id);
+          count += 1;
+        }
+        if (count > MAX_BULK_FILES) return { rows: [], overLimit: true };
+        cursor = page.nextCursor;
+      } while (cursor !== null);
+      return {
+        rows: readTargets(
+          [...groups].map(([workspaceId, ids]) => ({
+            workspaceId,
+            fileIds: [...ids],
+          })),
+        ),
+        overLimit: false,
+      };
     }
     const { workspaceId, folder } = input;
     const rows = previewPexelsSources(

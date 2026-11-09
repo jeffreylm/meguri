@@ -128,23 +128,27 @@ export function SelectionLayer({ active, thumbVersion }: Props) {
   );
 }
 
-/** The folder button uses the same selection as the floating bar. */
-export function FolderSourceAction({
-  workspaceId,
-  folder,
+type ReviewScope = ChannelInput<"pexels_sources_preview">;
+
+/** The header action uses the same selection as the floating bar. */
+export function SourceReviewAction({
+  fallback,
   thumbVersion,
 }: {
-  workspaceId: string;
-  folder: string;
+  fallback: Exclude<ReviewScope, { targets: BulkTargets }>;
   thumbVersion: Props["thumbVersion"];
 }) {
   const { t } = useI18n();
   const selection = useSelection();
-  const [scope, setScope] =
-    useState<ChannelInput<"pexels_sources_preview"> | null>(null);
+  const [scope, setScope] = useState<ReviewScope | null>(null);
+  const global = "globalQuery" in fallback;
   const hasSelection = selection.count > 0 || selection.pending;
   const label = t(
-    hasSelection ? "source.recoverSelected" : "source.recoverFolder",
+    hasSelection
+      ? "source.recoverSelected"
+      : global
+        ? "source.recoverMatching"
+        : "source.recoverFolder",
   );
   const tooMany = selection.count > MAX_BULK_FILES;
   const videos = selection.rows.filter((row) => row.kind === "video");
@@ -153,7 +157,11 @@ export function FolderSourceAction({
       <Button
         size="sm"
         variant="outline"
-        className="shrink-0 border border-muted/35 bg-surface"
+        className={
+          global
+            ? "h-7 shrink-0 border border-primary/70 bg-primary/15 font-semibold text-bright-fg hover:bg-primary/25"
+            : "shrink-0 border border-muted/35 bg-surface"
+        }
         aria-label={label}
         title={
           tooMany ? t("select.bulkFileLimit", { max: MAX_BULK_FILES }) : label
@@ -162,15 +170,13 @@ export function FolderSourceAction({
           hasSelection && (selection.pending || tooMany || videos.length === 0)
         }
         onClick={() =>
-          setScope(
-            hasSelection
-              ? { targets: bulkTargets(videos) }
-              : { workspaceId, folder },
-          )
+          setScope(hasSelection ? { targets: bulkTargets(videos) } : fallback)
         }
       >
         <Link2 aria-hidden />
-        <span className="hidden xl:inline">{label}</span>
+        <span className={global ? "hidden lg:inline" : "hidden xl:inline"}>
+          {label}
+        </span>
       </Button>
       {scope && (
         <PexelsSourceReview

@@ -436,7 +436,9 @@ and remain separate files. Byte-identical copies share metadata within a
 workspace under the existing identity rules.
 
 `pexels_sources_preview` takes a bounded set of workspace/file IDs or a
-workspace-relative folder. The folder query reuses the existing folder range
+workspace-relative folder, or a snapshot of the Global library query. Global
+review uses the same worker search as the library, adding a video condition
+and paging from the start up to the bulk-edit limit. The folder query reuses the existing folder range
 and caps recursive video results at the bulk-edit limit. The preview exposes
 saved links separately from filename suggestions. Shared validation accepts
 HTTPS Pexels video pages and normalizes the URL before storage. Writes check
