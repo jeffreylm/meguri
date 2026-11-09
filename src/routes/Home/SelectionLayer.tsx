@@ -5,9 +5,12 @@
 // cannot consume it — this sits just inside the provider, where the bar has to
 // live anyway (it is positioned against the list area).
 import { useCallback, useEffect, useState } from "react";
+import { Link2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useI18n } from "@/i18n/I18nProvider";
 import { PexelsSourceReview } from "@/components/PexelsSourceReview";
 import { bulkTargets } from "@/lib/bulkEdit";
-import type { BulkTargets } from "@shared/ipc/channels";
+import type { BulkTargets, ChannelInput } from "@shared/ipc/channels";
 import { BulkTagDialog } from "@/components/BulkTagDialog";
 import { MAX_BULK_FILES } from "@shared/tags";
 import { SelectionBar } from "@/components/SelectionBar";
@@ -119,6 +122,61 @@ export function SelectionLayer({ active, thumbVersion }: Props) {
           onOpenChange={setTagsOpen}
           rows={selection.rows}
           onApplied={selection.refresh}
+        />
+      )}
+    </>
+  );
+}
+
+/** The folder button uses the same selection as the floating bar. */
+export function FolderSourceAction({
+  workspaceId,
+  folder,
+  thumbVersion,
+}: {
+  workspaceId: string;
+  folder: string;
+  thumbVersion: Props["thumbVersion"];
+}) {
+  const { t } = useI18n();
+  const selection = useSelection();
+  const [scope, setScope] =
+    useState<ChannelInput<"pexels_sources_preview"> | null>(null);
+  const hasSelection = selection.count > 0 || selection.pending;
+  const label = t(
+    hasSelection ? "source.recoverSelected" : "source.recoverFolder",
+  );
+  const tooMany = selection.count > MAX_BULK_FILES;
+  const videos = selection.rows.filter((row) => row.kind === "video");
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="outline"
+        className="shrink-0 border border-muted/35 bg-surface"
+        aria-label={label}
+        title={
+          tooMany ? t("select.bulkFileLimit", { max: MAX_BULK_FILES }) : label
+        }
+        disabled={
+          hasSelection && (selection.pending || tooMany || videos.length === 0)
+        }
+        onClick={() =>
+          setScope(
+            hasSelection
+              ? { targets: bulkTargets(videos) }
+              : { workspaceId, folder },
+          )
+        }
+      >
+        <Link2 aria-hidden />
+        <span className="hidden xl:inline">{label}</span>
+      </Button>
+      {scope && (
+        <PexelsSourceReview
+          scope={scope}
+          thumbVersion={thumbVersion}
+          onClose={() => setScope(null)}
         />
       )}
     </>

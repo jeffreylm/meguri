@@ -5,6 +5,11 @@ export const ko: Record<TranslationKey, string> = {
   // App name: the single-kanji display name (guideline 00), identical in every locale.
   "source.title": "출처",
   "source.recover": "출처 링크 복구",
+  "source.recoverSelected": "선택한 동영상 출처 복구",
+  "source.recoverFolder": "폴더의 출처 링크 복구",
+  "source.selectionHint": "선택한 동영상만 포함됩니다.",
+  "source.updated": "출처 링크를 수정했습니다.",
+  "source.removed": "출처 링크를 삭제했습니다.",
   "source.libraryPreview": "라이브러리 클립",
   "source.pexelsPreview": "Pexels 미리보기",
   "source.previewUnavailable": "미리보기를 표시할 수 없습니다",

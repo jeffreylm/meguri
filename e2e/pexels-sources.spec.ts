@@ -66,11 +66,15 @@ test("recovers reviewed Pexels links from a folder and selected clips, and remem
       await folderView.click();
     await page.getByTestId("folder-card").filter({ hasText: "Batch" }).click();
 
-    const recover = "Recover source links";
-    const review = page.getByRole("dialog", { name: recover });
+    const review = page.getByRole("dialog", { name: "Recover source links" });
+    const closeReview = () =>
+      review
+        .locator('[data-slot="dialog-footer"]')
+        .getByRole("button", { name: "Close", exact: true })
+        .click();
     await page
       .getByRole("navigation")
-      .getByRole("button", { name: recover })
+      .getByRole("button", { name: "Recover folder links" })
       .click();
     await expect(
       review.getByText("Source unknown", { exact: true }),
@@ -109,7 +113,27 @@ test("recovers reviewed Pexels links from a folder and selected clips, and remem
     ).toBeDisabled();
     await suggestion.check();
     await review.getByRole("button", { name: "Save links (1)" }).click();
-    await expect(review).toHaveCount(0);
+    await expect(
+      proposed.getByText("Source already saved · Pexels 5586539"),
+    ).toBeVisible();
+    await expect(review.getByRole("status")).toHaveText(
+      "Source links saved: 1",
+    );
+    await closeReview();
+
+    const local = page.getByRole("button", { name: "Local", exact: true });
+    if ((await local.getAttribute("aria-pressed")) === "false")
+      await local.click();
+    await page
+      .getByRole("button", { name: "Create smart bin", exact: true })
+      .click();
+    const binEditor = page.getByRole("dialog", { name: "Create smart bin" });
+    await binEditor.getByRole("textbox", { name: "Name" }).fill("Stock videos");
+    await binEditor.getByRole("radio", { name: "Video", exact: true }).click();
+    await binEditor.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "Leave smart bin" }),
+    ).toBeVisible();
 
     const pick = page.getByTestId("media-card").filter({
       has: page.getByTitle(path.join("Batch", unknown), { exact: true }),
@@ -117,9 +141,18 @@ test("recovers reviewed Pexels links from a folder and selected clips, and remem
     await pick.hover();
     await pick.getByRole("button", { name: "Select", exact: true }).click();
     await page
-      .getByRole("region", { name: "Selection actions" })
-      .getByRole("button", { name: recover })
+      .getByRole("navigation")
+      .getByRole("button", { name: "Recover selected links" })
       .click();
+    await expect(review.getByRole("listitem")).toHaveCount(1);
+    await expect(review.getByRole("listitem")).toContainText(unknown);
+    await closeReview();
+
+    const selectionAction = page
+      .getByRole("region", { name: "Selection actions" })
+      .getByRole("button", { name: "Recover selected links" });
+    await expect(selectionAction).toHaveText("Recover selected links");
+    await selectionAction.click();
     await expect(review.getByRole("listitem")).toHaveCount(1);
     const url = review.getByRole("textbox", { name: new RegExp(unknown) });
     await url.fill("https://example.com/video/44/");
@@ -135,22 +168,47 @@ test("recovers reviewed Pexels links from a folder and selected clips, and remem
       review.getByRole("img", { name: "Pexels preview" }),
     ).toHaveAttribute("src", /\/videos\/2499611\/free-video-2499611\.jpg/);
     await review.getByRole("button", { name: "Save links (1)" }).click();
-    await expect(review).toHaveCount(0);
+    await expect(
+      review.getByText("Source already saved · Pexels 2499611"),
+    ).toBeVisible();
+    await review.getByRole("button", { name: "Edit source" }).click();
+    await expect(url).toHaveValue(
+      "https://www.pexels.com/video/my-clip-2499611/",
+    );
+    await url.fill("https://www.pexels.com/video/1448735/");
+    await review.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(review.getByRole("status")).toHaveText("Source link updated.");
+    await expect(
+      review.getByText("Source already saved · Pexels 1448735"),
+    ).toBeVisible();
+    await review.getByRole("button", { name: "Edit source" }).click();
+    await review.getByRole("button", { name: "Remove source" }).click();
+    await expect(review.getByRole("status")).toHaveText("Source link removed.");
+    await expect(
+      review.getByText("Source unknown", { exact: true }),
+    ).toBeVisible();
+    await expect(url).toHaveValue("");
+    await url.fill("https://www.pexels.com/video/my-clip-2499611/");
+    await review.getByRole("button", { name: "Save links (1)" }).click();
+    await expect(
+      review.getByText("Source already saved · Pexels 2499611"),
+    ).toBeVisible();
+    await closeReview();
     await page.getByRole("button", { name: "Exit selection" }).click();
 
     await page
       .getByRole("navigation")
-      .getByRole("button", { name: recover })
+      .getByRole("button", { name: "Recover folder links" })
       .click();
     await expect(
-      review.getByText("Source already saved", { exact: true }),
+      review.getByText(/^Source already saved · Pexels/),
     ).toHaveCount(2);
     await expect(
       review.getByRole("checkbox", {
         name: `Save this link — ${path.join("Batch", unselected)}`,
       }),
     ).not.toBeChecked();
-    await review.getByRole("button", { name: "Cancel", exact: true }).click();
+    await closeReview();
 
     await page.getByTitle(path.join("Batch", unknown), { exact: true }).click();
     const source = page.getByRole("region", { name: "Source", exact: true });

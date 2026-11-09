@@ -5,6 +5,11 @@ export const en: Record<TranslationKey, string> = {
   // App name: the single-kanji display name (guideline 00), identical in every locale.
   "source.title": "Source",
   "source.recover": "Recover source links",
+  "source.recoverSelected": "Recover selected links",
+  "source.recoverFolder": "Recover folder links",
+  "source.selectionHint": "Includes only the selected videos.",
+  "source.updated": "Source link updated.",
+  "source.removed": "Source link removed.",
   "source.libraryPreview": "Library clip",
   "source.pexelsPreview": "Pexels preview",
   "source.previewUnavailable": "Preview unavailable",

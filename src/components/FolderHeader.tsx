@@ -13,10 +13,9 @@ import {
   Copy,
   Folder,
   FolderOpen,
-  Link2,
   MoreHorizontal,
 } from "lucide-react";
-import { Fragment, useState, type ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   DropdownMenu,
@@ -27,7 +26,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PexelsSourceReview } from "@/components/PexelsSourceReview";
 import { api } from "@/ipc/client";
 import { useI18n, type TFunc } from "@/i18n/I18nProvider";
 import { ROOT_FOLDER, splitFolderPath } from "@shared/folderPath";
@@ -54,7 +52,7 @@ export function FolderHeader({
   summary,
   onOpenInFileManager,
   onCopyPath,
-  thumbVersion,
+  sourceAction,
 }: {
   /** The workspace browsed; without it the folder shown has no subfolder menu. */
   workspaceId?: string;
@@ -71,13 +69,9 @@ export function FolderHeader({
   onOpenInFileManager: () => void;
   /** Copies the folder's absolute path to the clipboard. */
   onCopyPath: () => void;
-  thumbVersion?: Readonly<Record<string, number>>;
+  sourceAction?: ReactNode;
 }) {
   const { t } = useI18n();
-  const [sourceScope, setSourceScope] = useState<{
-    workspaceId: string;
-    folder: string;
-  } | null>(null);
   const segments = splitFolderPath(path);
   const levels: Level[] = [
     { label: rootLabel, path: ROOT_FOLDER },
@@ -202,26 +196,7 @@ export function FolderHeader({
       {summary && (
         <span className="shrink-0 text-xs text-muted">{summary}</span>
       )}
-      {workspaceId && (
-        <Button
-          size="sm"
-          variant="outline"
-          className="shrink-0 border border-muted/35 bg-surface"
-          aria-label={t("source.recover")}
-          title={t("source.recover")}
-          onClick={() => setSourceScope({ workspaceId, folder: path })}
-        >
-          <Link2 aria-hidden />
-          <span className="hidden xl:inline">{t("source.recover")}</span>
-        </Button>
-      )}
-      {sourceScope && (
-        <PexelsSourceReview
-          scope={sourceScope}
-          thumbVersion={thumbVersion}
-          onClose={() => setSourceScope(null)}
-        />
-      )}
+      {sourceAction}
       {/* Same group styling as the header's Scan button. */}
       <ButtonGroup className="shrink-0 [&>button]:border [&>button]:border-muted/35 [&>button]:bg-surface [&>button:not(:first-child)]:relative [&>button:not(:first-child)]:z-[1]">
         <Button

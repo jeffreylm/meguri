@@ -91,7 +91,7 @@ import { useFolderNavKeys } from "./useFolderNavKeys";
 import { useFolderPlaylist } from "./useFolderPlaylist";
 import { useTour } from "@/tour/TourProvider";
 import { HomeHeader } from "./HomeHeader";
-import { SelectionLayer } from "./SelectionLayer";
+import { FolderSourceAction, SelectionLayer } from "./SelectionLayer";
 import {
   VIEW_KEY,
   type ViewMode,
@@ -1023,57 +1023,6 @@ export default function Home() {
         />
       )}
 
-      {folderView && (
-        <FolderHeader
-          thumbVersion={thumbVersion}
-          workspaceId={workspaceId ?? undefined}
-          rootLabel={activeWorkspace?.label ?? t("folder.root")}
-          path={folderNav.path}
-          onNavigate={folderNav.goTo}
-          canGoBack={folderNav.canGoBack}
-          onBack={folderNav.goBack}
-          onUp={folderNav.goUp}
-          onOpenInFileManager={() => {
-            api
-              .folderOpenInFileManager(workspaceId ?? "", folderNav.path)
-              .catch((error: unknown) =>
-                toast.error(t("folder.openFailed"), {
-                  id: "folder-open-failed",
-                  description:
-                    error instanceof Error ? error.message : String(error),
-                }),
-              );
-          }}
-          onCopyPath={() => {
-            api.folderCopyPath(workspaceId ?? "", folderNav.path).then(
-              () =>
-                toast.success(t("folder.pathCopied"), {
-                  id: "folder-path-copied",
-                }),
-              (error: unknown) =>
-                toast.error(t("folder.copyFailed"), {
-                  id: "folder-copy-failed",
-                  description:
-                    error instanceof Error ? error.message : String(error),
-                }),
-            );
-          }}
-          summary={
-            // What the folder itself holds; a search shows its own results.
-            // (and only once the listing is the folder named: a vanished
-            // folder is answered with an ancestor until the view moves there).
-            !folderSearching && folderListing.data?.path === folderNav.path
-              ? t("folder.summary", {
-                  folders: folderListing.data.folders.length,
-                  files: folderListing.data.fileCount,
-                })
-              : undefined
-          }
-        />
-      )}
-
-      <ScanProgress onThumbDone={onThumbDone} wsId={status.data?.workspaceId} />
-
       {/* The list row: the detail side peek (see MediaModal) docks here as a
           flex sibling of the list, under the header and filter bar and above
           the player and status bars, and the list narrows to make room. */}
@@ -1090,6 +1039,68 @@ export default function Home() {
         expandFolders={expandFolders}
         readFiles={readFiles}
       >
+        {folderView && (
+          <FolderHeader
+            sourceAction={
+              workspaceId && (
+                <FolderSourceAction
+                  workspaceId={workspaceId}
+                  folder={folderNav.path}
+                  thumbVersion={thumbVersion}
+                />
+              )
+            }
+            workspaceId={workspaceId ?? undefined}
+            rootLabel={activeWorkspace?.label ?? t("folder.root")}
+            path={folderNav.path}
+            onNavigate={folderNav.goTo}
+            canGoBack={folderNav.canGoBack}
+            onBack={folderNav.goBack}
+            onUp={folderNav.goUp}
+            onOpenInFileManager={() => {
+              api
+                .folderOpenInFileManager(workspaceId ?? "", folderNav.path)
+                .catch((error: unknown) =>
+                  toast.error(t("folder.openFailed"), {
+                    id: "folder-open-failed",
+                    description:
+                      error instanceof Error ? error.message : String(error),
+                  }),
+                );
+            }}
+            onCopyPath={() => {
+              api.folderCopyPath(workspaceId ?? "", folderNav.path).then(
+                () =>
+                  toast.success(t("folder.pathCopied"), {
+                    id: "folder-path-copied",
+                  }),
+                (error: unknown) =>
+                  toast.error(t("folder.copyFailed"), {
+                    id: "folder-copy-failed",
+                    description:
+                      error instanceof Error ? error.message : String(error),
+                  }),
+              );
+            }}
+            summary={
+              // What the folder itself holds; a search shows its own results.
+              // (and only once the listing is the folder named: a vanished
+              // folder is answered with an ancestor until the view moves there).
+              !folderSearching && folderListing.data?.path === folderNav.path
+                ? t("folder.summary", {
+                    folders: folderListing.data.folders.length,
+                    files: folderListing.data.fileCount,
+                  })
+                : undefined
+            }
+          />
+        )}
+
+        <ScanProgress
+          onThumbDone={onThumbDone}
+          wsId={status.data?.workspaceId}
+        />
+
         <div className="relative flex min-h-0 flex-1">
           {/* min-w-60 = the 240px the side peek leaves the list (LIST_MIN_WIDTH
           in usePeekResize); the two must agree. */}

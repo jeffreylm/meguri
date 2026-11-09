@@ -441,8 +441,9 @@ and caps recursive video results at the bulk-edit limit. The preview exposes
 saved links separately from filename suggestions. Shared validation accepts
 HTTPS Pexels video pages and normalizes the URL before storage. Writes check
 that the file still has the identity shown in the review. Batch inserts skip
-existing links, including links saved after the review opened. Only the
-individual Source editor can replace or remove a saved link.
+existing links, including links saved after the review opened. The batch review
+refreshes in place after saving. Explicit edits and removals on individual rows
+use the same `pexels_source_set` channel as the clip's Source editor.
 
 ### Pexels follow-up
 

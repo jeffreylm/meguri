@@ -99,12 +99,12 @@ for example to check whether Pexels offers a 4K download of your HD clip. The
 **Open source** button. Use **Add source** or **Edit source** to paste the
 address of the video page, for example `https://www.pexels.com/video/2499611/`.
 
-To review a batch, select clips and click the link icon in the selection bar
-(**Recover source links**). To check a whole folder, open **Show by folder**
-in a scanned workspace, navigate to the folder, and use the same link button
-in its header. This checks indexed videos in that folder and its subfolders,
-regardless of the current browsing filters. Folders with more than 5,000
-indexed videos need to be reviewed in smaller groups.
+To review selected clips, click **Recover selected links** in the selection bar.
+In **Show by folder**, the folder header offers the same action while clips are
+selected. With no selection, choose **Recover folder links** to review all
+indexed videos in that folder and its subfolders, regardless of the current
+browsing filters. Folders with more than 5,000 indexed videos need to be reviewed
+in smaller groups.
 
 Each row shows your library thumbnail on the left and a Pexels preview on the
 right. Compare them before accepting a suggestion. The stills may come from
@@ -122,8 +122,13 @@ paste a Pexels video URL and leave the field to load its preview.
 - **Source unknown** means you can paste a video page URL if you have it.
   Leave the field empty to skip the clip.
 
-Click **Save links** to commit your choices. Meguri stores the link in the
-workspace catalogue and leaves the media file untouched. A normal rename or
+Click **Save links** to commit your choices. The review stays open and saved
+rows show **Source already saved** both now and when you open the review again.
+To replace or undo a link, choose **Edit source** on its row. Paste a replacement
+URL and click **Save**, or click **Remove source**. A removed link may appear
+again as a filename suggestion you can review.
+
+Meguri stores the link in the workspace catalogue and leaves the media file untouched. A normal rename or
 move within that workspace keeps the link when Meguri recognizes the same
 clip. Filename suggestions and library thumbnails work offline. Meguri requests
 the online previews from Pexels while you review.

@@ -98,7 +98,7 @@ export function SelectionBar({ onEditTags, onRecoverSources, onExit }: Props) {
       // z-40 puts this above the two FABs (z-30 in Home), which otherwise cover
       // it where they overlap, and below the modals and popovers (z-50) that are
       // meant to cover it — the tag dialog included.
-      className="pointer-events-auto absolute bottom-5 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-border-strong bg-surface p-2 shadow-lg shadow-black/40"
+      className="pointer-events-auto absolute bottom-5 left-1/2 z-40 flex w-max max-w-[calc(100%-1rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-xl border border-primary bg-bg p-2 shadow-xl shadow-black/60 ring-2 ring-primary/45"
     >
       <span className="flex items-center gap-1.5 whitespace-nowrap pl-0.5 pr-1 text-[13px] font-bold text-fg">
         <span
@@ -157,14 +157,17 @@ export function SelectionBar({ onEditTags, onRecoverSources, onExit }: Props) {
 
       <button
         type="button"
-        aria-label={t("source.recover")}
-        title={tooMany ? limitTitle : t("source.recover")}
+        aria-label={t("source.recoverSelected")}
+        title={tooMany ? limitTitle : t("source.recoverSelected")}
         disabled={unavailable || !rows.some((row) => row.kind === "video")}
-        className={ACTION_CLASS}
+        className={cn(
+          ACTION_CLASS,
+          "border-primary/70 bg-primary/15 font-semibold text-bright-fg hover:bg-primary/25",
+        )}
         onClick={onRecoverSources}
       >
         <Link2 aria-hidden className="size-[15px]" />
-        <span className="hidden xl:inline">{t("source.recover")}</span>
+        {t("source.recoverSelected")}
       </button>
 
       {/* Stars read as the whole selection's rating, or as empty with a "mixed"

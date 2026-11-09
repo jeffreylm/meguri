@@ -4,6 +4,11 @@ export const ja = {
   // アプリ名（表示名の漢字1文字。ガイドライン00）
   "source.title": "出典",
   "source.recover": "出典リンクを復元",
+  "source.recoverSelected": "選択した動画の出典を復元",
+  "source.recoverFolder": "フォルダの出典を復元",
+  "source.selectionHint": "選択した動画のみが対象です。",
+  "source.updated": "出典リンクを更新しました。",
+  "source.removed": "出典リンクを削除しました。",
   "source.libraryPreview": "ライブラリの動画",
   "source.pexelsPreview": "Pexelsのプレビュー",
   "source.previewUnavailable": "プレビューを表示できません",

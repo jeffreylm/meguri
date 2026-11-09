@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, ImageOff } from "lucide-react";
+import { Check, ExternalLink, ImageOff } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -103,6 +103,9 @@ export function PexelsSourceReview({
   const qc = useQueryClient();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [page, setPage] = useState(0);
+  const [editing, setEditing] = useState<{ key: string; url: string } | null>(
+    null,
+  );
   const [previewedDrafts, setPreviewedDrafts] = useState<
     Record<string, string>
   >({});
@@ -136,13 +139,30 @@ export function PexelsSourceReview({
   const invalid = edits.some(({ source }) => !parsePexelsVideoUrl(source));
   const save = useMutation({
     mutationFn: api.savePexelsSources,
-    onSuccess: ({ saved, skipped }) => {
-      void qc.invalidateQueries({ queryKey: [PEXELS_SOURCE_QUERY] });
-      if (skipped) toast.info(t("source.skipped", { saved, skipped }));
-      else toast.success(t("source.savedCount", { count: saved }));
-      onClose();
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: [PEXELS_SOURCE_QUERY] });
+      setDrafts({});
+      setPreviewedDrafts({});
     },
   });
+  const changeSource = useMutation({
+    mutationFn: async (edit: ChannelInput<"pexels_source_set">) => {
+      if (!(await api.setPexelsSource(edit))) {
+        throw new Error("The clip changed while editing its source");
+      }
+      return edit.source;
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: [PEXELS_SOURCE_QUERY] });
+      setEditing(null);
+    },
+  });
+  const pending = save.isPending || changeSource.isPending;
+  const activeEdit = rows.some(
+    (row) => row.saved && rowKey(row) === editing?.key,
+  )
+    ? editing
+    : null;
 
   const lastPage = Math.max(0, Math.ceil(rows.length / PAGE_SIZE) - 1);
   const currentPage = Math.min(page, lastPage);
@@ -152,7 +172,7 @@ export function PexelsSourceReview({
   );
 
   return (
-    <Dialog open onOpenChange={(open) => !open && !save.isPending && onClose()}>
+    <Dialog open onOpenChange={(open) => !open && !pending && onClose()}>
       <DialogContent
         data-source-review
         className="flex max-h-[90dvh] w-[min(48rem,calc(100%-2rem))] max-w-none flex-col gap-4 p-5"
@@ -161,7 +181,9 @@ export function PexelsSourceReview({
           <DialogTitle>{t("source.recover")}</DialogTitle>
           <DialogDescription>
             {t("source.reviewHint")}
-            {"folder" in scope && ` ${t("source.folderHint")}`}
+            {"folder" in scope
+              ? ` ${t("source.folderHint")}`
+              : ` ${t("source.selectionHint")}`}
           </DialogDescription>
         </DialogHeader>
         {review.isPending && <p role="status">{t("folder.loading")}</p>}
@@ -176,7 +198,7 @@ export function PexelsSourceReview({
               type="button"
               variant="outline"
               size="sm"
-              disabled={save.isPending}
+              disabled={pending}
               onClick={() =>
                 setDrafts((current) => {
                   const next = { ...current };
@@ -203,12 +225,18 @@ export function PexelsSourceReview({
             {visible.map((row) => {
               const key = rowKey(row);
               const value = drafts[key] ?? "";
-              const suggestion = row.suggestion;
+              const { saved, suggestion } = row;
+              const rowEdit = activeEdit?.key === key ? activeEdit : null;
+              const inputUrl = rowEdit?.url ?? value;
+              const inputSource = parsePexelsVideoUrl(inputUrl);
               const manualSource =
-                previewedDrafts[key] === value
-                  ? parsePexelsVideoUrl(value)
-                  : null;
-              const source = row.saved ?? suggestion ?? manualSource;
+                previewedDrafts[key] === inputUrl ? inputSource : null;
+              const source = manualSource ?? saved ?? suggestion;
+              const target = {
+                id: row.id,
+                workspaceId: row.workspaceId,
+                metaKey: row.metaKey,
+              };
               const localPreview = thumbUrl(
                 mediaBase,
                 row.workspaceId,
@@ -259,12 +287,103 @@ export function PexelsSourceReview({
                         : "flex flex-wrap items-center gap-2"
                     }
                   >
-                    {row.saved ? (
+                    {rowEdit ? (
+                      <form
+                        className="flex w-full flex-wrap items-center gap-2"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          if (
+                            inputSource &&
+                            inputSource.url !== saved?.url &&
+                            !pending
+                          ) {
+                            changeSource.mutate({
+                              ...target,
+                              source: inputSource.url,
+                            });
+                          }
+                        }}
+                      >
+                        <Input
+                          aria-label={`${t("source.url")} — ${label}`}
+                          aria-invalid={!!inputUrl.trim() && !inputSource}
+                          value={inputUrl}
+                          inputMode="url"
+                          autoComplete="off"
+                          maxLength={MAX_SOURCE_URL}
+                          autoFocus
+                          disabled={pending}
+                          className="min-w-48 flex-1"
+                          onBlur={() =>
+                            setPreviewedDrafts((current) => ({
+                              ...current,
+                              [key]: inputUrl,
+                            }))
+                          }
+                          onChange={(event) =>
+                            setEditing({ key, url: event.currentTarget.value })
+                          }
+                        />
+                        <Button
+                          type="submit"
+                          size="sm"
+                          disabled={
+                            pending ||
+                            !inputSource ||
+                            inputSource.url === saved?.url
+                          }
+                        >
+                          {t("smartCollection.save")}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={pending}
+                          onClick={() => {
+                            changeSource.reset();
+                            setEditing(null);
+                          }}
+                        >
+                          {t("common.cancel")}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={pending}
+                          onClick={() =>
+                            changeSource.mutate({ ...target, source: null })
+                          }
+                        >
+                          {t("source.remove")}
+                        </Button>
+                        {!!inputUrl.trim() && !inputSource && (
+                          <p role="alert" className="w-full text-sm">
+                            {t("source.invalid")}
+                          </p>
+                        )}
+                      </form>
+                    ) : saved ? (
                       <>
-                        <span className="text-sm text-fg">
-                          {t("source.alreadySaved")}
+                        <span className="inline-flex items-center gap-1.5 text-sm text-fg">
+                          <Check aria-hidden className="size-4 text-primary" />
+                          {t("source.alreadySaved")} · Pexels {saved.videoId}
                         </span>
-                        <OpenPexelsSource url={row.saved.url} />
+                        <OpenPexelsSource url={saved.url} />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={pending || !!activeEdit}
+                          onClick={() => {
+                            save.reset();
+                            changeSource.reset();
+                            setEditing({ key, url: saved.url });
+                          }}
+                        >
+                          {t("source.edit")}
+                        </Button>
                       </>
                     ) : suggestion ? (
                       <>
@@ -273,7 +392,7 @@ export function PexelsSourceReview({
                             type="checkbox"
                             checked={!!value}
                             aria-label={`${t("source.saveThisLink")} — ${label}`}
-                            disabled={save.isPending}
+                            disabled={pending}
                             onChange={(event) => {
                               const next = event.currentTarget.checked
                                 ? suggestion.url
@@ -302,15 +421,13 @@ export function PexelsSourceReview({
                         </span>
                         <Input
                           aria-label={`${t("source.url")} — ${label}`}
-                          aria-invalid={
-                            !!value.trim() && !parsePexelsVideoUrl(value)
-                          }
+                          aria-invalid={!!value.trim() && !inputSource}
                           placeholder={t("source.paste")}
                           value={value}
                           inputMode="url"
                           autoComplete="off"
                           maxLength={MAX_SOURCE_URL}
-                          disabled={save.isPending}
+                          disabled={pending}
                           className="min-w-48 flex-1"
                           onBlur={() =>
                             setPreviewedDrafts((current) => ({
@@ -342,7 +459,7 @@ export function PexelsSourceReview({
             <Button
               size="sm"
               variant="outline"
-              disabled={currentPage === 0}
+              disabled={currentPage === 0 || pending || !!activeEdit}
               onClick={() => setPage(currentPage - 1)}
             >
               {t("source.previous")}
@@ -356,7 +473,7 @@ export function PexelsSourceReview({
             <Button
               size="sm"
               variant="outline"
-              disabled={currentPage === lastPage}
+              disabled={currentPage === lastPage || pending || !!activeEdit}
               onClick={() => setPage(currentPage + 1)}
             >
               {t("source.next")}
@@ -368,18 +485,33 @@ export function PexelsSourceReview({
             {t("source.invalid")}
           </p>
         )}
-        {save.isError && (
+        {(save.isError || changeSource.isError) && (
           <p role="alert" className="text-sm">
             {t("source.saveFailed")}
           </p>
         )}
+        {save.isSuccess && (
+          <p role="status" className="text-sm text-fg">
+            {save.data.skipped
+              ? t("source.skipped", save.data)
+              : t("source.savedCount", { count: save.data.saved })}
+          </p>
+        )}
+        {changeSource.isSuccess && (
+          <p role="status" className="text-sm text-fg">
+            {t(changeSource.data ? "source.updated" : "source.removed")}
+          </p>
+        )}
         <DialogFooter>
-          <Button variant="outline" disabled={save.isPending} onClick={onClose}>
-            {t("common.cancel")}
+          <Button variant="outline" disabled={pending} onClick={onClose}>
+            {t(edits.length || activeEdit ? "common.cancel" : "common.close")}
           </Button>
           <Button
-            disabled={invalid || edits.length === 0 || save.isPending}
-            onClick={() => save.mutate(edits)}
+            disabled={invalid || edits.length === 0 || pending || !!activeEdit}
+            onClick={() => {
+              changeSource.reset();
+              save.mutate(edits);
+            }}
           >
             {t("source.saveLinks", { count: edits.length })}
           </Button>
