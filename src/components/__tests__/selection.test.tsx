@@ -468,7 +468,11 @@ describe("selection", () => {
         renderWithProviders(
           <SelectionProvider items={many} scope="one">
             <Starter />
-            <SelectionBar onEditTags={() => {}} onExit={() => {}} />
+            <SelectionBar
+              onEditTags={() => {}}
+              onRecoverSources={() => {}}
+              onExit={() => {}}
+            />
           </SelectionProvider>,
         );
         fireEvent.click(screen.getByRole("button", { name: "start" }));

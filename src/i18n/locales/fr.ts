@@ -3,6 +3,38 @@ import type { TranslationKey } from "./ja";
 
 export const fr: Record<TranslationKey, string> = {
   // App name: the single-kanji display name (guideline 00), identical in every locale.
+  "source.title": "Source",
+  "source.recover": "Récupérer les liens source",
+  "source.open": "Ouvrir la source",
+  "source.openFailed": "Impossible d’ouvrir la page Pexels.",
+  "source.reviewHint":
+    "Vérifiez les suggestions tirées du nom de fichier ou collez l’URL d’une vidéo Pexels. Les liens sont enregistrés dans le catalogue.",
+  "source.folderHint": "Inclut les vidéos des sous-dossiers.",
+  "source.readFailed": "Impossible de lire les liens source.",
+  "source.overLimit":
+    "Ce dossier contient plus de 5 000 vidéos. Choisissez un dossier plus petit ou sélectionnez des clips.",
+  "source.noVideos": "Aucune vidéo indexée à vérifier.",
+  "source.selectSuggestions": "Sélectionner toutes les suggestions",
+  "source.clearSuggestions": "Désélectionner toutes les suggestions",
+  "source.alreadySaved": "Source déjà enregistrée",
+  "source.suggested": "Suggestion d’après le nom du fichier",
+  "source.unknown": "Source inconnue",
+  "source.url": "URL de la vidéo Pexels",
+  "source.paste": "Collez l’URL d’une vidéo Pexels",
+  "source.invalid":
+    "Saisissez l’URL d’une page vidéo Pexels, par exemple https://www.pexels.com/video/2499611/.",
+  "source.saveFailed": "Impossible d’enregistrer les modifications.",
+  "source.savedCount": "Liens source enregistrés : {count}",
+  "source.skipped":
+    "Liens source enregistrés : {saved}. Ignorés : {skipped} (lien déjà enregistré ou clip modifié).",
+  "source.saveLinks": "Enregistrer les liens ({count})",
+  "source.previous": "Précédent",
+  "source.next": "Suivant",
+  "source.page": "Page {current} sur {total}",
+  "source.edit": "Modifier la source",
+  "source.add": "Ajouter une source",
+  "source.useSuggestion": "Utiliser la suggestion",
+  "source.remove": "Supprimer la source",
   "audio.sampleRateMatch": "Comparaison de fréquence d’échantillonnage",
   "audio.bitDepthMatch": "Comparaison de profondeur de bits",
   "audio.durationMatch": "Comparaison de durée",

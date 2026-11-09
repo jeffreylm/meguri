@@ -3,6 +3,38 @@ import type { TranslationKey } from "./ja";
 
 export const zhCN: Record<TranslationKey, string> = {
   // App name: the single-kanji display name (guideline 00), identical in every locale.
+  "source.title": "来源",
+  "source.recover": "找回来源链接",
+  "source.open": "打开来源",
+  "source.openFailed": "无法打开 Pexels 页面。",
+  "source.reviewHint":
+    "请核对根据文件名推测的链接，或粘贴 Pexels 视频页面的网址。链接会保存在媒体库中。",
+  "source.folderHint": "包括子文件夹中的视频。",
+  "source.readFailed": "无法读取来源链接。",
+  "source.overLimit":
+    "此文件夹有超过 5,000 个视频。请选择较小的文件夹或部分视频。",
+  "source.noVideos": "没有可供核对的已索引视频。",
+  "source.selectSuggestions": "选择所有建议",
+  "source.clearSuggestions": "取消选择所有建议",
+  "source.alreadySaved": "已保存来源",
+  "source.suggested": "根据文件名推测",
+  "source.unknown": "来源未知",
+  "source.url": "Pexels 视频网址",
+  "source.paste": "粘贴 Pexels 视频网址",
+  "source.invalid":
+    "请输入 Pexels 视频页面的网址，例如 https://www.pexels.com/video/2499611/。",
+  "source.saveFailed": "无法保存来源更改。",
+  "source.savedCount": "已保存 {count} 个来源链接",
+  "source.skipped":
+    "已保存 {saved} 个链接，跳过 {skipped} 个（链接已保存或视频已更改）。",
+  "source.saveLinks": "保存链接（{count}）",
+  "source.previous": "上一页",
+  "source.next": "下一页",
+  "source.page": "第 {current} 页，共 {total} 页",
+  "source.edit": "编辑来源",
+  "source.add": "添加来源",
+  "source.useSuggestion": "使用文件名建议",
+  "source.remove": "移除来源",
   "audio.sampleRateMatch": "采样率匹配方式",
   "audio.bitDepthMatch": "位深匹配方式",
   "audio.durationMatch": "时长匹配方式",

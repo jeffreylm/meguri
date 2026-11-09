@@ -418,3 +418,25 @@ workspace removal and application shutdown. A disconnected root is not reconcile
 as an empty directory. Actual watch failures appear in the Watch folders control,
 and synchronization on window focus retries unavailable roots. Native notification
 support remains filesystem-dependent ([Node documentation](https://nodejs.org/api/fs.html#fswatchfilename-options-listener)); manual Scan stays available.
+
+## Pexels source links
+
+The recovery workflow records a provider's video ID and page URL for a local
+clip. It gives a future variant lookup a stable provider ID after a user confirms
+the source. It makes no network requests while suggesting or saving links.
+Opening a page uses the existing shell URL handler.
+
+`pexels_sources` is an additive table in each workspace database, keyed by
+the same `meta_key` as ratings and tags. It follows the existing path-to-hash
+migration and orphan cleanup. Two different local encodes can share a Pexels ID
+and remain separate files. Byte-identical copies share metadata within a
+workspace under the existing identity rules.
+
+`pexels_sources_preview` takes a bounded set of workspace/file IDs or a
+workspace-relative folder. The folder query reuses the existing folder range
+and caps recursive video results at the bulk-edit limit. The preview exposes
+saved links separately from filename suggestions. Shared validation accepts
+HTTPS Pexels video pages and normalizes the URL before storage. Writes check
+that the file still has the identity shown in the review. Batch inserts skip
+existing links, including links saved after the review opened. Only the
+individual Source editor can replace or remove a saved link.

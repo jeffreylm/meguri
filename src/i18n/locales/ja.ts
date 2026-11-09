@@ -2,6 +2,38 @@
 // 補間は {name} 形式。en.ts はこのキー集合と同型でなければならない（型で強制）。
 export const ja = {
   // アプリ名（表示名の漢字1文字。ガイドライン00）
+  "source.title": "出典",
+  "source.recover": "出典リンクを復元",
+  "source.open": "出典を開く",
+  "source.openFailed": "Pexelsのページを開けませんでした。",
+  "source.reviewHint":
+    "ファイル名からの候補を確認するか、Pexelsの動画ページのURLを貼り付けてください。リンクはカタログに保存されます。",
+  "source.folderHint": "サブフォルダの動画も含まれます。",
+  "source.readFailed": "出典リンクを読み込めませんでした。",
+  "source.overLimit":
+    "このフォルダには5,000件を超える動画があります。小さなフォルダか、一部の動画を選んでください。",
+  "source.noVideos": "確認できる登録済みの動画はありません。",
+  "source.selectSuggestions": "すべての候補を選択",
+  "source.clearSuggestions": "候補の選択をすべて解除",
+  "source.alreadySaved": "出典を保存済み",
+  "source.suggested": "ファイル名からの候補",
+  "source.unknown": "出典不明",
+  "source.url": "Pexels動画のURL",
+  "source.paste": "Pexels動画のURLを貼り付け",
+  "source.invalid":
+    "https://www.pexels.com/video/2499611/ のようなPexelsの動画ページのURLを入力してください。",
+  "source.saveFailed": "出典の変更を保存できませんでした。",
+  "source.savedCount": "出典リンクを{count}件保存しました",
+  "source.skipped":
+    "{saved}件保存し、{skipped}件をスキップしました（保存済み、または動画が変更されています）。",
+  "source.saveLinks": "リンクを保存（{count}件）",
+  "source.previous": "前へ",
+  "source.next": "次へ",
+  "source.page": "{current} / {total}ページ",
+  "source.edit": "出典を編集",
+  "source.add": "出典を追加",
+  "source.useSuggestion": "ファイル名からの候補を使用",
+  "source.remove": "出典を削除",
   "audio.sampleRateMatch": "サンプルレートの一致条件",
   "audio.bitDepthMatch": "ビット深度の一致条件",
   "audio.durationMatch": "時間の一致条件",

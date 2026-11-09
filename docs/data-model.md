@@ -57,6 +57,7 @@ The main tables:
   exactly so, else the older (`findManualTag()`), and renaming one to the
   other merges them. The `All` view's catalog lists spellings apart.
 - `file_meta` — durable user metadata (see below).
+- `pexels_sources` — confirmed Pexels video IDs and page URLs keyed by `meta_key`.
 - `meta_tags` — tag associations.
 - `play_history` — playback history.
 - `scene_bookmarks` — user-created scene positions.

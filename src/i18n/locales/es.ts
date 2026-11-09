@@ -3,6 +3,38 @@ import type { TranslationKey } from "./ja";
 
 export const es: Record<TranslationKey, string> = {
   // App name: the single-kanji display name (guideline 00), identical in every locale.
+  "source.title": "Fuente",
+  "source.recover": "Recuperar enlaces de origen",
+  "source.open": "Abrir fuente",
+  "source.openFailed": "No se pudo abrir la página de Pexels.",
+  "source.reviewHint":
+    "Revisa las sugerencias basadas en el nombre de archivo o pega la URL de un vídeo de Pexels. Los enlaces se guardan en el catálogo.",
+  "source.folderHint": "Incluye los vídeos de las subcarpetas.",
+  "source.readFailed": "No se pudieron leer los enlaces de origen.",
+  "source.overLimit":
+    "Esta carpeta tiene más de 5000 vídeos. Elige una carpeta más pequeña o selecciona algunos clips.",
+  "source.noVideos": "No hay vídeos indexados que revisar.",
+  "source.selectSuggestions": "Seleccionar todas las sugerencias",
+  "source.clearSuggestions": "Desmarcar todas las sugerencias",
+  "source.alreadySaved": "Fuente ya guardada",
+  "source.suggested": "Sugerencia por nombre de archivo",
+  "source.unknown": "Fuente desconocida",
+  "source.url": "URL del vídeo de Pexels",
+  "source.paste": "Pega la URL de un vídeo de Pexels",
+  "source.invalid":
+    "Introduce la URL de la página de un vídeo de Pexels, por ejemplo https://www.pexels.com/video/2499611/.",
+  "source.saveFailed": "No se pudieron guardar los cambios de origen.",
+  "source.savedCount": "Enlaces de origen guardados: {count}",
+  "source.skipped":
+    "Enlaces de origen guardados: {saved}. Omitidos: {skipped} (ya guardados o el clip cambió).",
+  "source.saveLinks": "Guardar enlaces ({count})",
+  "source.previous": "Anterior",
+  "source.next": "Siguiente",
+  "source.page": "Página {current} de {total}",
+  "source.edit": "Editar fuente",
+  "source.add": "Añadir fuente",
+  "source.useSuggestion": "Usar sugerencia por nombre",
+  "source.remove": "Quitar fuente",
   "audio.sampleRateMatch": "Coincidencia de frecuencia de muestreo",
   "audio.bitDepthMatch": "Coincidencia de profundidad de bits",
   "audio.durationMatch": "Coincidencia de duración",

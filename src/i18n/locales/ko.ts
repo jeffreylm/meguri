@@ -3,6 +3,38 @@ import type { TranslationKey } from "./ja";
 
 export const ko: Record<TranslationKey, string> = {
   // App name: the single-kanji display name (guideline 00), identical in every locale.
+  "source.title": "출처",
+  "source.recover": "출처 링크 복구",
+  "source.open": "출처 열기",
+  "source.openFailed": "Pexels 페이지를 열 수 없습니다.",
+  "source.reviewHint":
+    "파일 이름에서 찾은 후보를 검토하거나 Pexels 동영상 페이지의 URL을 붙여넣으세요. 링크는 카탈로그에 저장됩니다.",
+  "source.folderHint": "하위 폴더의 동영상도 포함됩니다.",
+  "source.readFailed": "출처 링크를 불러올 수 없습니다.",
+  "source.overLimit":
+    "이 폴더에 동영상이 5,000개 넘게 있습니다. 더 작은 폴더를 열거나 일부 클립만 선택하세요.",
+  "source.noVideos": "검토할 동영상이 카탈로그에 없습니다.",
+  "source.selectSuggestions": "모든 후보 선택",
+  "source.clearSuggestions": "모든 후보 선택 해제",
+  "source.alreadySaved": "출처 저장됨",
+  "source.suggested": "파일 이름에서 찾은 후보",
+  "source.unknown": "출처를 알 수 없음",
+  "source.url": "Pexels 동영상 URL",
+  "source.paste": "Pexels 동영상 URL 붙여넣기",
+  "source.invalid":
+    "https://www.pexels.com/video/2499611/ 같은 Pexels 동영상 페이지의 URL을 입력하세요.",
+  "source.saveFailed": "출처 변경 사항을 저장할 수 없습니다.",
+  "source.savedCount": "출처 링크 {count}개 저장됨",
+  "source.skipped":
+    "{saved}개 저장됨. {skipped}개 건너뜀(이미 저장되었거나 클립이 변경됨).",
+  "source.saveLinks": "링크 저장 ({count}개)",
+  "source.previous": "이전",
+  "source.next": "다음",
+  "source.page": "{current} / {total}페이지",
+  "source.edit": "출처 수정",
+  "source.add": "출처 추가",
+  "source.useSuggestion": "파일 이름에서 찾은 후보 사용",
+  "source.remove": "출처 삭제",
   "audio.sampleRateMatch": "샘플 레이트 일치 조건",
   "audio.bitDepthMatch": "비트 깊이 일치 조건",
   "audio.durationMatch": "길이 일치 조건",

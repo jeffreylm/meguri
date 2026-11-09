@@ -42,6 +42,7 @@ import { useDetailPresentation } from "./useDetailPresentation";
 import { useThumbVersion } from "./useThumbVersion";
 import { Scenes } from "./Scenes";
 import { SceneBookmarks } from "./SceneBookmarks";
+import { PexelsSourceSection } from "./PexelsSourceSection";
 import { MetaChips } from "./MetaChips";
 import { usePrevNextNavigation } from "./usePrevNextNavigation";
 import {
@@ -563,6 +564,14 @@ export default function MediaDetail({
               onRemove={actions.removeBookmark}
               onSetMainThumb={actions.setMainThumb}
               t={t}
+            />
+          )}
+
+          {d.kind === "video" && wsId && (
+            <PexelsSourceSection
+              key={`${wsId}:${fileId}`}
+              id={fileId}
+              workspaceId={wsId}
             />
           )}
 

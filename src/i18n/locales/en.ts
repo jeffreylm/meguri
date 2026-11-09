@@ -3,6 +3,38 @@ import type { TranslationKey } from "./ja";
 
 export const en: Record<TranslationKey, string> = {
   // App name: the single-kanji display name (guideline 00), identical in every locale.
+  "source.title": "Source",
+  "source.recover": "Recover source links",
+  "source.open": "Open source",
+  "source.openFailed": "Could not open the Pexels page.",
+  "source.reviewHint":
+    "Review filename suggestions or paste a Pexels video page URL. Links are saved in the catalogue.",
+  "source.folderHint": "Includes videos in subfolders.",
+  "source.readFailed": "Could not read the source links.",
+  "source.overLimit":
+    "This folder has more than 5,000 videos. Choose a smaller folder or a selection of clips.",
+  "source.noVideos": "No indexed videos to review.",
+  "source.selectSuggestions": "Select all suggestions",
+  "source.clearSuggestions": "Clear all suggestions",
+  "source.alreadySaved": "Source already saved",
+  "source.suggested": "Suggested from filename",
+  "source.unknown": "Source unknown",
+  "source.url": "Pexels video URL",
+  "source.paste": "Paste a Pexels video URL",
+  "source.invalid":
+    "Enter a Pexels video page URL, such as https://www.pexels.com/video/2499611/.",
+  "source.saveFailed": "Could not save the source changes.",
+  "source.savedCount": "Source links saved: {count}",
+  "source.skipped":
+    "Source links saved: {saved}. Skipped: {skipped} (already saved or the clip changed).",
+  "source.saveLinks": "Save links ({count})",
+  "source.previous": "Previous",
+  "source.next": "Next",
+  "source.page": "Page {current} of {total}",
+  "source.edit": "Edit source",
+  "source.add": "Add source",
+  "source.useSuggestion": "Use filename suggestion",
+  "source.remove": "Remove source",
   "audio.sampleRateMatch": "Sample rate match",
   "audio.bitDepthMatch": "Bit depth match",
   "audio.durationMatch": "Duration match",

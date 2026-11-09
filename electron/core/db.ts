@@ -139,6 +139,12 @@ CREATE TABLE IF NOT EXISTS file_meta (
 CREATE INDEX IF NOT EXISTS idx_file_meta_favorite ON file_meta(favorite);
 CREATE INDEX IF NOT EXISTS idx_file_meta_accessed ON file_meta(last_accessed_at);
 
+CREATE TABLE IF NOT EXISTS pexels_sources (
+  meta_key TEXT PRIMARY KEY,
+  video_id TEXT NOT NULL,
+  url TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS meta_tags (
   meta_key TEXT NOT NULL,
   tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,

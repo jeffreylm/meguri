@@ -10,6 +10,7 @@ when reporting an issue.
 
 - [Make a Smart bin](#make-a-smart-bin)
 - [Find new downloads](#find-new-downloads)
+- [Recover Pexels source links](#recover-pexels-source-links)
 - [Find audio by its properties](#find-audio-by-its-properties)
 - [Understand empty results and paused filters](#understand-empty-results-and-paused-filters)
 - [Scrub and review footage](#scrub-and-review-footage)
@@ -89,6 +90,36 @@ The chosen date basis and active browsing filters survive a restart.
 see. You can use New files after a manual scan even with watching turned off.
 Watching uses filesystem notifications rather than repeatedly scanning idle
 folders. Network and removable drives can vary in notification support.
+
+## Recover Pexels source links
+
+Save a clip's original Pexels page so you can return to the same upload later,
+for example to check whether Pexels offers a 4K download of your HD clip. The
+**Source** section in a video's details shows the saved Pexels ID and an
+**Open source** button. Use **Add source** or **Edit source** to paste the
+address of the video page, for example `https://www.pexels.com/video/2499611/`.
+
+To review a batch, select clips and click the link icon in the selection bar
+(**Recover source links**). To check a whole folder, open **Show by folder**
+in a scanned workspace, navigate to the folder, and use the same link button
+in its header. This checks indexed videos in that folder and its subfolders,
+regardless of the current browsing filters. Folders with more than 5,000
+indexed videos need to be reviewed in smaller groups.
+
+- **Source already saved** means the clip has a link. The batch leaves it as it is.
+- **Suggested from filename** means Meguri recognized a Pexels download name
+  such as `pexels-tima-miroshnichenko-5586539.mp4` or
+  `2169880-hd_1920_1080_30fps.mp4`. It also recognizes older names such as
+  `Pexels Videos 2380095.mp4` and `production ID 4098433.mp4`. Open the
+  suggestion to check it, then tick the box if it's the right video.
+- **Source unknown** means you can paste a video page URL if you have it.
+  Leave the field empty to skip the clip.
+
+Click **Save links** to commit your choices. Meguri stores the link in the
+workspace catalogue and leaves the media file untouched. A normal rename or
+move within that workspace keeps the link when Meguri recognizes the same
+clip. Filename suggestions work offline. The feature doesn't search Pexels or
+download alternate versions.
 
 ## Find audio by its properties
 
