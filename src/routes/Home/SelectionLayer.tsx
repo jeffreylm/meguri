@@ -21,9 +21,10 @@ interface Props {
    * whatever is actually on screen.
    */
   active: boolean;
+  thumbVersion?: Readonly<Record<string, number>>;
 }
 
-export function SelectionLayer({ active }: Props) {
+export function SelectionLayer({ active, thumbVersion }: Props) {
   const selection = useSelection();
   const [tagsOpen, setTagsOpen] = useState(false);
   const [sourceTargets, setSourceTargets] = useState<BulkTargets | null>(null);
@@ -107,6 +108,7 @@ export function SelectionLayer({ active }: Props) {
       {sourceTargets && (
         <PexelsSourceReview
           scope={{ targets: sourceTargets }}
+          thumbVersion={thumbVersion}
           onClose={() => setSourceTargets(null)}
         />
       )}

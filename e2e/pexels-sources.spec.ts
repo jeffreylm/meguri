@@ -44,6 +44,18 @@ test("recovers reviewed Pexels links from a folder and selected clips, and remem
   let app = await launch();
   try {
     let page = await app.firstWindow();
+    await page.route("https://images.pexels.com/videos/**", (route) => {
+      const pathname = new URL(route.request().url()).pathname;
+      if (
+        pathname.includes("/2169880/") ||
+        pathname.endsWith("/free-video-5586539.jpg")
+      ) {
+        return route.fulfill({ status: 404 });
+      }
+      return route.fulfill({
+        path: path.resolve("e2e/fixtures/media/test.png"),
+      });
+    });
     await skipFirstLaunchTour(page);
     await waitForIdle(page);
     const folderView = page.getByRole("button", {
@@ -67,6 +79,26 @@ test("recovers reviewed Pexels links from a folder and selected clips, and remem
       name: new RegExp(suggested),
     });
     await expect(suggestion).not.toBeChecked();
+    const proposed = review
+      .getByRole("listitem")
+      .filter({ hasText: suggested });
+    const localPreview = proposed.getByRole("img", { name: "Library clip" });
+    const pexelsPreview = proposed.getByRole("img", { name: "Pexels preview" });
+    await proposed.scrollIntoViewIfNeeded();
+    await expect(localPreview).toHaveAttribute("src", /\/thumb\/\d+/);
+    await expect(localPreview).not.toHaveJSProperty("naturalWidth", 0);
+    await expect(pexelsPreview).toHaveAttribute(
+      "src",
+      /\/videos\/5586539\/pictures\/preview-0\.jpg/,
+    );
+    await expect(pexelsPreview).not.toHaveJSProperty("naturalWidth", 0);
+    const missingPreview = review
+      .getByRole("listitem")
+      .filter({ hasText: unselected });
+    await missingPreview.scrollIntoViewIfNeeded();
+    await expect(
+      missingPreview.getByText("Preview unavailable", { exact: true }),
+    ).toBeVisible();
     await expect(
       review.getByRole("button", { name: "Save links (0)" }),
     ).toBeDisabled();
@@ -93,6 +125,10 @@ test("recovers reviewed Pexels links from a folder and selected clips, and remem
       review.getByRole("button", { name: "Save links (1)" }),
     ).toBeDisabled();
     await url.fill("https://www.pexels.com/video/my-clip-2499611/?ref=share");
+    await url.blur();
+    await expect(
+      review.getByRole("img", { name: "Pexels preview" }),
+    ).toHaveAttribute("src", /\/videos\/2499611\/free-video-2499611\.jpg/);
     await review.getByRole("button", { name: "Save links (1)" }).click();
     await expect(review).toHaveCount(0);
     await page.getByRole("button", { name: "Exit selection" }).click();

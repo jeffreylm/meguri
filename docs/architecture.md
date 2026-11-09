@@ -423,8 +423,11 @@ support remains filesystem-dependent ([Node documentation](https://nodejs.org/ap
 
 The recovery workflow records a provider's video ID and page URL for a local
 clip. It gives a future variant lookup a stable provider ID after a user confirms
-the source. It makes no network requests while suggesting or saving links.
-Opening a page uses the existing shell URL handler.
+the source. Filename matching and saving run locally. The review shows the
+cached library thumbnail through the local media server and loads Pexels stills
+lazily from its public image CDN. The renderer's image policy permits that
+specific host. CDN requests use the parsed upload ID and omit the referrer. If the poster fails, Meguri tries the first preview frame and then
+shows an unavailable state. Opening a page uses the existing shell URL handler.
 
 `pexels_sources` is an additive table in each workspace database, keyed by
 the same `meta_key` as ratings and tags. It follows the existing path-to-hash
@@ -440,3 +443,11 @@ HTTPS Pexels video pages and normalizes the URL before storage. Writes check
 that the file still has the identity shown in the review. Batch inserts skip
 existing links, including links saved after the review opened. Only the
 individual Source editor can replace or remove a saved link.
+
+### Pexels follow-up
+
+- [ ] **Get 4K.** Once a Pexels API key is available, use the confirmed upload ID
+      to look up the actual download versions and their dimensions. Offer 4K when
+      available or the highest available resolution otherwise. Save the download
+      as a separate file and associate it with the same Pexels upload.
+      [Pexels video API](https://www.pexels.com/api/documentation/#videos-show)

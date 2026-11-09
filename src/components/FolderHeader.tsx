@@ -54,6 +54,7 @@ export function FolderHeader({
   summary,
   onOpenInFileManager,
   onCopyPath,
+  thumbVersion,
 }: {
   /** The workspace browsed; without it the folder shown has no subfolder menu. */
   workspaceId?: string;
@@ -70,6 +71,7 @@ export function FolderHeader({
   onOpenInFileManager: () => void;
   /** Copies the folder's absolute path to the clipboard. */
   onCopyPath: () => void;
+  thumbVersion?: Readonly<Record<string, number>>;
 }) {
   const { t } = useI18n();
   const [sourceScope, setSourceScope] = useState<{
@@ -216,6 +218,7 @@ export function FolderHeader({
       {sourceScope && (
         <PexelsSourceReview
           scope={sourceScope}
+          thumbVersion={thumbVersion}
           onClose={() => setSourceScope(null)}
         />
       )}

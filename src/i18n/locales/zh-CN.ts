@@ -5,6 +5,10 @@ export const zhCN: Record<TranslationKey, string> = {
   // App name: the single-kanji display name (guideline 00), identical in every locale.
   "source.title": "来源",
   "source.recover": "找回来源链接",
+  "source.libraryPreview": "媒体库片段",
+  "source.pexelsPreview": "Pexels 预览",
+  "source.previewUnavailable": "无法显示预览",
+  "source.previewNeedsLink": "粘贴 Pexels 链接以查看预览",
   "source.open": "打开来源",
   "source.openFailed": "无法打开 Pexels 页面。",
   "source.reviewHint":

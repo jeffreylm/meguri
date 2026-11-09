@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, ImageOff } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAppStatus } from "@/hooks/useAppStatus";
+import { thumbUrl } from "@/lib/thumbUrl";
 import { useI18n } from "@/i18n/I18nProvider";
 import { api } from "@/ipc/client";
 import type { ChannelInput } from "@shared/ipc/channels";
@@ -46,17 +48,65 @@ export function OpenPexelsSource({ url }: { url: string }) {
   );
 }
 
+function ReviewThumbnail({
+  label,
+  src,
+  fallbackSrc,
+  emptyText,
+}: {
+  label: string;
+  src: string | null;
+  fallbackSrc?: string;
+  emptyText?: string;
+}) {
+  const { t } = useI18n();
+  const [errors, setErrors] = useState(0);
+  const image = errors === 0 ? src : errors === 1 ? fallbackSrc : null;
+  return (
+    <figure className="min-w-0 space-y-1">
+      <figcaption className="text-xs font-semibold text-fg">{label}</figcaption>
+      <div className="flex h-24 items-center justify-center overflow-hidden rounded-md border border-border bg-overlay sm:h-32">
+        {image ? (
+          <img
+            key={image}
+            src={image}
+            alt={label}
+            className="h-full w-full object-contain"
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
+            onError={() => setErrors((count) => count + 1)}
+          />
+        ) : (
+          <div className="flex flex-col items-center gap-1 px-2 text-center text-xs text-muted">
+            <ImageOff aria-hidden className="size-4" />
+            {src
+              ? t("source.previewUnavailable")
+              : (emptyText ?? t("source.previewUnavailable"))}
+          </div>
+        )}
+      </div>
+    </figure>
+  );
+}
+
 export function PexelsSourceReview({
   scope,
+  thumbVersion,
   onClose,
 }: {
   scope: Scope;
+  thumbVersion?: Readonly<Record<string, number>>;
   onClose: () => void;
 }) {
   const { t } = useI18n();
   const qc = useQueryClient();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [page, setPage] = useState(0);
+  const [previewedDrafts, setPreviewedDrafts] = useState<
+    Record<string, string>
+  >({});
+  const mediaBase = useAppStatus().data?.mediaBase ?? "";
   const review = useQuery({
     queryKey: [PEXELS_SOURCE_QUERY, scope],
     queryFn: () => api.previewPexelsSources(scope),
@@ -154,6 +204,24 @@ export function PexelsSourceReview({
               const key = rowKey(row);
               const value = drafts[key] ?? "";
               const suggestion = row.suggestion;
+              const manualSource =
+                previewedDrafts[key] === value
+                  ? parsePexelsVideoUrl(value)
+                  : null;
+              const source = row.saved ?? suggestion ?? manualSource;
+              const localPreview = thumbUrl(
+                mediaBase,
+                row.workspaceId,
+                row.id,
+                thumbVersion?.[`${row.workspaceId}:${row.id}`] ??
+                  thumbVersion?.[row.id] ??
+                  0,
+              );
+              // Pexels publishes poster and scene images at these CDN paths.
+              // Use only a validated upload ID, never a pasted URL as an image source.
+              const pexelsBase = source
+                ? `https://images.pexels.com/videos/${source.videoId}`
+                : null;
               const label = acrossWorkspaces
                 ? `${workspaceLabels.get(row.workspaceId) ?? row.workspaceId} / ${row.relPath}`
                 : row.relPath;
@@ -161,6 +229,28 @@ export function PexelsSourceReview({
                 <li key={key} className="space-y-2 px-3 py-2.5">
                   <div title={label} className="break-all text-sm font-medium">
                     {label}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <ReviewThumbnail
+                      key={localPreview ?? "local"}
+                      label={t("source.libraryPreview")}
+                      src={localPreview}
+                    />
+                    <ReviewThumbnail
+                      key={source?.videoId ?? "source"}
+                      label={t("source.pexelsPreview")}
+                      src={
+                        pexelsBase
+                          ? `${pexelsBase}/free-video-${source?.videoId}.jpg?auto=compress&w=480`
+                          : null
+                      }
+                      fallbackSrc={
+                        pexelsBase
+                          ? `${pexelsBase}/pictures/preview-0.jpg?w=480`
+                          : undefined
+                      }
+                      emptyText={t("source.previewNeedsLink")}
+                    />
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {row.saved ? (
@@ -210,6 +300,12 @@ export function PexelsSourceReview({
                           maxLength={MAX_SOURCE_URL}
                           disabled={save.isPending}
                           className="min-w-48 flex-1"
+                          onBlur={() =>
+                            setPreviewedDrafts((current) => ({
+                              ...current,
+                              [key]: value,
+                            }))
+                          }
                           onChange={(event) => {
                             const next = event.currentTarget.value;
                             setDrafts((current) => ({
@@ -218,6 +314,9 @@ export function PexelsSourceReview({
                             }));
                           }}
                         />
+                        {manualSource && (
+                          <OpenPexelsSource url={manualSource.url} />
+                        )}
                       </>
                     )}
                   </div>

@@ -41,7 +41,7 @@ category has settled into a set of assumptions — an account to sign up for, a
 cloud your files are uploaded to, a subscription to keep paying, a catalog
 that quietly reports what you watch. Meguri starts from the opposite premise: your library lives on
 your disk, it stays there, and the tool that browses it owes you nothing but a
-good time. Everything runs offline, nothing phones home, the whole thing is
+good time. The catalogue runs offline, there is no telemetry, the whole thing is
 [free forever](#free-forever), and the source is yours to read. What is left
 once those assumptions are gone is the part that actually matters — finding,
 rediscovering, and enjoying what you already have.
@@ -208,8 +208,8 @@ Or run from source — see [Setup and Launch](#setup-and-launch).
 - 🎨 **Themes** — base16-based multi-theme switching (gruvbox / solarized /
   monokai / nord / dracula, etc.)
 - 🔎 **Content zoom** — Ctrl + wheel (and Ctrl +/-/0)
-- 🔒 **Privacy-first** — no telemetry, no analytics, no external network
-  communication ([see below](#privacy))
+- 🔒 **Privacy-first** — local catalogue, no telemetry or analytics
+  ([see below](#privacy))
 
 ## Screenshots
 
@@ -400,12 +400,12 @@ Meguri is **privacy-first**: everything stays on your machine.
 - **No telemetry, no analytics.** Meguri contains no usage-tracking mechanism
   such as Google Analytics, crash reporters, or any other third-party
   measurement SDK.
-- **No external network communication.** The app never sends your data —
-  file names, paths, tags, search queries, playback history, or anything
-  else — to any external server. The only network activity is a local HTTP
-  media server bound to `127.0.0.1`, used solely to stream your own files to
-  the app window.
-- **Fully offline.** All features work without an internet connection.
+- **Local media and catalogue.** The app streams your files over a local server
+  bound to `127.0.0.1`. Scanning, browsing, playback, and source-link editing
+  work offline.
+- **External requests.** Optional update checks query GitHub. The source review
+  loads thumbnails from Pexels using only Pexels upload IDs in the image URLs.
+  Your local files, paths, and tags stay on your device.
 
 ## Architecture
 

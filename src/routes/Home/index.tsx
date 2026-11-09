@@ -1025,6 +1025,7 @@ export default function Home() {
 
       {folderView && (
         <FolderHeader
+          thumbVersion={thumbVersion}
           workspaceId={workspaceId ?? undefined}
           rootLabel={activeWorkspace?.label ?? t("folder.root")}
           path={folderNav.path}
@@ -1227,7 +1228,9 @@ export default function Home() {
 
           {/* The graph has no cards to pick; entering it also drops the
               selection (see the scope key above). */}
-          {view !== "graph" && <SelectionLayer active={navActive} />}
+          {view !== "graph" && (
+            <SelectionLayer active={navActive} thumbVersion={thumbVersion} />
+          )}
         </div>
 
         {/* Inside the selection provider: its file actions act on the

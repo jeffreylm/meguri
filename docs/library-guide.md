@@ -106,6 +106,12 @@ in its header. This checks indexed videos in that folder and its subfolders,
 regardless of the current browsing filters. Folders with more than 5,000
 indexed videos need to be reviewed in smaller groups.
 
+Each row shows your library thumbnail on the left and a Pexels preview on the
+right. Compare them before accepting a suggestion. The stills may come from
+different moments in the clip. If the right-hand preview is unavailable, use
+**Open source** to check the video in your browser. For an unknown source,
+paste a Pexels video URL and leave the field to load its preview.
+
 - **Source already saved** means the clip has a link. The batch leaves it as it is.
 - **Suggested from filename** means Meguri recognized a Pexels download name
   such as `pexels-tima-miroshnichenko-5586539.mp4` or
@@ -118,8 +124,8 @@ indexed videos need to be reviewed in smaller groups.
 Click **Save links** to commit your choices. Meguri stores the link in the
 workspace catalogue and leaves the media file untouched. A normal rename or
 move within that workspace keeps the link when Meguri recognizes the same
-clip. Filename suggestions work offline. The feature doesn't search Pexels or
-download alternate versions.
+clip. Filename suggestions and library thumbnails work offline. Meguri requests
+the online previews from Pexels while you review.
 
 ## Find audio by its properties
 

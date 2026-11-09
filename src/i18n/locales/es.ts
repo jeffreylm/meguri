@@ -5,6 +5,11 @@ export const es: Record<TranslationKey, string> = {
   // App name: the single-kanji display name (guideline 00), identical in every locale.
   "source.title": "Fuente",
   "source.recover": "Recuperar enlaces de origen",
+  "source.libraryPreview": "Clip de la biblioteca",
+  "source.pexelsPreview": "Vista previa de Pexels",
+  "source.previewUnavailable": "Vista previa no disponible",
+  "source.previewNeedsLink":
+    "Pega un enlace de Pexels para ver la vista previa",
   "source.open": "Abrir fuente",
   "source.openFailed": "No se pudo abrir la página de Pexels.",
   "source.reviewHint":
