@@ -242,3 +242,9 @@ When you are ready to use a clip, hover over its grid or list thumbnail and drag
 the arrow beside the selection checkbox into the destination app, such as the
 DaVinci Resolve Media Pool. Drag from a selected clip's arrow to carry the whole
 selection. The destination app decides how to import the original files.
+### Apple ProRes playback
+
+Open a ProRes clip in the player as usual. Meguri streams a local H.264 preview
+at up to 1920 × 1080, with audio when the clip has it. The player and scene
+strip still use the source clip’s timeline. Meguri keeps the original ProRes
+file for dragging into Resolve and for **Open externally**.
