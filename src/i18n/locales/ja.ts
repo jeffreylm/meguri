@@ -330,6 +330,8 @@ export const ja = {
   "filter.dateTo": "終了日",
   "filter.more": "他の条件",
   "filter.moreActive": "他の条件（{count}件適用中）",
+  "filter.kindExcludedByBin":
+    "現在のスマートビンではこのメディアの種類が除外されています。",
   "filter.kindFilter": "種別で絞り込み",
   "filter.playState": "視聴状態",
   "filter.sortSection": "並び順",

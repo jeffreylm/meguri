@@ -7,6 +7,8 @@
 // build, say) degrades to a neutral fallback rather than being mislabelled.
 import { File, Film, ImageIcon, Music, type LucideIcon } from "lucide-react";
 import type { TranslationKey } from "@/i18n/locales/ja";
+import type { SearchQuery } from "@/ipc/types";
+import { selectedMediaKinds } from "@shared/mediaKindFilter";
 
 /** Translation key for a known kind; null for one this build has no name for. */
 export function kindLabelKey(kind: string): TranslationKey | null {
@@ -49,4 +51,22 @@ export function kindLabel(
 ): string {
   const key = kindLabelKey(kind);
   return key ? t(key) : kind;
+}
+
+export function mediaFilterLabel(
+  t: (key: TranslationKey) => string,
+  kind: string,
+): string {
+  return selectedMediaKinds(kind)
+    .map((value) => kindLabel(t, value))
+    .join(" + ");
+}
+
+export function withMediaKind(query: SearchQuery, kind?: string): SearchQuery {
+  const next = { ...query };
+  if (kind) next.kind = kind;
+  else delete next.kind;
+  if (kind === "audio") delete next.resolution;
+  else delete next.audio;
+  return next;
 }

@@ -1,4 +1,5 @@
 // File search, listing and detail queries. Dynamic SQL is built safely with placeholders.
+import { selectedMediaKinds } from "../../../shared/mediaKindFilter.js";
 import type { DB } from "../db.js";
 import { RESOLUTIONS } from "../../../shared/resolutions.js";
 import { recentFilesRange } from "../../../shared/recentFiles.js";
@@ -255,11 +256,10 @@ export function appendSearchConditions(
       args.push(...cond.args);
     }
   }
-  if (query.kind === "visual") {
-    sql += " AND f.kind IN ('video', 'image')";
-  } else if (query.kind) {
-    sql += " AND f.kind = ?";
-    args.push(query.kind);
+  if (query.kind) {
+    const kinds = selectedMediaKinds(query.kind);
+    sql += ` AND f.kind IN (${kinds.map(() => "?").join(", ")})`;
+    args.push(...kinds);
   }
   if (query.resolution && query.kind !== "audio") {
     const { width, height } = RESOLUTIONS[query.resolution.preset];

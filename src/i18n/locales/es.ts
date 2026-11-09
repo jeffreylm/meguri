@@ -338,6 +338,8 @@ export const es: Record<TranslationKey, string> = {
   "filter.dateTo": "Hasta",
   "filter.more": "Más filtros",
   "filter.moreActive": "Más filtros ({count} activos)",
+  "filter.kindExcludedByBin":
+    "El contenedor inteligente activo excluye este tipo de archivo.",
   "filter.kindFilter": "Filtrar por tipo",
   "filter.playState": "Estado de reproducción",
   "filter.sortSection": "Orden",

@@ -25,7 +25,7 @@ vi.mock("@/ipc/client", () => ({
 const { FilterBar } = await import("@/components/FilterBar");
 const { I18nProvider } = await import("@/i18n/I18nProvider");
 
-function setup(initial: SearchQuery = {}) {
+function setup(initial: SearchQuery = {}, allowedKinds?: string[]) {
   const seen = vi.fn();
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   function Harness() {
@@ -35,6 +35,7 @@ function setup(initial: SearchQuery = {}) {
         <I18nProvider>
           <FilterBar
             value={q}
+            allowedKinds={allowedKinds}
             onChange={(next) => {
               seen(next);
               setQ(next);
@@ -88,24 +89,70 @@ describe("collapsed-condition badge", () => {
   });
 });
 
-describe("kind segments", () => {
-  it("replaces resolution with audio properties and clears incompatible filters", () => {
-    const { latest } = setup({
-      kind: "video",
-      resolution: { preset: "qhd", match: "exact" },
-    });
-    fireEvent.click(screen.getByRole("radio", { name: "Audio" }));
+describe("media type filters", () => {
+  const picker = () =>
+    within(screen.getByRole("group", { name: "Filter by kind" }));
+  const type = (name: string) => picker().getByRole("button", { name });
+
+  it("adds and removes media types independently, with a chip for each", () => {
+    const { latest } = setup();
+    expect(type("All").getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(type("Video"));
+    fireEvent.click(type("Image"));
+    expect(latest()?.kind).toBe("visual");
+    expect(chips().map((chip) => chip.textContent)).toEqual(["Video", "Image"]);
+    fireEvent.click(within(chips()[0]).getByRole("button"));
+    expect(latest()?.kind).toBe("image");
+    fireEvent.click(type("Audio"));
+    expect(latest()?.kind).toBe("image+audio");
+    fireEvent.click(type("Video"));
+    expect(chips().map((chip) => chip.textContent)).toEqual([
+      "Video",
+      "Image",
+      "Audio",
+    ]);
+    fireEvent.click(type("All"));
+    expect(latest()?.kind).toBeUndefined();
+    expect(chips()).toHaveLength(0);
+  });
+
+  it("shows the individual choices in an older Video + Image filter", () => {
+    setup({ kind: "visual" });
+    expect(type("Video").getAttribute("aria-pressed")).toBe("true");
+    expect(type("Image").getAttribute("aria-pressed")).toBe("true");
+    expect(type("Audio").getAttribute("aria-pressed")).toBe("false");
+    expect(chips().map((chip) => chip.textContent)).toEqual(["Video", "Image"]);
+  });
+
+  it("keeps incompatible types visible with an explanation in a video bin", () => {
+    const { latest } = setup({}, ["video"]);
+    expect(picker().getAllByRole("button")).toHaveLength(4);
+    expect(type("Audio").hasAttribute("disabled")).toBe(true);
+    expect(type("Image").hasAttribute("disabled")).toBe(true);
+    expect(type("Audio").getAttribute("title")).toContain("Smart bin excludes");
+    fireEvent.click(type("Audio"));
+    expect(latest()).toBeUndefined();
+    fireEvent.click(type("Video"));
+    expect(latest()?.kind).toBe("video");
+  });
+
+  it("shows audio properties in place of resolution when only audio is selected", () => {
+    const { latest } = setup({ resolution: { preset: "qhd", match: "exact" } });
+    fireEvent.click(type("Audio"));
     expect(latest()?.resolution).toBeUndefined();
     expect(screen.queryByRole("combobox", { name: "Resolution" })).toBeNull();
     expect(
       screen.getByRole("button", { name: "Audio properties" }),
     ).toBeTruthy();
-    fireEvent.click(screen.getByRole("radio", { name: "Video" }));
+    fireEvent.click(type("Video"));
+    expect(latest()?.kind).toBe("video+audio");
+    expect(
+      screen.queryByRole("button", { name: "Audio properties" }),
+    ).toBeNull();
     expect(screen.getByRole("combobox", { name: "Resolution" })).toBeTruthy();
-    expect(latest()?.audio).toBeUndefined();
   });
 
-  it("shows audio conditions as removable chips and clears them when leaving audio", () => {
+  it("shows audio conditions as removable chips and clears them when leaving audio-only mode", () => {
     const { latest } = setup({
       kind: "audio",
       audio: {
@@ -118,57 +165,9 @@ describe("kind segments", () => {
     const rate = chips().find((chip) => chip.textContent?.includes("96 kHz"));
     fireEvent.click(within(rate!).getByRole("button"));
     expect(latest()?.audio).toEqual({ channels: "stereo" });
-    fireEvent.click(screen.getByRole("radio", { name: "Image" }));
+    fireEvent.click(type("Image"));
     expect(latest()?.audio).toBeUndefined();
-    expect(chips()).toHaveLength(1);
-  });
-  it("exposes exactly one checked radio", () => {
-    setup({ kind: "video" });
-    const radios = screen.getAllByRole("radio");
-    expect(radios).toHaveLength(5);
-    expect(
-      radios.filter((r) => r.getAttribute("aria-checked") === "true"),
-    ).toHaveLength(1);
-  });
-
-  it("defaults to the neutral segment when no kind is set", () => {
-    setup({});
-    expect(screen.getAllByRole("radio")[0].getAttribute("aria-checked")).toBe(
-      "true",
-    );
-  });
-
-  it("selects a kind on click", () => {
-    const { latest } = setup({});
-    fireEvent.click(screen.getAllByRole("radio")[1]);
-    expect(latest()?.kind).toBe("video");
-  });
-
-  it("moves selection with the arrow keys, and focus with it", () => {
-    const { latest } = setup({});
-    fireEvent.keyDown(screen.getAllByRole("radio")[0], { key: "ArrowRight" });
-    expect(latest()?.kind).toBe("video");
-    // Roving tabindex only works if focus follows selection; without this the
-    // focus move could break silently.
-    expect(document.activeElement).toBe(screen.getAllByRole("radio")[1]);
-  });
-
-  it("jumps to the ends with Home and End", () => {
-    const { latest } = setup({ kind: "video" });
-    fireEvent.keyDown(screen.getAllByRole("radio")[1], { key: "End" });
-    expect(latest()?.kind).toBe("audio");
-    fireEvent.keyDown(screen.getAllByRole("radio")[3], { key: "Home" });
-    expect(latest()?.kind).toBeUndefined();
-  });
-
-  it("keeps the group reachable when the query carries an unknown kind", () => {
-    // A saved search can hold any string. With no segment matching, roving
-    // tabindex would put -1 on every button and strand the group off the Tab
-    // order, so the neutral segment takes the focusable slot.
-    setup({ kind: "document" });
-    const radios = screen.getAllByRole("radio");
-    expect(radios.filter((r) => r.tabIndex === 0)).toHaveLength(1);
-    expect(radios[0].getAttribute("aria-checked")).toBe("true");
+    expect(chips()).toHaveLength(2);
   });
 });
 

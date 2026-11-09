@@ -327,6 +327,7 @@ export const ko: Record<TranslationKey, string> = {
   "filter.dateTo": "종료일",
   "filter.more": "기타 조건",
   "filter.moreActive": "기타 조건 ({count}개 적용 중)",
+  "filter.kindExcludedByBin": "현재 스마트 빈은 이 미디어 유형을 제외합니다.",
   "filter.kindFilter": "종류로 필터링",
   "filter.playState": "시청 상태",
   "filter.sortSection": "정렬 순서",

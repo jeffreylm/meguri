@@ -84,15 +84,29 @@ test.describe("Home", () => {
     // fixture reports ready and its completion re-renders the bar out from
     // under the control being clicked.
     await waitForIdle(ready);
-    await ready.getByRole("radio", { name: "Image", exact: true }).click();
+    await ready.getByRole("button", { name: "Image", exact: true }).click();
     await expect(ready.getByText(FIXTURE_FILE)).toBeVisible();
 
-    await ready.getByRole("radio", { name: "Video", exact: true }).click();
+    const kindPicker = ready.getByRole("group", { name: "Filter by kind" });
+    const video = kindPicker.getByRole("button", {
+      name: "Video",
+      exact: true,
+    });
+    const image = kindPicker.getByRole("button", {
+      name: "Image",
+      exact: true,
+    });
+    const all = kindPicker.getByRole("button", { name: "All", exact: true });
+    await video.click();
+    await expect(ready.getByText(FIXTURE_FILE)).toBeVisible();
+    await expect(image).toHaveAttribute("aria-pressed", "true");
+    await expect(video).toHaveAttribute("aria-pressed", "true");
+    await image.click();
     await expect(
       ready.getByText("No files match these filter criteria.", { exact: true }),
     ).toBeVisible();
 
-    await ready.getByRole("radio", { name: "All" }).click();
+    await all.click();
     await expect(ready.getByText(FIXTURE_FILE)).toBeVisible();
   });
 

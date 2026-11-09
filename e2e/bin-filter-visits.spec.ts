@@ -138,7 +138,7 @@ test("keeps bin identity and incoming filters, checking compatibility once per v
     await page
       .getByRole("button", { name: "Browse without a smart bin", exact: true })
       .click();
-    await page.getByRole("radio", { name: "Audio", exact: true }).click();
+    await page.getByRole("button", { name: "Audio", exact: true }).click();
     await sampleRate("96 kHz");
     await page
       .getByTitle("Filter by minimum rating", { exact: true })
@@ -163,12 +163,14 @@ test("keeps bin identity and incoming filters, checking compatibility once per v
     await page
       .getByRole("button", { name: "Edit smart bin: Footage", exact: true })
       .click();
-    const editor = page.getByRole("dialog", {
-      name: "Edit smart bin",
-      exact: true,
-    });
-    await editor.getByRole("radio", { name: "Audio", exact: true }).click();
-    await editor.getByRole("button", { name: "Save", exact: true }).click();
+    const editor = () =>
+      page.getByRole("dialog", {
+        name: "Edit smart bin",
+        exact: true,
+      });
+    await editor().getByRole("button", { name: "All", exact: true }).click();
+    await editor().getByRole("button", { name: "Audio", exact: true }).click();
+    await editor().getByRole("button", { name: "Save", exact: true }).click();
     // The bin now accepts audio, but its previously excluded 96 kHz visitor
     // filter must stay out until the next visit (or an explicit manual edit).
     await expect(binButton("Footage")).toHaveAttribute("aria-current", "true");
@@ -196,9 +198,10 @@ test("keeps bin identity and incoming filters, checking compatibility once per v
     await page
       .getByRole("button", { name: "Edit smart bin: Footage", exact: true })
       .click();
+    await editor().getByRole("button", { name: "All", exact: true }).click();
     await page
       .getByRole("dialog", { name: "Edit smart bin", exact: true })
-      .getByRole("radio", { name: "Video", exact: true })
+      .getByRole("button", { name: "Video", exact: true })
       .click();
     await page
       .getByRole("dialog", { name: "Edit smart bin", exact: true })
@@ -209,9 +212,10 @@ test("keeps bin identity and incoming filters, checking compatibility once per v
     await page
       .getByRole("button", { name: "Edit smart bin: Footage", exact: true })
       .click();
+    await editor().getByRole("button", { name: "All", exact: true }).click();
     await page
       .getByRole("dialog", { name: "Edit smart bin", exact: true })
-      .getByRole("radio", { name: "Audio", exact: true })
+      .getByRole("button", { name: "Audio", exact: true })
       .click();
     await page
       .getByRole("dialog", { name: "Edit smart bin", exact: true })
@@ -249,7 +253,7 @@ test("keeps bin identity and incoming filters, checking compatibility once per v
     await page
       .getByRole("button", { name: "Browse without a smart bin", exact: true })
       .click();
-    await page.getByRole("radio", { name: "Video", exact: true }).click();
+    await page.getByRole("button", { name: "Video", exact: true }).click();
     await binButton("48 kHz audio").click();
     await expect(page.getByTestId("media-card")).toHaveCount(0);
     await expect(
@@ -276,6 +280,40 @@ test("keeps bin identity and incoming filters, checking compatibility once per v
       "aria-current",
       "true",
     );
+
+    // A mixed choice keeps matching audio in the audio bin and restores both
+    // choices in the unrestricted library. Incompatible buttons stay visible.
+    const browse = () =>
+      page
+        .getByRole("button", {
+          name: "Browse without a smart bin",
+          exact: true,
+        })
+        .click();
+    const type = (name: string) =>
+      page
+        .getByRole("group", { name: "Filter by kind" })
+        .getByRole("button", { name, exact: true });
+    await browse();
+    await type("Video").click();
+    await type("Audio").click();
+    await binButton("48 kHz audio").click();
+    await expect(type("Video")).toBeDisabled();
+    await expect(type("Image")).toBeDisabled();
+    await expect(type("Audio")).toHaveAttribute("aria-pressed", "true");
+    await expect(fileCard(page, "audio-48000.wav")).toBeVisible();
+    await browse();
+    await expect(type("Video")).toHaveAttribute("aria-pressed", "true");
+    await expect(type("Audio")).toHaveAttribute("aria-pressed", "true");
+    await type("Audio").click();
+    await binButton("48 kHz audio").click();
+    await expect(page.getByTestId("media-card")).toHaveCount(0);
+    await type("All").click();
+    await expect(binButton("48 kHz audio")).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+    await expect(fileCard(page, "audio-48000.wav")).toBeVisible();
   } finally {
     await app.close();
     fs.rmSync(temporary, { recursive: true, force: true });

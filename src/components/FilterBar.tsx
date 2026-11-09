@@ -13,7 +13,13 @@ import {
 import { ActiveFilterChips } from "./ActiveFilterChips";
 import { RatingStars } from "./RatingStars";
 import { SearchTokenInput } from "./SearchTokenInput";
-import { SegmentedControl } from "./SegmentedControl";
+import { ButtonGroup } from "./ui/button-group";
+import { kindLabel, withMediaKind } from "@/lib/mediaKind";
+import {
+  MEDIA_KINDS,
+  mediaKindFilter,
+  selectedMediaKinds,
+} from "@shared/mediaKindFilter";
 import { MoreFiltersPopover } from "./MoreFiltersPopover";
 import { useI18n } from "@/i18n/I18nProvider";
 import { SmartCollectionsMenu } from "./SmartCollectionsMenu";
@@ -51,6 +57,7 @@ interface Props {
   /** Within a bin, Clear all affects only visitor filters. */
   onClearFilters?: () => void;
   allowedKinds?: string[];
+  onClearKind?: () => void;
   portableBins?: boolean;
   showClearFilters?: boolean;
 }
@@ -69,12 +76,14 @@ export function FilterBar({
   onValidityChange,
   onClearFilters,
   allowedKinds,
+  onClearKind,
   portableBins = false,
   showClearFilters = false,
 }: Props) {
   const { t } = useI18n();
   const [valid, setValid] = useState(true);
   const [audioReset, setAudioReset] = useState(0);
+  const selectedKinds = selectedMediaKinds(value.kind);
   const audioMode =
     value.kind === "audio" ||
     (!value.kind && allowedKinds?.length === 1 && allowedKinds[0] === "audio");
@@ -84,6 +93,19 @@ export function FilterBar({
     [filtersValid, onValidityChange],
   );
   const patch = (p: Partial<SearchQuery>) => onChange({ ...value, ...p });
+  const changeKind = (kind?: (typeof MEDIA_KINDS)[number]) => {
+    setValid(true);
+    if (kind) {
+      const next = selectedKinds.includes(kind)
+        ? selectedKinds.filter((selected) => selected !== kind)
+        : [...selectedKinds, kind];
+      onChange(withMediaKind(value, mediaKindFilter(next)));
+    } else {
+      setAudioReset((n) => n + 1);
+      onChange(withMediaKind(value));
+      onClearKind?.();
+    }
+  };
 
   const smart = useSmartCollections();
   const { defaultQuery } = smart;
@@ -122,35 +144,41 @@ export function FilterBar({
           />
         </div>
 
-        <SegmentedControl
-          slot="kind-group"
-          label={t("filter.kindFilter")}
-          value={value.kind || undefined}
-          options={[
-            { value: undefined, label: t("filter.all") },
-            { value: "video", label: t("kind.video") },
-            { value: "image", label: t("kind.image") },
-            { value: "visual", label: t("kind.visual") },
-            { value: "audio", label: t("kind.audio") },
-          ].filter(
-            (option) =>
-              !allowedKinds ||
-              !option.value ||
-              (option.value === "visual"
-                ? allowedKinds.some(
-                    (kind) => kind === "video" || kind === "image",
-                  )
-                : allowedKinds.includes(option.value)),
-          )}
-          onChange={(kind) => {
-            setValid(true);
-            patch({
-              kind,
-              resolution: kind === "audio" ? undefined : value.resolution,
-              audio: kind === "audio" ? value.audio : undefined,
-            });
-          }}
-        />
+        <ButtonGroup
+          data-slot="kind-group"
+          role="group"
+          aria-label={t("filter.kindFilter")}
+          className="w-fit max-w-full"
+        >
+          {[undefined, ...MEDIA_KINDS].map((kind) => {
+            const selected = kind ? selectedKinds.includes(kind) : !value.kind;
+            const unavailable =
+              !!kind && !!allowedKinds && !allowedKinds.includes(kind);
+            const reason = unavailable
+              ? t("filter.kindExcludedByBin")
+              : undefined;
+            return (
+              <button
+                key={kind ?? "all"}
+                type="button"
+                aria-pressed={selected}
+                aria-description={reason}
+                title={reason}
+                disabled={unavailable}
+                onClick={() => changeKind(kind)}
+                className={cn(
+                  "h-8 truncate border px-3 text-sm transition-colors",
+                  selected
+                    ? "border-primary bg-primary font-medium text-primary-foreground"
+                    : "border-border text-muted enabled:hover:text-fg",
+                  "disabled:opacity-50",
+                )}
+              >
+                {kind ? kindLabel(t, kind) : t("filter.all")}
+              </button>
+            );
+          })}
+        </ButtonGroup>
 
         {audioMode ? (
           <AudioFilters

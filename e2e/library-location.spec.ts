@@ -77,7 +77,7 @@ test("always identifies location and bin, and carries bin rules between Global a
     await editor
       .getByRole("textbox", { name: "Name", exact: true })
       .fill("Images");
-    await editor.getByRole("radio", { name: "Image", exact: true }).click();
+    await editor.getByRole("button", { name: "Image", exact: true }).click();
     await editor.getByRole("button", { name: "Save", exact: true }).click();
     await expect(images()).toHaveAttribute("aria-current", "true");
     await expect(page.getByTestId("media-card")).toHaveCount(1);

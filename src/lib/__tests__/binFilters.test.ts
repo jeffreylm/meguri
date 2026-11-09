@@ -49,6 +49,18 @@ describe("bin filter compatibility", () => {
     expect(result.omitted).toEqual({ kind: "audio", audio: filters.audio });
     expect(filters.audio?.sampleRate).toBe(96000);
   });
+  it("keeps the compatible part of a media-type selection without blocking its results", () => {
+    const incoming = { kind: "video+audio", ratingMin: 4 };
+    expect(compatibleBinFilters(incoming, video)).toEqual({
+      applied: { kind: "video", ratingMin: 4 },
+      omitted: {},
+    });
+    expect(compatibleBinFilters(incoming, { kind: "audio" })).toEqual({
+      applied: { kind: "audio", ratingMin: 4 },
+      omitted: {},
+    });
+    expect(incoming.kind).toBe("video+audio");
+  });
   it("keeps valid visual filters even when their resolution values cannot match", () => {
     expect(
       compatibleBinFilters(

@@ -105,9 +105,8 @@ test("global smart bins retain scope, resolution, type and ratings after restart
     await dialog
       .getByRole("textbox", { name: "Name", exact: true })
       .fill(longBinName);
-    await dialog
-      .getByRole("radio", { name: "Video + Image", exact: true })
-      .click();
+    await dialog.getByRole("button", { name: "Video", exact: true }).click();
+    await dialog.getByRole("button", { name: "Image", exact: true }).click();
     await dialog
       .getByRole("combobox", { name: "Resolution", exact: true })
       .click();
@@ -187,7 +186,10 @@ test("global smart bins retain scope, resolution, type and ratings after restart
     await dialog
       .getByRole("textbox", { name: "Name", exact: true })
       .fill("4K video");
-    await dialog.getByRole("radio", { name: "Video", exact: true }).click();
+    await expect(
+      dialog.getByRole("button", { name: "Video", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await dialog.getByRole("button", { name: "Image", exact: true }).click();
     await dialog.getByRole("button", { name: "Save", exact: true }).click();
     await expect(page.getByTestId("media-card")).toHaveCount(0);
     await page.getByRole("button", { name: "Global", exact: true }).click();

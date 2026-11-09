@@ -314,6 +314,7 @@ export const zhCN: Record<TranslationKey, string> = {
   "filter.dateTo": "结束日期",
   "filter.more": "其他条件",
   "filter.moreActive": "其他条件（已应用 {count} 项）",
+  "filter.kindExcludedByBin": "当前智能媒体夹排除了此媒体类型。",
   "filter.kindFilter": "按类型筛选",
   "filter.playState": "播放状态",
   "filter.sortSection": "排序方式",

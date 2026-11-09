@@ -1,3 +1,4 @@
+import { withMediaKind } from "@/lib/mediaKind";
 import { filterFeedback as describeFilterFeedback } from "@/lib/heldFilters";
 // List screen. Header (root/scan/theme) + filters + condition badges + progress +
 // infinite-scroll grid. On thumb:done, reload the corresponding thumbnail.
@@ -1032,6 +1033,11 @@ export default function Home() {
           }
           allowedKinds={
             library.activeBin ? binKinds(library.activeBin.query) : undefined
+          }
+          onClearKind={
+            library.activeBin
+              ? () => library.removeOmitted((query) => withMediaKind(query))
+              : undefined
           }
           portableBins
           showClearFilters={!!Object.keys(library.omitted ?? {}).length}

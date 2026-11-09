@@ -334,6 +334,7 @@ export const en: Record<TranslationKey, string> = {
   "filter.dateTo": "To",
   "filter.more": "More conditions",
   "filter.moreActive": "More conditions ({count} active)",
+  "filter.kindExcludedByBin": "The active Smart bin excludes this media type.",
   "filter.kindFilter": "Filter by kind",
   "filter.playState": "Play state",
   "filter.sortSection": "Sort order",

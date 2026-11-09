@@ -51,6 +51,17 @@ describe("resolution and visual-media filters", () => {
     ).toEqual(["8k", "cinema", "dci", "photo", "portrait", "uhd"]);
   });
 
+  it("matches any selected media type while intersecting saved bin rules", () => {
+    seed();
+    expect(names({ kind: "audio" })).toEqual(["audio"]);
+    expect(names({ kind: "image" })).toEqual(["photo"]);
+    expect(names({ kind: "image+audio" })).toEqual(["audio", "photo"]);
+    expect(names({ kind: "video+audio", allOf: [{ kind: "visual" }] })).toEqual(
+      names({ kind: "video" }),
+    );
+    expect(names({ kind: "video+image+audio" })).toEqual(names({}));
+  });
+
   it("keeps single-kind filtering and DCI dimensions distinct", () => {
     seed();
     expect(

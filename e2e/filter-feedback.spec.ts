@@ -13,7 +13,7 @@ test("empty filtered views show no footage and give readable filter feedback", a
   await editor
     .getByRole("textbox", { name: "Name", exact: true })
     .fill("4K images");
-  await editor.getByRole("radio", { name: "Image", exact: true }).click();
+  await editor.getByRole("button", { name: "Image", exact: true }).click();
   await editor
     .getByRole("combobox", { name: "Resolution", exact: true })
     .click();

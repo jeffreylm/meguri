@@ -8,7 +8,8 @@
 // and in "clear all" at once, instead of in whichever of the three the next
 // change remembered to update.
 import { DATE_RANGES } from "@/lib/dateRanges";
-import { kindLabel } from "@/lib/mediaKind";
+import { kindLabel, mediaFilterLabel, withMediaKind } from "@/lib/mediaKind";
+import { mediaKindFilter, selectedMediaKinds } from "@shared/mediaKindFilter";
 import { resolveSortDir } from "@shared/sortDir";
 import {
   isTagDirective,
@@ -74,6 +75,7 @@ export function describeConditions(
   t: TFunc,
   /** The default saved search, which removing the sort chip returns to. */
   defaultQuery: SearchQuery | null = null,
+  splitMediaKinds = true,
 ): ConditionDescriptor[] {
   const out: ConditionDescriptor[] = [];
   for (const [index, clause] of (query.allOf ?? []).entries())
@@ -146,16 +148,33 @@ export function describeConditions(
     });
   });
 
-  if (query.kind)
-    out.push({
-      key: "kind",
-      // `kind` is a plain string in the schema, so a saved search can carry a
-      // value the UI has no label for. Show it verbatim rather than mislabel it.
-      label: kindLabel(t, query.kind),
-      group: "primary",
-      chip: true,
-      clear: (q) => without(q, "kind", "audio"),
-    });
+  if (query.kind) {
+    const kinds = selectedMediaKinds(query.kind);
+    if (splitMediaKinds && kinds.length > 1) {
+      for (const kind of kinds)
+        out.push({
+          key: `kind-${kind}`,
+          label: kindLabel(t, kind),
+          group: "primary",
+          chip: true,
+          clear: (q) =>
+            withMediaKind(
+              q,
+              mediaKindFilter(
+                selectedMediaKinds(q.kind).filter((item) => item !== kind),
+              ),
+            ),
+        });
+    } else {
+      out.push({
+        key: "kind",
+        label: mediaFilterLabel(t, query.kind),
+        group: "primary",
+        chip: true,
+        clear: (q) => withMediaKind(q),
+      });
+    }
+  }
 
   if (query.ratingMin)
     out.push({

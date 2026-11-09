@@ -141,7 +141,7 @@ test("recovers reviewed Pexels links from a folder and selected clips, and remem
       .click();
     const binEditor = page.getByRole("dialog", { name: "Create smart bin" });
     await binEditor.getByRole("textbox", { name: "Name" }).fill("Stock videos");
-    await binEditor.getByRole("radio", { name: "Video", exact: true }).click();
+    await binEditor.getByRole("button", { name: "Video", exact: true }).click();
     await binEditor.getByRole("button", { name: "Save", exact: true }).click();
     await expect(
       page.getByRole("button", { name: "Leave smart bin" }),

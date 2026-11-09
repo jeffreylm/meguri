@@ -137,7 +137,8 @@ export function useLibraryFilters(
     if (
       !activeBin ||
       !compatibility ||
-      !Object.keys(compatibility.omitted).length
+      (!Object.keys(compatibility.omitted).length &&
+        compatibility.applied.kind === storedControls.kind)
     )
       return;
     // External bin edits may deactivate newly incompatible filters, never enable old ones.
@@ -148,7 +149,11 @@ export function useLibraryFilters(
         previous.selection.applied,
         activeBin.query,
       );
-      if (!Object.keys(checked.omitted).length) return previous;
+      if (
+        !Object.keys(checked.omitted).length &&
+        checked.applied.kind === previous.selection.applied.kind
+      )
+        return previous;
       return {
         ...previous,
         selection: {
@@ -161,7 +166,7 @@ export function useLibraryFilters(
         },
       };
     });
-  }, [activeBin, compatibility]);
+  }, [activeBin, compatibility, storedControls.kind]);
   const query = useMemo(
     () =>
       activeBin

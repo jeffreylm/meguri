@@ -1,5 +1,10 @@
 import type { SearchQuery } from "@/ipc/types";
 import { cleanConditions } from "./smartCollections";
+import {
+  MEDIA_KINDS,
+  mediaKindFilter,
+  selectedMediaKinds,
+} from "@shared/mediaKindFilter";
 
 export function queryClauses(query: SearchQuery): SearchQuery[] {
   const { allOf, ...own } = query;
@@ -7,14 +12,12 @@ export function queryClauses(query: SearchQuery): SearchQuery[] {
 }
 
 export function binKinds(query: SearchQuery): string[] {
-  let kinds = ["video", "image", "audio"];
+  let kinds: string[] = [...MEDIA_KINDS];
   for (const part of queryClauses(query)) {
-    if (part.kind)
-      kinds = kinds.filter((kind) =>
-        part.kind === "visual"
-          ? kind === "video" || kind === "image"
-          : kind === part.kind,
-      );
+    if (part.kind) {
+      const selected = selectedMediaKinds(part.kind);
+      kinds = kinds.filter((kind) => selected.includes(kind));
+    }
     if (part.resolution) kinds = kinds.filter((kind) => kind !== "audio");
   }
   return kinds;
@@ -32,11 +35,15 @@ export function compatibleBinFilters(incoming: SearchQuery, base: SearchQuery) {
       Object.assign(omitted, { [key]: applied[key] });
     delete applied[key];
   };
-  if (
-    applied.kind &&
-    !binKinds({ kind: applied.kind }).some((kind) => kinds.includes(kind))
-  )
-    drop("kind");
+  if (applied.kind) {
+    const selected = selectedMediaKinds(applied.kind);
+    const matching = selected.filter((kind) => kinds.includes(kind));
+    if (!matching.length) drop("kind");
+    // A partially applicable OR can still return matches. Keep the complete
+    // selection in the incoming filters so the next visit can evaluate it.
+    else if (matching.length < selected.length)
+      applied.kind = mediaKindFilter(matching);
+  }
   if (
     !kinds.includes("audio") ||
     (incoming.kind === "audio" && applied.kind !== "audio")

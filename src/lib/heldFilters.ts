@@ -39,7 +39,7 @@ export function heldFilterEntries(
 ) {
   const descriptors = [
     ...describeConditions({ ...held, kind: undefined, audio: undefined }, t),
-    ...describeConditions({ kind: held.kind }, t),
+    ...describeConditions({ kind: held.kind }, t, null, false),
     ...describeConditions({ kind: "audio", audio: held.audio }, t).filter(
       (entry) => entry.key.startsWith("audio."),
     ),

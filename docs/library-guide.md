@@ -34,8 +34,12 @@ and ratings change. You do not have to move or copy files into it.
 Choose **Exactly** when you need a specific preset's dimensions. **At least**
 uses Meguri's resolution classes, so larger footage and suitable cropped cinema
 footage can match. Portrait and landscape versions are treated consistently.
-Choose **Video + Image** to include both visual media types, or **Image** for
-stills only.
+Select **Video**, **Image**, and **Audio** individually. Selecting **Video**
+and **Image** shows both, and each selection adds its own removable chip.
+For stills or audio only, leave just that type selected. Click **All** to clear
+the media-type selection. Inside a Smart bin, all four choices stay visible.
+Types excluded by the bin are dimmed, and **All** still respects the bin’s
+saved rules.
 
 ### Change where a bin searches
 
@@ -140,7 +144,7 @@ the online previews from Pexels while you review.
 
 ## Find audio by its properties
 
-Select **Audio**, then open **Audio properties**. Resolution controls give way to
+Select only **Audio**, then open **Audio properties**. Resolution controls give way to
 sample rate, source bit depth, channels, codec, minimum bitrate, and duration.
 The audio file's details also show the properties Meguri could read.
 
@@ -242,6 +246,7 @@ When you are ready to use a clip, hover over its grid or list thumbnail and drag
 the arrow beside the selection checkbox into the destination app, such as the
 DaVinci Resolve Media Pool. Drag from a selected clip's arrow to carry the whole
 selection. The destination app decides how to import the original files.
+
 ### Apple ProRes playback
 
 Open a ProRes clip in the player as usual. Meguri streams a local H.264 preview

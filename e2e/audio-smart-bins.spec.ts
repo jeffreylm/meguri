@@ -67,7 +67,7 @@ test("audio Smart bins replace resolution and preserve audio properties across f
     await page
       .getByRole("option", { name: "1440p QHD (2560 × 1440)", exact: true })
       .click();
-    await page.getByRole("radio", { name: "Audio", exact: true }).click();
+    await page.getByRole("button", { name: "Audio", exact: true }).click();
     await expect(
       page.getByRole("combobox", { name: "Resolution", exact: true }),
     ).toHaveCount(0);
@@ -186,14 +186,18 @@ test("audio Smart bins replace resolution and preserve audio properties across f
     await page
       .getByRole("button", { name: "Leave smart bin", exact: true })
       .click();
-    await page.getByRole("radio", { name: "Video", exact: true }).click();
+    const mediaKinds = page.getByRole("group", { name: "Filter by kind" });
+    const all = mediaKinds.getByRole("button", { name: "All", exact: true });
+    await all.click();
+    await page.getByRole("button", { name: "Video", exact: true }).click();
     await expect(
       page.getByRole("button", { name: /Audio properties/ }),
     ).toHaveCount(0);
     await expect(
       page.getByRole("combobox", { name: "Resolution", exact: true }),
     ).toBeVisible();
-    await page.getByRole("radio", { name: "Audio", exact: true }).click();
+    await all.click();
+    await page.getByRole("button", { name: "Audio", exact: true }).click();
     await expect(page.getByTestId("media-card")).toHaveCount(4);
   } finally {
     await app.close();

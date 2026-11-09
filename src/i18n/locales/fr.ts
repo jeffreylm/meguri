@@ -340,6 +340,8 @@ export const fr: Record<TranslationKey, string> = {
   "filter.dateTo": "Au",
   "filter.more": "Autres critères",
   "filter.moreActive": "Autres critères ({count} actifs)",
+  "filter.kindExcludedByBin":
+    "Le chutier intelligent actif exclut ce type de média.",
   "filter.kindFilter": "Filtrer par type",
   "filter.playState": "État de lecture",
   "filter.sortSection": "Tri",
