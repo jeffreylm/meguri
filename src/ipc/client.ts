@@ -149,6 +149,8 @@ export const api = {
     invoke("pexels_sources_save", { edits }),
   fileGet: (id: number, workspaceId: string) =>
     invoke("file_get", { id, workspaceId }),
+  fileSubtitles: (id: number, workspaceId: string, track: number) =>
+    invoke("file_subtitles", { id, workspaceId, track }),
   fileSetRating: (id: number, workspaceId: string, rating: number) =>
     invoke("file_set_rating", { id, workspaceId, rating }),
   fileSetFavorite: (id: number, workspaceId: string, favorite: boolean) =>

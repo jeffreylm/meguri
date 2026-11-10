@@ -1,4 +1,7 @@
-import { PREVIEW_AUDIO_TRACK_PARAM } from "@shared/proResAudioTracks";
+import {
+  DEFAULT_AUDIO_TRACK,
+  PREVIEW_AUDIO_TRACK_PARAM,
+} from "@shared/playbackTracks";
 
 // The media server URL of a file and its seek query parameter, `t`: the second
 // a container the browser cannot seek by itself (mkv/avi/wmv/flv/ts, remuxed
@@ -22,20 +25,22 @@ export function withStreamSeek(
 
 export function withPreviewAudioTrack(src: string, track: number): string {
   const url = new URL(src);
-  if (track === 0) url.searchParams.delete(PREVIEW_AUDIO_TRACK_PARAM);
+  if (track === DEFAULT_AUDIO_TRACK)
+    url.searchParams.delete(PREVIEW_AUDIO_TRACK_PARAM);
   else url.searchParams.set(PREVIEW_AUDIO_TRACK_PARAM, String(track));
   return url.toString();
 }
 
 export function previewAudioTrackOf(src: string | null): number {
-  if (!src) return 0;
+  if (!src) return DEFAULT_AUDIO_TRACK;
   try {
-    const track = Number(
-      new URL(src).searchParams.get(PREVIEW_AUDIO_TRACK_PARAM),
-    );
-    return Number.isSafeInteger(track) && track > 0 ? track : 0;
+    const value = new URL(src).searchParams.get(PREVIEW_AUDIO_TRACK_PARAM);
+    const track = value == null ? DEFAULT_AUDIO_TRACK : Number(value);
+    return Number.isSafeInteger(track) && track >= 0
+      ? track
+      : DEFAULT_AUDIO_TRACK;
   } catch {
-    return 0;
+    return DEFAULT_AUDIO_TRACK;
   }
 }
 

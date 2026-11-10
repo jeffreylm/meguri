@@ -37,6 +37,7 @@ export const INVOKE_CHANNELS = [
   "activity_days",
   "timeline_counts",
   "file_get",
+  "file_subtitles",
   "pexels_sources_preview",
   "pexels_source_set",
   "pexels_sources_save",

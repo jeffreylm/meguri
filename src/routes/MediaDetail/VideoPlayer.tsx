@@ -4,6 +4,7 @@ import {
   useEffect,
   useImperativeHandle,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -46,7 +47,7 @@ import {
   withPreviewAudioTrack,
   withStreamSeek,
 } from "@/lib/mediaSrc";
-import type { readProResAudioTracks } from "@shared/proResAudioTracks";
+
 import {
   isFatalMediaError,
   MEDIA_ERR_ABORTED,
@@ -59,6 +60,21 @@ import {
   type PositionSample,
 } from "@/lib/positionReporter";
 import { fmtTime } from "./utils";
+import {
+  DEFAULT_AUDIO_TRACK,
+  type PlaybackTrack,
+} from "@shared/playbackTracks";
+import {
+  AUTO_SUBTITLE,
+  SUBTITLES_OFF,
+  readPlaybackPreference,
+  savePlaybackPreference,
+} from "@/lib/playbackTrackPreferences";
+import { useQuery } from "@tanstack/react-query";
+import {
+  isTextSubtitle,
+  sameSubtitleLanguage,
+} from "@shared/fullscreenSubtitles";
 
 // readyState at which metadata is in (HTMLMediaElement.HAVE_METADATA), as a
 // plain number: the constant lives on a global jsdom does not provide.
@@ -122,9 +138,11 @@ export const VideoPlayer = forwardRef<
     startAt: number;
     /** Whether the video should start playing automatically (default true). */
     autoplay?: boolean;
+    audioTracks?: Pick<PlaybackTrack, "title" | "language">[];
+    subtitleTracks?: PlaybackTrack[];
+    preferenceKey?: string;
     /** ProRes streams can be reopened at their current position after a network interruption. */
     isProResPreview?: boolean;
-    audioTracks?: ReturnType<typeof readProResAudioTracks>;
     /** Active paging chords; the player yields these keys so they don't also seek. */
     navKeys: NavBinding;
     /**
@@ -195,8 +213,10 @@ export const VideoPlayer = forwardRef<
     wsId,
     startAt,
     autoplay = true,
-    isProResPreview = false,
     audioTracks,
+    subtitleTracks,
+    preferenceKey,
+    isProResPreview = false,
     navKeys,
     fullscreenTargetRef,
     bookmarks,
@@ -226,10 +246,57 @@ export const VideoPlayer = forwardRef<
   // Current playback position for display (seconds).
   const [position, setPosition] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [audioTrack, setAudioTrack] = useState(0);
+  const savedAudio = useMemo(
+    () => readPlaybackPreference(preferenceKey).audio,
+    [preferenceKey],
+  );
+  const initialAudio =
+    savedAudio < (audioTracks?.length ?? 0) ? savedAudio : DEFAULT_AUDIO_TRACK;
+  const [audioTrack, setAudioTrack] = useState(initialAudio);
+  const [trackUnavailable, setTrackUnavailable] = useState(false);
+  const pendingAudio = useRef<{
+    track: number;
+    at: number;
+    resume: boolean;
+  } | null>(null);
+  const initialSource =
+    src && initialAudio >= 0 ? withPreviewAudioTrack(src, initialAudio) : src;
+
   const [loaded, setLoaded] = useState(false);
   // Whether this player is currently the fullscreen element (used to drop the max-height cap).
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [subtitle, setSubtitle] = useState(
+    () => readPlaybackPreference(preferenceKey).subtitle,
+  );
+  const audioLanguage =
+    audioTracks?.[audioTrack >= 0 ? audioTrack : isProResPreview ? 0 : -1]
+      ?.language ?? "";
+  const chosenSubtitle =
+    subtitle === AUTO_SUBTITLE
+      ? (subtitleTracks?.findIndex(
+          (track) =>
+            isTextSubtitle(track.codec) &&
+            sameSubtitleLanguage(audioLanguage, track.language),
+        ) ?? SUBTITLES_OFF)
+      : subtitle;
+  const showSubtitles = !chromeless && isFullscreen;
+  const subtitleQuery = useQuery({
+    queryKey: ["file_subtitles", wsId, id, chosenSubtitle],
+    queryFn: () => api.fileSubtitles(id, wsId, chosenSubtitle),
+    enabled:
+      showSubtitles &&
+      chosenSubtitle >= 0 &&
+      isTextSubtitle(subtitleTracks?.[chosenSubtitle]?.codec ?? ""),
+    staleTime: Infinity,
+    retry: false,
+  });
+  const caption =
+    showSubtitles && chosenSubtitle >= 0
+      ? subtitleQuery.data
+          ?.filter((cue) => cue.start <= position && position < cue.end)
+          .map((cue) => cue.text)
+          .join("\n")
+      : undefined;
   // Volume lives outside this component so the playlist chrome and the detail
   // view stay in step (see hooks/useVolume.ts).
   const { volume, muted } = useVolume();
@@ -346,7 +413,13 @@ export const VideoPlayer = forwardRef<
   // and the reload button on the error screen. Deliberately leaves `playedRef`
   // alone: reloading the same file must not re-fire onPlayed.
   const resetPlaybackState = () => {
-    setAudioTrack(0);
+    setSubtitle(readPlaybackPreference(preferenceKey).subtitle);
+    setAudioTrack(initialAudio);
+    setTrackUnavailable(false);
+    pendingAudio.current =
+      initialAudio >= 0
+        ? { track: DEFAULT_AUDIO_TRACK, at: 0, resume: autoplay }
+        : null;
     setError(null);
     setPosition(0);
     setPlaying(false);
@@ -392,6 +465,7 @@ export const VideoPlayer = forwardRef<
     if (resume) void v.play().catch(() => {});
   };
 
+  /** Handles both a live error event and a failed element adopted during a hand-off. */
   const chooseAudioTrack = (index: number) => {
     const v = ref.current;
     if (!v || !haveMetadataRef.current || index === audioTrack) return;
@@ -403,11 +477,12 @@ export const VideoPlayer = forwardRef<
       retryTimerRef.current = null;
     }
     netRetriedRef.current = false;
+    pendingAudio.current = { track: audioTrack, at, resume: !v.paused };
+    setTrackUnavailable(false);
     setAudioTrack(index);
     restartPreview(v, withPreviewAudioTrack(source, index), at, !v.paused);
   };
 
-  /** Handles both a live error event and a failed element adopted during a hand-off. */
   const handleElementError = (v: HTMLVideoElement) => {
     const code = v.error?.code;
     // MEDIA_ERR_ABORTED fires on normal load interruptions (src swap /
@@ -415,6 +490,20 @@ export const VideoPlayer = forwardRef<
     // not worth an error-level log entry either.
     if (code === MEDIA_ERR_ABORTED) {
       log.debug("video load aborted", { src });
+      return;
+    }
+    const fallback = pendingAudio.current;
+    if (fallback) {
+      pendingAudio.current = null;
+      setAudioTrack(fallback.track);
+      setTrackUnavailable(true);
+      savePlaybackPreference(preferenceKey, { audio: fallback.track });
+      restartPreview(
+        v,
+        withPreviewAudioTrack(v.getAttribute("src") ?? src, fallback.track),
+        fallback.at,
+        fallback.resume,
+      );
       return;
     }
     log.error("video error", {
@@ -518,6 +607,7 @@ export const VideoPlayer = forwardRef<
     // relative to that second.
     const streamOffset = streamOffsetOf(v.getAttribute("src"));
     setAudioTrack(previewAudioTrackOf(v.getAttribute("src")));
+    pendingAudio.current = null;
     setPosition(streamOffset + v.currentTime);
     setLoaded(true);
     if (isFinite(v.duration)) {
@@ -554,7 +644,7 @@ export const VideoPlayer = forwardRef<
     playedRef.current = false;
     adoptLoadedElement();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, src]);
+  }, [id, src, preferenceKey]);
 
   useEffect(
     () => () => {
@@ -1004,7 +1094,7 @@ export const VideoPlayer = forwardRef<
       <VideoElement
         videoRef={ref}
         onAttach={onAttach}
-        src={src}
+        src={initialSource}
         autoPlay={autoplay}
         className={`h-full w-full object-contain transition-opacity ${
           fitToParent || chromeless
@@ -1047,6 +1137,13 @@ export const VideoPlayer = forwardRef<
           // Before anything else: seeks made from here on can be decided on
           // their merits rather than deferred.
           haveMetadataRef.current = true;
+          if (pendingAudio.current) {
+            pendingAudio.current = null;
+            savePlaybackPreference(preferenceKey, {
+              audio: previewAudioTrackOf(v.getAttribute("src")),
+            });
+          }
+
           setLoaded(true);
           // Apply the shared volume/mute to this freshly-loaded element. The
           // effect above only fires when the value changes, so this is what
@@ -1095,6 +1192,33 @@ export const VideoPlayer = forwardRef<
           if (v) handleElementError(v);
         }}
       />
+
+      {caption && (
+        <div
+          data-slot="fullscreen-subtitles"
+          className="pointer-events-none absolute inset-x-5 bottom-24 text-center"
+        >
+          <span className="inline-block whitespace-pre-line rounded bg-black/80 px-3 py-1 text-lg text-white md:text-2xl">
+            {caption}
+          </span>
+        </div>
+      )}
+      {showSubtitles && subtitleQuery.isError && (
+        <div
+          role="status"
+          className="pointer-events-none absolute inset-x-0 top-10 mx-auto w-fit rounded bg-black/80 px-2 py-1 text-xs text-white"
+        >
+          {t("player.subtitleUnavailable")}
+        </div>
+      )}
+      {trackUnavailable && (
+        <div
+          role="status"
+          className="pointer-events-none absolute inset-x-0 top-3 mx-auto w-fit rounded bg-black/80 px-2 py-1 text-xs text-white"
+        >
+          {t("player.audioTrackUnavailable")}
+        </div>
+      )}
 
       {/* Center play/pause indicator (shown large while paused). */}
       {!chromeless && loaded && !playing && (
@@ -1226,6 +1350,52 @@ export const VideoPlayer = forwardRef<
               {total ? fmtTime(total) : "--:--"}
             </span>
             <div className="ml-auto flex items-center gap-1">
+              {showSubtitles &&
+                subtitleTracks?.some((track) =>
+                  isTextSubtitle(track.codec),
+                ) && (
+                  <select
+                    aria-label={t("player.subtitles")}
+                    title={t("player.subtitles")}
+                    className="min-w-0 max-w-32 rounded border border-white/30 bg-black/75 px-1 py-1 text-xs text-white"
+                    value={
+                      subtitle >= 0 &&
+                      !isTextSubtitle(subtitleTracks[subtitle]?.codec ?? "")
+                        ? SUBTITLES_OFF
+                        : subtitle
+                    }
+                    onChange={(e) => {
+                      const choice = Number(e.target.value);
+                      setSubtitle(choice);
+                      savePlaybackPreference(preferenceKey, {
+                        subtitle: choice,
+                      });
+                    }}
+                  >
+                    <option value={AUTO_SUBTITLE}>
+                      {t("player.subtitleAuto")}
+                    </option>
+                    <option value={SUBTITLES_OFF}>
+                      {t("player.subtitleOff")}
+                    </option>
+                    {subtitleTracks.map(
+                      ({ title, language, codec }, index) =>
+                        isTextSubtitle(codec) && (
+                          <option key={index} value={index}>
+                            {[
+                              t("player.audioTrackNumber", {
+                                number: index + 1,
+                              }),
+                              title,
+                              language,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </option>
+                        ),
+                    )}
+                  </select>
+                )}
               {audioTracks && audioTracks.length > 1 && (
                 <select
                   aria-label={t("player.audioTrack")}
@@ -1235,6 +1405,9 @@ export const VideoPlayer = forwardRef<
                   value={audioTrack}
                   onChange={(e) => chooseAudioTrack(Number(e.target.value))}
                 >
+                  <option value={DEFAULT_AUDIO_TRACK}>
+                    {t("player.audioTrackDefault")}
+                  </option>
                   {audioTracks.map(({ title, language }, index) => (
                     <option key={index} value={index}>
                       {[

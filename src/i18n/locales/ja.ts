@@ -462,6 +462,13 @@ export const ja = {
   "player.volume": "音量",
   "player.audioTrack": "音声トラック",
   "player.audioTrackNumber": "トラック {number}",
+  "player.audioTrackDefault": "既定",
+  "player.audioTrackUnavailable":
+    "音声トラックを再生できなかったため、前のトラックに戻しました。",
+  "player.subtitles": "字幕",
+  "player.subtitleAuto": "音声の言語に合わせる",
+  "player.subtitleOff": "オフ",
+  "player.subtitleUnavailable": "字幕トラックを読み込めませんでした。",
   "player.seek": "シーク",
   "player.playFailed": "内蔵プレイヤーで再生できませんでした。",
   "player.openExternal": "外部プレイヤーで開く",

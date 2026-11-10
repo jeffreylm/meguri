@@ -475,6 +475,104 @@ describe("ProRes previews", () => {
   );
 });
 
+describe("MKV audio track selection", () => {
+  it("keeps automatic playback and remuxes the requested audio with the same picture", async () => {
+    const clip = path.join(root, "alternate-language.mkv");
+    execFileSync(FFMPEG, [
+      "-v",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc2=size=96x64:rate=12:duration=1",
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc2=size=128x72:rate=12:duration=1",
+      "-f",
+      "lavfi",
+      "-i",
+      "sine=frequency=440:sample_rate=44100:duration=1",
+      "-f",
+      "lavfi",
+      "-i",
+      "sine=frequency=880:sample_rate=48000:duration=1",
+      "-map",
+      "0:v",
+      "-map",
+      "1:v",
+      "-map",
+      "2:a",
+      "-map",
+      "3:a",
+      "-c:v",
+      "libx264",
+      "-c:a",
+      "aac",
+      "-ac:a:1",
+      "2",
+      "-disposition:v:0",
+      "default",
+      "-disposition:v:1",
+      "0",
+      "-disposition:a:0",
+      "0",
+      "-disposition:a:1",
+      "0",
+      clip,
+    ]);
+    const original = fs.readFileSync(clip);
+    const metadata = await extractMeta(clip, "video");
+    const id = insert(
+      "alternate-language.mkv",
+      clip,
+      null,
+      "done",
+      "video",
+      "mkv",
+    );
+    db.prepare("UPDATE files SET codec = ?, meta = ? WHERE id = ?").run(
+      metadata.codec,
+      JSON.stringify(metadata.raw),
+      id,
+    );
+    const url = `${base}/ws/${WS}/media/${id}`;
+    const streams = async (search: string) => {
+      const result = await fetch(url + search, authHeaders());
+      expect(result.status).toBe(200);
+      const bytes = Buffer.from(await result.arrayBuffer());
+      return JSON.parse(
+        execFileSync(
+          FFPROBE,
+          [
+            "-v",
+            "error",
+            "-show_entries",
+            "stream=width,sample_rate",
+            "-of",
+            "json",
+            "pipe:0",
+          ],
+          { input: bytes, encoding: "utf8" },
+        ),
+      ) as { streams: { width?: number; sample_rate?: string }[] };
+    };
+    const [automatic, selected] = await Promise.all([
+      streams(""),
+      streams("?audioTrack=0"),
+    ]);
+    expect(automatic.streams).toEqual([
+      { width: 96 },
+      { sample_rate: "48000" },
+    ]);
+    expect(selected.streams).toEqual([{ width: 96 }, { sample_rate: "44100" }]);
+    expect((await fetch(url + "?audioTrack=2", authHeaders())).status).toBe(
+      400,
+    );
+    expect(fs.readFileSync(clip)).toEqual(original);
+  });
+});
+
 describe("ProRes preview audio tracks", () => {
   it("serves the selected audio separately from the default preview", async () => {
     const clip = path.join(root, "alternate-audio.mov");

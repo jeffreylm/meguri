@@ -474,6 +474,14 @@ export const fr: Record<TranslationKey, string> = {
   "player.volume": "Volume",
   "player.audioTrack": "Piste audio",
   "player.audioTrackNumber": "Piste {number}",
+  "player.audioTrackDefault": "Par défaut",
+  "player.audioTrackUnavailable":
+    "Impossible de lire cette piste. La piste précédente a été rétablie.",
+  "player.subtitles": "Sous-titres",
+  "player.subtitleAuto": "Suivre la langue audio",
+  "player.subtitleOff": "Désactivés",
+  "player.subtitleUnavailable":
+    "Impossible de charger cette piste de sous-titres.",
   "player.seek": "Position",
   "player.playFailed": "Impossible de lire dans le lecteur intégré.",
   "player.openExternal": "Ouvrir dans un lecteur externe",

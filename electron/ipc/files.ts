@@ -1,4 +1,16 @@
 import { handle } from "../core/ipcHandler.js";
+import { isRemuxedVideo } from "../../shared/playbackTracks.js";
+import { isInsideRoot } from "../core/paths.js";
+import { probePlaybackMetadata } from "../core/playbackMetadata.js";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { FFMPEG } from "../core/ffmpeg-paths.js";
+import { Semaphore } from "../core/concurrency.js";
+import { readPlaybackTracks } from "../../shared/playbackTracks.js";
+import {
+  isTextSubtitle,
+  readWebVtt,
+} from "../../shared/fullscreenSubtitles.js";
 import * as q from "../core/queries.js";
 import type {
   DuplicatesResult,
@@ -10,9 +22,13 @@ import type { IpcContext } from "./context.js";
 import {
   bulkTargetCores,
   coreById,
+  ensureFileInsideRoot,
   queryTargets,
   scopedCores,
 } from "./helpers.js";
+
+const execFileAsync = promisify(execFile);
+const subtitleSlots = new Semaphore(2);
 
 export function registerFileHandlers(ctx: IpcContext): void {
   const { ws, queryClient, positions, emit } = ctx;
@@ -59,10 +75,53 @@ export function registerFileHandlers(ctx: IpcContext): void {
           query: query ?? {},
         });
   });
-  handle("file_get", ({ id, workspaceId }) => {
-    const db = coreById(ws, workspaceId).db;
+  handle("file_get", async ({ id, workspaceId }) => {
+    const { db, root } = coreById(ws, workspaceId);
     q.recordAccess(db, id);
-    return q.fileDetail(db, id);
+    const file = q.fileDetail(db, id);
+    if (
+      file?.kind === "video" &&
+      file.meta == null &&
+      isRemuxedVideo(file.codec, file.ext) &&
+      isInsideRoot(file.absPath, root)
+    ) {
+      return { ...file, meta: await probePlaybackMetadata(file.absPath) };
+    }
+    return file;
+  });
+  handle("file_subtitles", async ({ id, workspaceId, track }) => {
+    const core = coreById(ws, workspaceId);
+    const file = q.fileDetail(core.db, id);
+    if (file?.kind !== "video") throw new Error("Unsupported subtitle track");
+    const abs = ensureFileInsideRoot(core, id);
+    const selected = readPlaybackTracks(
+      file.meta ?? (await probePlaybackMetadata(abs)),
+      "subtitle",
+    )[track];
+    if (!selected || !isTextSubtitle(selected.codec))
+      throw new Error("Unsupported subtitle track");
+    const release = await subtitleSlots.acquire({ maxWaiting: 4 });
+    try {
+      const { stdout } = await execFileAsync(
+        FFMPEG,
+        [
+          "-nostdin",
+          "-v",
+          "error",
+          "-i",
+          abs,
+          "-map",
+          `0:s:${track}`,
+          "-f",
+          "webvtt",
+          "pipe:1",
+        ],
+        { timeout: 30_000, maxBuffer: 4 * 1024 * 1024 },
+      );
+      return readWebVtt(stdout);
+    } finally {
+      release();
+    }
   });
   handle("file_set_rating", ({ id, workspaceId, rating }) =>
     q.setRating(coreById(ws, workspaceId).db, id, rating),

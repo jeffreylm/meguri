@@ -4,6 +4,7 @@
 // Output is declared as TypeScript types rather than Zod schemas because the
 // renderer trusts data coming from main (no runtime check needed).
 import { z } from "zod";
+import type { SubtitleCue } from "../fullscreenSubtitles.js";
 import {
   MAX_SOURCE_URL,
   parsePexelsVideoUrl,
@@ -410,6 +411,7 @@ export const ChannelInputs = {
     axis: TimelineAxisSchema,
   }),
   file_get: FileTarget,
+  file_subtitles: FileTarget.extend({ track: z.number().int().nonnegative() }),
   pexels_sources_preview: z.union([
     z.object({ targets: BulkTargets }),
     z.object({ globalQuery: SearchQuerySchema }),
@@ -672,6 +674,7 @@ export interface ChannelOutputs {
   activity_days: ActivityDays;
   timeline_counts: TimelineCounts;
   file_get: FileDetail | null;
+  file_subtitles: SubtitleCue[];
   pexels_sources_preview: { rows: SourceReviewRow[]; overLimit: boolean };
   pexels_source_set: boolean;
   pexels_sources_save: { saved: number; skipped: number };

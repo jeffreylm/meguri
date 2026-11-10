@@ -27,8 +27,11 @@ import { scopedLog } from "./logger.js";
 import { extractMeta, type ExtractedMeta } from "./media.js";
 import {
   PREVIEW_AUDIO_TRACK_PARAM,
-  readProResAudioTracks,
-} from "../../shared/proResAudioTracks.js";
+  REMUX_CONTAINERS,
+  readPlaybackTracks,
+  remuxVideoIndex,
+} from "../../shared/playbackTracks.js";
+import { probePlaybackMetadata } from "./playbackMetadata.js";
 import {
   isTaggedHdr,
   proResPreviewFilter,
@@ -39,7 +42,6 @@ const log = scopedLog("server");
 
 // Only containers Chromium cannot demux are remuxed with ffmpeg and served.
 // Browser-compatible files are served via Range to enable full seeking.
-const REMUX_CONTAINERS = new Set(["mkv", "avi", "wmv", "flv", "ts"]);
 
 // Hard cap on ffmpeg streaming/transcoding requests. Without this a corrupt
 // media file can hang ffmpeg and pin a request slot indefinitely. 60s matches
@@ -341,18 +343,27 @@ async function handle(
     const proResPreview =
       file.kind === "video" && (file.codec ?? probed?.codec) === "prores";
     if (proResPreview || REMUX_CONTAINERS.has(ext(abs))) {
-      const requestedTrack = url.searchParams.get(PREVIEW_AUDIO_TRACK_PARAM);
-      const audioTrack =
-        proResPreview && requestedTrack !== null ? Number(requestedTrack) : 0;
-      if (
-        audioTrack !== 0 &&
-        (!Number.isSafeInteger(audioTrack) ||
-          audioTrack < 0 ||
-          audioTrack >=
-            readProResAudioTracks(file.proResMeta ?? probed?.raw).length)
-      ) {
-        res.writeHead(400).end();
-        return;
+      const requested = url.searchParams.get(PREVIEW_AUDIO_TRACK_PARAM);
+      let track: { audio: number; video?: number } | undefined;
+      if (requested !== null) {
+        const audio = /^\d+$/.test(requested) ? Number(requested) : -1;
+        const row = core.db
+          .prepare("SELECT meta FROM files WHERE id = ?")
+          .get(id) as { meta: string | null } | undefined;
+        const metadata =
+          row?.meta ?? probed?.raw ?? (await probePlaybackMetadata(abs));
+        if (res.destroyed || res.writableEnded) return;
+        const video = proResPreview ? undefined : remuxVideoIndex(metadata);
+        if (
+          !Number.isSafeInteger(audio) ||
+          audio < 0 ||
+          audio >= readPlaybackTracks(metadata, "audio").length ||
+          (!proResPreview && video === undefined)
+        ) {
+          res.writeHead(400).end();
+          return;
+        }
+        track = { audio, video };
       }
       if (req.method === "HEAD") {
         res.writeHead(200, { "Content-Type": "video/mp4" }).end();
@@ -366,7 +377,7 @@ async function handle(
         (await supportsToneMapping());
       if (!res.destroyed) {
         const mode = toneMap ? "prores-hdr" : proResPreview ? "prores" : "copy";
-        serveRemux(res, abs, start, mode, audioTrack);
+        serveRemux(res, abs, start, mode, track);
       }
       return;
     }
@@ -502,9 +513,9 @@ function remuxKey(
   file: string,
   start: number | null,
   mode: RemuxMode,
-  audioTrack: number,
+  track?: { audio: number; video?: number },
 ): string {
-  return `${file}\0${start ?? ""}\0${mode}\0${audioTrack}`;
+  return `${file}\0${start ?? ""}\0${mode}\0${track?.audio ?? ""}\0${track?.video ?? ""}`;
 }
 
 function spawnFfmpegChild(
@@ -633,7 +644,7 @@ function startRemuxSession(
   res: http.ServerResponse,
   releaseSlot: () => void,
   mode: RemuxMode,
-  audioTrack: number,
+  track?: { audio: number; video?: number },
 ) {
   const proResPreview = mode !== "copy";
   const args = ["-v", "error"];
@@ -651,7 +662,7 @@ function startRemuxSession(
       "-map",
       "0:v:0",
       "-map",
-      `0:a:${audioTrack}?`,
+      `0:a:${track?.audio ?? 0}?`,
       "-write_tmcd",
       "0",
       "-vf",
@@ -670,6 +681,8 @@ function startRemuxSession(
       "aac",
     );
   } else {
+    if (track)
+      args.push("-map", `0:${track.video}`, "-map", `0:a:${track.audio}`);
     args.push("-c", "copy");
   }
   args.push(
@@ -850,9 +863,9 @@ function serveRemux(
   file: string,
   start: number | null,
   mode: RemuxMode,
-  audioTrack: number,
+  track?: { audio: number; video?: number },
 ) {
-  const key = remuxKey(file, start, mode, audioTrack);
+  const key = remuxKey(file, start, mode, track);
   const existing = remuxInflight.get(key);
   if (existing) {
     attachRemuxClient(key, existing, res);
@@ -874,7 +887,7 @@ function serveRemux(
     }
 
     try {
-      startRemuxSession(key, file, start, res, releaseSlot, mode, audioTrack);
+      startRemuxSession(key, file, start, res, releaseSlot, mode, track);
     } catch (e) {
       // spawn() can throw synchronously; the slot would otherwise never be
       // released (it only reaches the session on success).

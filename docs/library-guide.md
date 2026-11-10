@@ -319,8 +319,16 @@ when FFmpeg supports the conversion. This brings bright highlights and wide
 colors into range for a standard display. SDR clips use the regular preview.
 Resolve receives the original HDR file.
 
-For ProRes clips with multiple audio tracks, use **Audio track** beside the
-volume control in the full player. Meguri starts on the first track and keeps
-your place and play or pause state when you switch. This is useful when a clip
-has separate dialogue, music, or alternate mixes. Resolve receives the full
-original with all its audio tracks.
+For clips with multiple audio tracks, use **Audio track** beside volume in the
+full player. This works for ProRes, MKV, AVI, WMV, FLV, and TS. **Default**
+follows the app's usual playback selection. Meguri keeps your playhead and
+play or pause state when you switch, and remembers the selected track for
+that clip across restarts. Resolve receives the original with all its tracks.
+
+### Fullscreen subtitles
+
+Open fullscreen and use **Subtitles** to select an embedded text track.
+**Match audio language** looks for a matching subtitle when the audio language
+is known. Choose a specific track or **Off** to override that match for the clip.
+Your audio and subtitle choices are saved independently. Captions appear in
+fullscreen. Bitmap subtitles such as PGS and VobSub need a separate renderer.
