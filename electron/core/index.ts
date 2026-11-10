@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { openDb, type DB } from "./db.js";
-import { dataDirForRoot, dbPathForDataDir, pathHash } from "./paths.js";
+import { baseDataDir, dataDirForRoot, dbPathForDataDir, pathHash } from "./paths.js";
 import { upsertScanRoot } from "./queries.js";
 
 export class Core {
@@ -12,13 +12,15 @@ export class Core {
   readonly dataDir: string;
   /** The SQLite file behind `db`; the query worker opens its own handle on it. */
   readonly dbPath: string;
+  readonly notesPath: string;
 
-  private constructor(db: DB, root: string, rootId: number, dataDir: string) {
+  private constructor(db: DB, root: string, rootId: number, dataDir: string, notesPath: string) {
     this.db = db;
     this.root = root;
     this.rootId = rootId;
     this.dataDir = dataDir;
     this.dbPath = dbPathForDataDir(dataDir);
+    this.notesPath = notesPath;
   }
 
   static init(rawRoot: string): Core {
@@ -31,10 +33,11 @@ export class Core {
     const dataDir = dataDirForRoot(root);
     fs.mkdirSync(path.join(dataDir, "thumbs"), { recursive: true });
 
-    const db = openDb(dbPathForDataDir(dataDir));
+    const notesPath = path.join(baseDataDir(), "notes.sqlite");
+    const db = openDb(dbPathForDataDir(dataDir), notesPath);
     const rootId = upsertScanRoot(db, root, pathHash(root));
 
-    return new Core(db, root, rootId, dataDir);
+    return new Core(db, root, rootId, dataDir, notesPath);
   }
 
   thumbsDir(): string {

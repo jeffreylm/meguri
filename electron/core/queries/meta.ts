@@ -1,11 +1,12 @@
 // Durable per-file metadata: rating, favorite, last-accessed, play history,
 // extracted ffprobe meta, and meta_key migration / orphan cleanup.
 import type { DB } from "../db.js";
-import { nowUnix } from "../db.js";
+import { noteTableForKey, nowUnix } from "../db.js";
 import { metaKeyOf } from "../tags.js";
 import type { ExtractedMeta } from "../media.js";
 import { readAudioMetadata } from "../../../shared/audioMetadata.js";
 import { resumePointOf } from "../../../shared/resume.js";
+import { normalizeNote } from "../../../shared/note.js";
 
 /**
  * Insert-or-update the file_meta row for a file, applying `mutate` to the column being set.
@@ -33,6 +34,52 @@ export function setRating(db: DB, fileId: number, rating: number): void {
 
 export function setFavorite(db: DB, fileId: number, favorite: boolean): void {
   upsertMeta(db, fileId, "favorite", favorite ? 1 : 0);
+}
+
+/** Replace the note without touching the media, its ratings or source link. */
+export function setNote(db: DB, fileId: number, note: string | null): void {
+  const row = db
+    .prepare("SELECT meta_key AS key FROM files WHERE id = ? AND deleted_at IS NULL")
+    .get(fileId) as { key: string } | undefined;
+  if (!row) throw new Error("The file is no longer in the catalogue");
+  const table = noteTableForKey(db, row.key);
+  const value = normalizeNote(note);
+  if (value == null) {
+    db.prepare(`DELETE FROM ${table} WHERE meta_key = ?`).run(row.key);
+  } else {
+    db.prepare(
+      `INSERT INTO ${table} (meta_key, note) VALUES (?, ?)
+       ON CONFLICT(meta_key) DO UPDATE SET note = excluded.note`,
+    ).run(row.key, value);
+  }
+}
+
+export function noteByKey(db: DB, key: string): string | null {
+  const table = noteTableForKey(db, key);
+  const row = db.prepare(`SELECT note FROM ${table} WHERE meta_key = ?`).get(key) as
+    { note: string } | undefined;
+  return row?.note ?? null;
+}
+
+const NOTE_DIVIDER = "\n\n---\n\n";
+
+function migrateNoteKey(db: DB, fromKey: string, toKey: string): void {
+  const incoming = noteByKey(db, fromKey);
+  if (incoming == null) return;
+  const held = noteByKey(db, toKey);
+  let note = incoming;
+  if (held != null && held !== incoming && !incoming.split(NOTE_DIVIDER).includes(held)) {
+    note = held.split(NOTE_DIVIDER).includes(incoming)
+      ? held
+      : held + NOTE_DIVIDER + incoming;
+  }
+  const target = noteTableForKey(db, toKey);
+  const source = noteTableForKey(db, fromKey);
+  db.prepare(
+    `INSERT INTO ${target} (meta_key, note) VALUES (?, ?)
+     ON CONFLICT(meta_key) DO UPDATE SET note = excluded.note`,
+  ).run(toKey, note);
+  db.prepare(`DELETE FROM ${source} WHERE meta_key = ?`).run(fromKey);
 }
 
 /** Durable per-file fields a bulk edit can set. Omitted fields are left alone. */
@@ -239,6 +286,7 @@ export function updateExtractedMeta(
 export function migrateMetaKey(db: DB, fromKey: string, toKey: string): void {
   if (fromKey === toKey) return;
   db.transaction(() => {
+    migrateNoteKey(db, fromKey, toKey);
     db.prepare(
       "UPDATE OR IGNORE file_meta SET meta_key = ? WHERE meta_key = ?",
     ).run(toKey, fromKey);
@@ -269,6 +317,9 @@ export function migrateMetaKey(db: DB, fromKey: string, toKey: string): void {
  */
 export function pruneOrphanMeta(db: DB): void {
   db.transaction(() => {
+    db.exec(
+      "DELETE FROM main.file_notes WHERE meta_key NOT IN (SELECT meta_key FROM files)",
+    );
     db.exec(
       "DELETE FROM file_meta WHERE meta_key NOT IN (SELECT meta_key FROM files)",
     );

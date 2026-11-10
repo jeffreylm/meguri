@@ -36,6 +36,7 @@ import type {
 export interface QueryTarget {
   id: string;
   dbPath: string;
+  notesPath?: string;
 }
 
 export type QueryRequest =
@@ -164,7 +165,7 @@ export class QueryExecutor {
       let db = this.dbs.get(t.id);
       if (!db) {
         try {
-          db = openDbReadonly(t.dbPath);
+          db = openDbReadonly(t.dbPath, t.notesPath);
         } catch (e) {
           if (!this.warned.has(t.id)) {
             this.warned.add(t.id);

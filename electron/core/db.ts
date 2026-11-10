@@ -5,6 +5,31 @@ import { readAudioMetadata } from "../../shared/audioMetadata.js";
 
 export type DB = Database.Database;
 
+const noteConnections = new WeakSet<DB>();
+const NOTE_COLUMNS = "(meta_key TEXT PRIMARY KEY, note TEXT NOT NULL) WITHOUT ROWID";
+
+/** The shared store only accepts content keys. Path keys are workspace-local. */
+export function noteTableForKey(db: DB, key: string): string {
+  return noteConnections.has(db) && !key.startsWith("p:")
+    ? "shared_notes.file_notes"
+    : "main.file_notes";
+}
+
+function openNotes(db: DB, notesPath?: string, readonly = false): void {
+  if (notesPath) {
+    db.prepare("ATTACH DATABASE ? AS shared_notes").run(notesPath);
+    if (!readonly) {
+      db.pragma("shared_notes.journal_mode = WAL");
+      db.exec(`CREATE TABLE IF NOT EXISTS shared_notes.file_notes ${NOTE_COLUMNS}`);
+    }
+    noteConnections.add(db);
+  }
+  if (!readonly) db.exec(`CREATE TABLE IF NOT EXISTS main.file_notes ${NOTE_COLUMNS}`);
+  db.exec(`CREATE TEMP VIEW catalogue_notes AS
+    SELECT meta_key, note FROM main.file_notes
+    ${notesPath ? "UNION ALL SELECT meta_key, note FROM shared_notes.file_notes" : ""}`);
+}
+
 /**
  * Make tagIdentityKey callable from SQL as `tag_key(name)`, so a query matches
  * tag names by the same rule as the code around it. SQLite's own `lower()` and
@@ -190,7 +215,7 @@ ${FTS_DDL};
 
 /** Open the DB and apply PRAGMAs. New tables/columns added after release are reconciled
  *  here so existing on-disk DBs gain them without a separate migration step. */
-export function openDb(file: string): DB {
+export function openDb(file: string, notesPath?: string): DB {
   const db = new Database(file);
   registerFunctions(db);
   db.pragma("journal_mode = WAL");
@@ -206,7 +231,13 @@ export function openDb(file: string): DB {
   migrateKindCheck(db);
   backfillColumns(db);
   migrateFtsToTrigram(db);
-  return db;
+  try {
+    openNotes(db, notesPath);
+    return db;
+  } catch (error) {
+    db.close();
+    throw error;
+  }
 }
 
 function hasColumn(db: DB, table: string, column: string): boolean {
@@ -418,14 +449,21 @@ function migrateFtsToTrigram(db: DB): void {
  * (backfillColumns / migrateFtsToTrigram) are assumed to have already run via
  * the main process's openDb before any read-only handle is opened.
  */
-export function openDbReadonly(file: string): DB {
+export function openDbReadonly(file: string, notesPath?: string): DB {
   const db = new Database(file, { readonly: true, fileMustExist: true });
   registerFunctions(db);
   // Connection-local (never written to the file): even in WAL mode a reader
   // can hit SQLITE_BUSY around writer checkpoints; retry briefly instead of
   // surfacing an exception to the renderer.
   db.pragma("busy_timeout = 5000");
-  return db;
+  try {
+    openNotes(db, notesPath, true);
+    db.pragma("query_only = ON");
+    return db;
+  } catch (error) {
+    db.close();
+    throw error;
+  }
 }
 
 export function nowUnix(): number {

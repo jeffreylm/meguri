@@ -4,11 +4,20 @@
 //
 // This file composes the route. The pieces live beside it: where closing lands
 // (useCloseTarget), modal / side peek / full screen (useDetailPresentation),
-// every write to the file (useDetailMutations), audio in the bottom bar
+// every write to the file (useDetailMutations) except the note, which NoteCard
+// saves as the user types (useNoteWriter), audio in the bottom bar
 // (useAudioDetail), prev/next (usePrevNextNavigation), and the title row,
 // rating/tags card and play history as components.
 import { toast } from "sonner";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { applyTagFilter, showFolderInLibrary } from "@/lib/ui-events";
@@ -54,6 +63,9 @@ import {
 } from "@/lib/queryCache";
 
 const IMAGE_BG_INVERTED_KEY = "meguri.image.backgroundInverted";
+
+// The note editor (Tiptap) is only fetched once a detail is open.
+const NoteCard = lazy(() => import("./NoteCard"));
 
 export default function MediaDetail({
   detached = false,
@@ -601,6 +613,17 @@ export default function MediaDetail({
             onTagClick={onTagFilter}
             t={t}
           />
+
+          {/* Note. One card per file, so leaving a file writes what was
+              typed in it (see NoteCard). */}
+          <Suspense fallback={null}>
+            <NoteCard
+              key={`${wsId}:${fileId}`}
+              fileId={fileId}
+              wsId={wsId}
+              note={d.note}
+            />
+          </Suspense>
 
           {/* Metadata chips */}
           <MetaChips

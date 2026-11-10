@@ -5,7 +5,7 @@ import { RESOLUTIONS } from "../../../shared/resolutions.js";
 import { recentFilesRange } from "../../../shared/recentFiles.js";
 import { fileTags } from "../tags.js";
 import { listBookmarksByMetaKey } from "./bookmarks.js";
-import { thumbOffsetByKey } from "./meta.js";
+import { noteByKey, thumbOffsetByKey } from "./meta.js";
 import { FILE_HAS_THUMB } from "./thumbs.js";
 import { resolveSortDir } from "../../../shared/sortDir.js";
 import {
@@ -747,5 +747,6 @@ export function fileDetail(db: DB, fileId: number): FileDetail | null {
     playHistory,
     bookmarks,
     thumbOffsetSec: thumbOffsetByKey(db, r.metaKey),
+    note: noteByKey(db, r.metaKey),
   };
 }

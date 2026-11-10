@@ -120,6 +120,14 @@ These tables are keyed by `meta_key` for the same durability reason:
 - `play_history` — playback records (`played_at`, `position`, `via` =
   `browser` | `external`).
 
+## File notes
+
+The detail view stores Markdown notes by file identity. Notes for hashed files
+live in the profile's `notes.sqlite`, shared by the workspaces. An unindexed
+file's note stays in its workspace until a hash is available. Then it follows the
+hash, joining distinct text if the shared note already exists. Empty notes are
+removed. Source links saved by Pexels recovery remain in `pexels_sources`.
+
 ## Full-text search
 
 `files_fts(rel_path, tags_text)` is an FTS5 virtual table whose `rowid` matches
