@@ -784,6 +784,78 @@ describe("ProRes preview capacity", () => {
 });
 
 describe("media remux (ffmpeg path)", () => {
+  it("copies 10-bit HEVC and converts Dolby Digital Plus surround sound to AAC", async () => {
+    const clip = path.join(root, "dolby-surround.mkv");
+    execFileSync(FFMPEG, [
+      "-v",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc2=size=96x64:rate=12:duration=1",
+      "-f",
+      "lavfi",
+      "-i",
+      "anullsrc=channel_layout=5.1:sample_rate=48000:duration=1",
+      "-c:v",
+      "libx265",
+      "-pix_fmt",
+      "yuv420p10le",
+      "-preset",
+      "ultrafast",
+      "-x265-params",
+      "pools=none:frame-threads=1:log-level=error",
+      "-color_trc",
+      "bt709",
+      "-c:a",
+      "eac3",
+      clip,
+    ]);
+    const original = fs.readFileSync(clip);
+    const metadata = await extractMeta(clip, "video");
+    const id = insert("dolby-surround.mkv", clip, null, "done", "video", "mkv");
+    db.prepare("UPDATE files SET codec = ?, meta = ? WHERE id = ?").run(
+      metadata.codec,
+      JSON.stringify(metadata.raw),
+      id,
+    );
+
+    for (const query of ["", "?audioTrack=0&t=0.25"]) {
+      const response = await fetch(
+        `${base}/ws/${WS}/media/${id}${query}`,
+        authHeaders(),
+      );
+      expect(response.status).toBe(200);
+      const result = JSON.parse(
+        execFileSync(
+          FFPROBE,
+          [
+            "-v",
+            "error",
+            "-show_entries",
+            "stream=codec_name,pix_fmt,color_transfer,channels",
+            "-of",
+            "json",
+            "pipe:0",
+          ],
+          {
+            input: Buffer.from(await response.arrayBuffer()),
+            encoding: "utf8",
+          },
+        ),
+      );
+      expect(result.streams).toEqual([
+        {
+          codec_name: "hevc",
+          pix_fmt: "yuv420p10le",
+          color_transfer: "bt709",
+        },
+        { codec_name: "aac", channels: 6 },
+      ]);
+    }
+    expect(fs.readFileSync(clip)).toEqual(original);
+  });
+
   it("remuxes an mkv to fragmented MP4 with a 200", async () => {
     const res = await fetch(`${base}/ws/${WS}/media/${remuxId}`, authHeaders());
     expect(res.status).toBe(200);

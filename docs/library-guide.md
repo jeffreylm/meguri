@@ -325,6 +325,11 @@ follows the app's usual playback selection. Meguri keeps your playhead and
 play or pause state when you switch, and remembers the selected track for
 that clip across restarts. Resolve receives the original with all its tracks.
 
+When Meguri repackages an MKV or another preview container, it converts
+Dolby Digital (AC-3) and Dolby Digital Plus (E-AC-3) audio to AAC so the
+built-in player can open the stream. The preview keeps the original picture
+and surround channel count. The conversion happens as you play or seek.
+
 ### Fullscreen subtitles
 
 Open fullscreen and use **Subtitle track** to select an embedded text track.
