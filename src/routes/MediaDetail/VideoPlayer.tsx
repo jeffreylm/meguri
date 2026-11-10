@@ -72,9 +72,10 @@ import {
 } from "@/lib/playbackTrackPreferences";
 import { useQuery } from "@tanstack/react-query";
 import {
+  SUBTITLE_WINDOW_SECONDS,
   isTextSubtitle,
   sameSubtitleLanguage,
-} from "@shared/fullscreenSubtitles";
+} from "@shared/embeddedSubtitles";
 
 // readyState at which metadata is in (HTMLMediaElement.HAVE_METADATA), as a
 // plain number: the constant lives on a global jsdom does not provide.
@@ -269,8 +270,13 @@ export const VideoPlayer = forwardRef<
     () => readPlaybackPreference(preferenceKey).subtitle,
   );
   const audioLanguage =
-    audioTracks?.[audioTrack >= 0 ? audioTrack : isProResPreview ? 0 : -1]
-      ?.language ?? "";
+    audioTracks?.[
+      audioTrack >= 0
+        ? audioTrack
+        : isProResPreview || audioTracks?.length === 1
+          ? 0
+          : -1
+    ]?.language ?? "";
   const chosenSubtitle =
     subtitle === AUTO_SUBTITLE
       ? (subtitleTracks?.findIndex(
@@ -279,16 +285,25 @@ export const VideoPlayer = forwardRef<
             sameSubtitleLanguage(audioLanguage, track.language),
         ) ?? SUBTITLES_OFF)
       : subtitle;
-  const showSubtitles = !chromeless && isFullscreen;
+  const showSubtitles = !chromeless;
+  const subtitleWindow =
+    Math.floor(Math.max(0, position) / SUBTITLE_WINDOW_SECONDS) *
+    SUBTITLE_WINDOW_SECONDS;
   const subtitleQuery = useQuery({
-    queryKey: ["file_subtitles", wsId, id, chosenSubtitle],
-    queryFn: () => api.fileSubtitles(id, wsId, chosenSubtitle),
+    queryKey: ["file_subtitles", wsId, id, chosenSubtitle, subtitleWindow],
+    queryFn: () => api.fileSubtitles(id, wsId, chosenSubtitle, subtitleWindow),
     enabled:
       showSubtitles &&
       chosenSubtitle >= 0 &&
       isTextSubtitle(subtitleTracks?.[chosenSubtitle]?.codec ?? ""),
     staleTime: Infinity,
     retry: false,
+    placeholderData: (previous, query) =>
+      query?.queryKey[1] === wsId &&
+      query.queryKey[2] === id &&
+      query.queryKey[3] === chosenSubtitle
+        ? previous
+        : undefined,
   });
   const caption =
     showSubtitles && chosenSubtitle >= 0
@@ -1195,22 +1210,29 @@ export const VideoPlayer = forwardRef<
 
       {caption && (
         <div
-          data-slot="fullscreen-subtitles"
-          className="pointer-events-none absolute inset-x-5 bottom-24 text-center"
+          data-slot="video-subtitles"
+          className="pointer-events-none absolute inset-x-5 bottom-20 text-center"
         >
-          <span className="inline-block whitespace-pre-line rounded bg-black/80 px-3 py-1 text-lg text-white md:text-2xl">
+          <span
+            className={`inline-block whitespace-pre-line rounded bg-black/80 px-3 py-1 text-white ${isFullscreen ? "text-lg md:text-2xl" : "text-sm md:text-lg"}`}
+          >
             {caption}
           </span>
         </div>
       )}
-      {showSubtitles && subtitleQuery.isError && (
-        <div
-          role="status"
-          className="pointer-events-none absolute inset-x-0 top-10 mx-auto w-fit rounded bg-black/80 px-2 py-1 text-xs text-white"
-        >
-          {t("player.subtitleUnavailable")}
-        </div>
-      )}
+      {showSubtitles &&
+        (subtitleQuery.isError || (subtitleQuery.isFetching && !caption)) && (
+          <div
+            role="status"
+            className="pointer-events-none absolute inset-x-0 top-10 mx-auto w-fit rounded bg-black/80 px-2 py-1 text-xs text-white"
+          >
+            {t(
+              subtitleQuery.isError
+                ? "player.subtitleUnavailable"
+                : "player.subtitleLoading",
+            )}
+          </div>
+        )}
       {trackUnavailable && (
         <div
           role="status"

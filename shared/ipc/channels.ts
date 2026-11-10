@@ -4,7 +4,7 @@
 // Output is declared as TypeScript types rather than Zod schemas because the
 // renderer trusts data coming from main (no runtime check needed).
 import { z } from "zod";
-import type { SubtitleCue } from "../fullscreenSubtitles.js";
+import type { SubtitleCue } from "../embeddedSubtitles.js";
 import {
   MAX_SOURCE_URL,
   parsePexelsVideoUrl,
@@ -411,7 +411,10 @@ export const ChannelInputs = {
     axis: TimelineAxisSchema,
   }),
   file_get: FileTarget,
-  file_subtitles: FileTarget.extend({ track: z.number().int().nonnegative() }),
+  file_subtitles: FileTarget.extend({
+    track: z.number().int().nonnegative(),
+    windowStart: z.number().int().nonnegative().max(31_536_000),
+  }),
   pexels_sources_preview: z.union([
     z.object({ targets: BulkTargets }),
     z.object({ globalQuery: SearchQuerySchema }),

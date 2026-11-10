@@ -468,6 +468,7 @@ export const ja = {
   "player.subtitles": "字幕",
   "player.subtitleAuto": "音声の言語に合わせる",
   "player.subtitleOff": "オフ",
+  "player.subtitleLoading": "字幕を読み込み中…",
   "player.subtitleUnavailable": "字幕トラックを読み込めませんでした。",
   "player.seek": "シーク",
   "player.playFailed": "内蔵プレイヤーで再生できませんでした。",

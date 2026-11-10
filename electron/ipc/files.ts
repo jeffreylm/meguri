@@ -8,9 +8,10 @@ import { FFMPEG } from "../core/ffmpeg-paths.js";
 import { Semaphore } from "../core/concurrency.js";
 import { readPlaybackTracks } from "../../shared/playbackTracks.js";
 import {
+  SUBTITLE_WINDOW_SECONDS,
   isTextSubtitle,
   readWebVtt,
-} from "../../shared/fullscreenSubtitles.js";
+} from "../../shared/embeddedSubtitles.js";
 import * as q from "../core/queries.js";
 import type {
   DuplicatesResult,
@@ -29,6 +30,8 @@ import {
 
 const execFileAsync = promisify(execFile);
 const subtitleSlots = new Semaphore(2);
+// The overlap covers cues that begin before a boundary or span it.
+const SUBTITLE_OVERLAP_SECONDS = 30;
 
 export function registerFileHandlers(ctx: IpcContext): void {
   const { ws, queryClient, positions, emit } = ctx;
@@ -89,7 +92,7 @@ export function registerFileHandlers(ctx: IpcContext): void {
     }
     return file;
   });
-  handle("file_subtitles", async ({ id, workspaceId, track }) => {
+  handle("file_subtitles", async ({ id, workspaceId, track, windowStart }) => {
     const core = coreById(ws, workspaceId);
     const file = q.fileDetail(core.db, id);
     if (file?.kind !== "video") throw new Error("Unsupported subtitle track");
@@ -108,10 +111,18 @@ export function registerFileHandlers(ctx: IpcContext): void {
           "-nostdin",
           "-v",
           "error",
+          "-ss",
+          String(Math.max(0, windowStart - SUBTITLE_OVERLAP_SECONDS)),
+          "-copyts",
+          "-start_at_zero",
           "-i",
           abs,
           "-map",
           `0:s:${track}`,
+          "-to",
+          String(
+            windowStart + SUBTITLE_WINDOW_SECONDS + SUBTITLE_OVERLAP_SECONDS,
+          ),
           "-f",
           "webvtt",
           "pipe:1",

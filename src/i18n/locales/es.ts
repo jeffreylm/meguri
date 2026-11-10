@@ -479,6 +479,7 @@ export const es: Record<TranslationKey, string> = {
   "player.subtitles": "Subtítulos",
   "player.subtitleAuto": "Coincidir con el idioma del audio",
   "player.subtitleOff": "Desactivados",
+  "player.subtitleLoading": "Cargando subtítulos…",
   "player.subtitleUnavailable": "No se pudo cargar esta pista de subtítulos.",
   "player.seek": "Buscar",
   "player.playFailed": "No se pudo reproducir en el reproductor integrado.",

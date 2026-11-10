@@ -17,12 +17,14 @@ import {
 } from "@/routes/MediaDetail/VideoPlayer";
 import { announceVideoHandOff, resetVideoHandOff } from "@/video/videoHandOff";
 
+const fileSubtitles = vi.fn();
 const fileRecordPlay = vi.fn().mockResolvedValue(undefined);
 const fileSavePosition = vi
   .fn<(...args: unknown[]) => Promise<void>>()
   .mockResolvedValue(undefined);
 vi.mock("@/ipc/client", () => ({
   api: {
+    fileSubtitles: (...args: unknown[]) => fileSubtitles(...args),
     fileRecordPlay: (...args: unknown[]) => fileRecordPlay(...args),
     fileSavePosition: (...args: unknown[]) => fileSavePosition(...args),
     openExternal: vi.fn().mockResolvedValue(undefined),
@@ -115,6 +117,47 @@ function fireVideoError(video: HTMLVideoElement, code: number) {
   });
   fireEvent.error(video);
 }
+
+describe("embedded subtitles", () => {
+  it("loads the chosen track in the regular player and requests new cues after seeking", async () => {
+    fileSubtitles.mockReset();
+    fileSubtitles.mockImplementation(
+      (_id: number, _ws: string, track: number, start: number) =>
+        Promise.resolve([
+          {
+            start: start + 2,
+            end: start + 10,
+            text: track === 0 ? "Hello" : "Bonjour",
+          },
+        ]),
+    );
+    const { video } = renderPlayer({
+      duration: 300,
+      subtitleTracks: [
+        { title: "English", language: "eng", codec: "subrip" },
+        { title: "French", language: "fra", codec: "subrip" },
+      ],
+    });
+    loadVideo(video);
+    video.currentTime = 5;
+    fireEvent.timeUpdate(video);
+    const select = screen.getByRole("combobox", { name: "player.subtitles" });
+    fireEvent.change(select, { target: { value: "0" } });
+    expect(await screen.findByText("Hello")).toBeTruthy();
+    expect(fileSubtitles).toHaveBeenCalledWith(1, "ws1", 0, 0);
+
+    fireEvent.change(select, { target: { value: "1" } });
+    expect(screen.queryByText("Hello")).toBeNull();
+    expect(await screen.findByText("Bonjour")).toBeTruthy();
+    video.currentTime = 125;
+    fireEvent.timeUpdate(video);
+    expect(await screen.findByText("Bonjour")).toBeTruthy();
+    expect(fileSubtitles).toHaveBeenCalledWith(1, "ws1", 1, 120);
+
+    fireEvent.change(select, { target: { value: "-1" } });
+    expect(screen.queryByText("Bonjour")).toBeNull();
+  });
+});
 
 describe("ProRes preview audio tracks", () => {
   it("keeps a paused playhead and the selected track when seeking", () => {

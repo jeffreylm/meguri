@@ -330,10 +330,11 @@ Dolby Digital (AC-3) and Dolby Digital Plus (E-AC-3) audio to AAC so the
 built-in player can open the stream. The preview keeps the original picture
 and surround channel count. The conversion happens as you play or seek.
 
-### Fullscreen subtitles
+### Embedded subtitles
 
-Open fullscreen and use **Subtitle track** to select an embedded text track.
+Use **Subtitle track** in the regular or fullscreen player to select an
+embedded text track. Meguri loads cues around the playhead as you watch or seek.
 **Match audio language** looks for a matching subtitle when the audio language
 is known. Choose a specific track or **Off** to override that match for the clip.
-Your audio and subtitle choices are saved independently. Captions appear in
-fullscreen. Bitmap subtitles such as PGS and VobSub need a separate renderer.
+Your audio and subtitle choices are saved independently. Bitmap subtitles
+such as PGS and VobSub need a separate renderer.

@@ -1,3 +1,5 @@
+export const SUBTITLE_WINDOW_SECONDS = 120;
+
 const TEXT_CODECS = new Set([
   "subrip",
   "ass",
@@ -33,7 +35,7 @@ function seconds(timestamp: string): number {
   return timestamp.split(":").reduce((sum, part) => sum * 60 + Number(part), 0);
 }
 
-/** FFmpeg emits WebVTT; retain readable text and timings for our fullscreen overlay. */
+/** FFmpeg emits WebVTT; retain readable text and timings for the player overlay. */
 export function readWebVtt(vtt: string): SubtitleCue[] {
   const cues: SubtitleCue[] = [];
   for (const block of vtt.replaceAll("\r", "").split(/\n\s*\n/)) {

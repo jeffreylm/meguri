@@ -468,6 +468,7 @@ export const en: Record<TranslationKey, string> = {
   "player.subtitles": "Subtitle track",
   "player.subtitleAuto": "Match audio language",
   "player.subtitleOff": "Off",
+  "player.subtitleLoading": "Loading subtitles…",
   "player.subtitleUnavailable": "This subtitle track could not be loaded.",
   "player.seek": "Seek",
   "player.playFailed": "Could not play in the built-in player.",

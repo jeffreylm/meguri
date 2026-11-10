@@ -480,6 +480,7 @@ export const fr: Record<TranslationKey, string> = {
   "player.subtitles": "Sous-titres",
   "player.subtitleAuto": "Suivre la langue audio",
   "player.subtitleOff": "Désactivés",
+  "player.subtitleLoading": "Chargement des sous-titres…",
   "player.subtitleUnavailable":
     "Impossible de charger cette piste de sous-titres.",
   "player.seek": "Position",

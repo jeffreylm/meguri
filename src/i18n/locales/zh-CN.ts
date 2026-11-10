@@ -446,6 +446,7 @@ export const zhCN: Record<TranslationKey, string> = {
   "player.subtitles": "字幕",
   "player.subtitleAuto": "匹配音轨语言",
   "player.subtitleOff": "关闭",
+  "player.subtitleLoading": "正在加载字幕…",
   "player.subtitleUnavailable": "无法加载此字幕轨。",
   "player.seek": "进度",
   "player.playFailed": "无法在内置播放器中播放。",
