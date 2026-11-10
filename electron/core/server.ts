@@ -23,6 +23,11 @@ import { FFMPEG } from "./ffmpeg-paths.js";
 import { QueueFullError, Semaphore } from "./concurrency.js";
 import { DECODE_FFMPEG_THREADS, videoDecodeSlots } from "./mediaConcurrency.js";
 import { scopedLog } from "./logger.js";
+import {
+  isTaggedHdr,
+  proResPreviewFilter,
+  supportsToneMapping,
+} from "./proResPreview.js";
 
 const log = scopedLog("server");
 
@@ -240,10 +245,18 @@ async function handle(
 
     const file = core.db
       .prepare(
-        "SELECT abs_path AS abs, codec, kind FROM files WHERE id = ? AND deleted_at IS NULL",
+        `SELECT abs_path AS abs, codec, kind,
+                CASE WHEN codec = 'prores' THEN meta END AS proResMeta
+         FROM files WHERE id = ? AND deleted_at IS NULL`,
       )
       .get(id) as
-      { abs: string; codec: string | null; kind: string } | undefined;
+      | {
+          abs: string;
+          codec: string | null;
+          kind: string;
+          proResMeta: string | null;
+        }
+      | undefined;
     if (!file) {
       res.writeHead(404).end();
       return;
@@ -274,7 +287,14 @@ async function handle(
       }
       const parsed = startT != null ? Number(startT) : NaN;
       const start = Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
-      serveRemux(res, abs, start, proResPreview);
+      const toneMap =
+        proResPreview &&
+        isTaggedHdr(file.proResMeta) &&
+        (await supportsToneMapping());
+      if (!res.destroyed) {
+        const mode = toneMap ? "prores-hdr" : proResPreview ? "prores" : "copy";
+        serveRemux(res, abs, start, mode);
+      }
       return;
     }
     // Chromium-unsupported image formats (heic/heif/tiff) are transcoded to JPEG.
@@ -403,12 +423,10 @@ type RemuxSession = {
 
 const remuxInflight = new Map<string, RemuxSession>();
 
-function remuxKey(
-  file: string,
-  start: number | null,
-  proResPreview: boolean,
-): string {
-  return `${file}\0${start ?? ""}\0${proResPreview}`;
+type RemuxMode = "copy" | "prores" | "prores-hdr";
+
+function remuxKey(file: string, start: number | null, mode: RemuxMode): string {
+  return `${file}\0${start ?? ""}\0${mode}`;
 }
 
 function spawnFfmpegChild(
@@ -533,8 +551,9 @@ function startRemuxSession(
   start: number | null,
   res: http.ServerResponse,
   releaseSlot: () => void,
-  proResPreview: boolean,
+  mode: RemuxMode,
 ) {
+  const proResPreview = mode !== "copy";
   const args = ["-v", "error"];
   if (proResPreview)
     args.push(
@@ -554,7 +573,7 @@ function startRemuxSession(
       "-write_tmcd",
       "0",
       "-vf",
-      "scale=w='min(1920,iw)':h='min(1080,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2",
+      proResPreviewFilter(mode === "prores-hdr"),
       "-c:v",
       "libx264",
       "-preset",
@@ -730,9 +749,9 @@ function serveRemux(
   res: http.ServerResponse,
   file: string,
   start: number | null,
-  proResPreview: boolean,
+  mode: RemuxMode,
 ) {
-  const key = remuxKey(file, start, proResPreview);
+  const key = remuxKey(file, start, mode);
   const existing = remuxInflight.get(key);
   if (existing) {
     attachRemuxClient(key, existing, res);
@@ -741,7 +760,7 @@ function serveRemux(
 
   void (async () => {
     const releaseSlot = await acquireForResponse(
-      proResPreview ? proResPreviewSlots : remuxSlots,
+      mode === "copy" ? remuxSlots : proResPreviewSlots,
       res,
     );
     if (!releaseSlot) return;
@@ -754,7 +773,7 @@ function serveRemux(
     }
 
     try {
-      startRemuxSession(key, file, start, res, releaseSlot, proResPreview);
+      startRemuxSession(key, file, start, res, releaseSlot, mode);
     } catch (e) {
       // spawn() can throw synchronously; the slot would otherwise never be
       // released (it only reaches the session on success).

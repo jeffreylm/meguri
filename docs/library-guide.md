@@ -253,3 +253,8 @@ Open a ProRes clip in the player as usual. Meguri streams a local H.264 preview
 at up to 1920 × 1080, with audio when the clip has it. The player and scene
 strip still use the source clip’s timeline. Meguri keeps the original ProRes
 file for dragging into Resolve and for **Open externally**.
+
+Meguri tone maps ProRes clips tagged as PQ or HLG HDR for the built-in player
+when FFmpeg supports the conversion. This brings bright highlights and wide
+colors into range for a standard display. SDR clips use the regular preview.
+Resolve receives the original HDR file.
