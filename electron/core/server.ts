@@ -40,9 +40,8 @@ import {
 
 const log = scopedLog("server");
 
-// Hard cap on ffmpeg streaming/transcoding requests. Without this a corrupt
-// media file can hang ffmpeg and pin a request slot indefinitely. 60s matches
-// the extractor side in media.ts and gives long-range seeks enough headroom.
+// Cap one-shot FFmpeg requests and periods without output in remux streams.
+// This prevents corrupt media from pinning a slot indefinitely.
 // SIGKILL ensures the child actually dies if it ignores SIGTERM.
 const FFMPEG_REQUEST_TIMEOUT_MS = 60_000;
 const FFMPEG_KILL_SIGNAL = "SIGKILL" as const;
@@ -666,7 +665,6 @@ function startRemuxSession(
   track?: { audio: number; video?: number },
 ) {
   const proResPreview = mode === "prores" || mode === "prores-hdr";
-  const transcode = mode !== "copy";
   const args = ["-v", "error"];
   if (proResPreview)
     args.push(
@@ -718,12 +716,8 @@ function startRemuxSession(
     "pipe:1",
   );
 
-  // A long preview can legitimately outlive the one-shot FFmpeg deadline.
-  // Bound periods without output, excluding pauses caused by the client.
-  const child = spawnFfmpegChild(
-    args,
-    transcode ? 0 : FFMPEG_REQUEST_TIMEOUT_MS,
-  );
+  // A remux can legitimately outlive the one-shot FFmpeg deadline.
+  const child = spawnFfmpegChild(args, 0);
   const session: RemuxSession = {
     child,
     clients: new Set([res]),
@@ -739,31 +733,31 @@ function startRemuxSession(
 
   let sawOutput = false;
   let lastOutputAt = performance.now();
-  const watchdog = transcode
-    ? setInterval(() => {
-        const now = performance.now();
-        if (session.blocked.size === 0) {
-          if (now - lastOutputAt >= FFMPEG_REQUEST_TIMEOUT_MS)
-            child.kill(FFMPEG_KILL_SIGNAL);
-          return;
-        }
-        lastOutputAt = now;
-        for (const [client, blocked] of session.blocked) {
-          const pending = client.writableLength;
-          if (pending < blocked.pending) blocked.since = now;
-          blocked.pending = pending;
-          // Pauses and slow readers can hold the stream while capacity is free.
-          if (
-            previewSlots.waiting > 0 &&
-            now - blocked.since >= PREVIEW_READER_TIMEOUT_MS
-          ) {
-            client.destroy();
-            detachRemuxClient(key, session, client);
-            break;
-          }
-        }
-      }, 5_000).unref()
-    : undefined;
+  // Bound periods without output, excluding pauses caused by the client.
+  const watchdog = setInterval(() => {
+    const now = performance.now();
+    if (session.blocked.size === 0) {
+      if (now - lastOutputAt >= FFMPEG_REQUEST_TIMEOUT_MS)
+        child.kill(FFMPEG_KILL_SIGNAL);
+      return;
+    }
+    lastOutputAt = now;
+    if (mode === "copy") return;
+    for (const [client, blocked] of session.blocked) {
+      const pending = client.writableLength;
+      if (pending < blocked.pending) blocked.since = now;
+      blocked.pending = pending;
+      // Pauses and slow readers can hold the stream while capacity is free.
+      if (
+        previewSlots.waiting > 0 &&
+        now - blocked.since >= PREVIEW_READER_TIMEOUT_MS
+      ) {
+        client.destroy();
+        detachRemuxClient(key, session, client);
+        break;
+      }
+    }
+  }, 5_000).unref();
   child.stdout!.on("data", (chunk: Buffer) => {
     sawOutput = true;
     lastOutputAt = performance.now();
