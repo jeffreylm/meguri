@@ -455,6 +455,8 @@ export const fr: Record<TranslationKey, string> = {
   "player.unmute": "Réactiver le son (M)",
   "player.fullscreen": "Plein écran (F)",
   "player.volume": "Volume",
+  "player.audioTrack": "Piste audio",
+  "player.audioTrackNumber": "Piste {number}",
   "player.seek": "Position",
   "player.playFailed": "Impossible de lire dans le lecteur intégré.",
   "player.openExternal": "Ouvrir dans un lecteur externe",

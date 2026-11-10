@@ -1,6 +1,6 @@
 // Regression tests for the media HTTP server: URL routing, Range serving, the
 // path-confinement guards, and the ffmpeg remux path (status-code behaviour only).
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";
 import { FFMPEG, FFPROBE } from "../ffmpeg-paths.js";
 import { extractMeta } from "../media.js";
@@ -473,6 +473,216 @@ describe("ProRes previews", () => {
       expect(fs.readFileSync(clip)).toEqual(original);
     },
   );
+});
+
+describe("ProRes preview audio tracks", () => {
+  it("serves the selected audio separately from the default preview", async () => {
+    const clip = path.join(root, "alternate-audio.mov");
+    execFileSync(FFMPEG, [
+      "-v",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc2=size=96x64:rate=12:duration=2",
+      "-f",
+      "lavfi",
+      "-i",
+      "sine=frequency=440:duration=2",
+      "-f",
+      "lavfi",
+      "-i",
+      "sine=frequency=880:duration=2",
+      "-map",
+      "0:v",
+      "-map",
+      "1:a",
+      "-map",
+      "2:a",
+      "-c:v",
+      "prores_ks",
+      "-profile:v",
+      "standard",
+      "-pix_fmt",
+      "yuv422p10le",
+      "-c:a",
+      "pcm_s16le",
+      clip,
+    ]);
+    const original = fs.readFileSync(clip);
+    const meta = await extractMeta(clip, "video");
+    const id = insert(
+      "alternate-audio.mov",
+      clip,
+      null,
+      "done",
+      "video",
+      "mov",
+    );
+    db.prepare("UPDATE files SET codec = ?, meta = ? WHERE id = ?").run(
+      meta.codec,
+      JSON.stringify(meta.raw),
+      id,
+    );
+    const url = `${base}/ws/${WS}/media/${id}?t=0.25`;
+    const frequency = async (track: string) => {
+      const response = await fetch(url + track, authHeaders());
+      expect(response.status).toBe(200);
+      const bytes = Buffer.from(await response.arrayBuffer());
+      const samples = execFileSync(
+        FFMPEG,
+        [
+          "-v",
+          "error",
+          "-i",
+          "pipe:0",
+          "-vn",
+          "-ar",
+          "8000",
+          "-ac",
+          "1",
+          "-f",
+          "s16le",
+          "pipe:1",
+        ],
+        { input: bytes },
+      );
+      // Count positive zero crossings in a steady half-second of the tone.
+      let crossings = 0;
+      for (let i = 4_002; i < 12_002; i += 2) {
+        if (samples.readInt16LE(i - 2) <= 0 && samples.readInt16LE(i) > 0)
+          crossings++;
+      }
+      return crossings * 2;
+    };
+    const [first, second] = await Promise.all([
+      frequency(""),
+      frequency("&audioTrack=1"),
+    ]);
+    expect(first).toBeCloseTo(440, -1);
+    expect(second).toBeCloseTo(880, -1);
+    expect((await fetch(url + "&audioTrack=2", authHeaders())).status).toBe(
+      400,
+    );
+    expect(fs.readFileSync(clip)).toEqual(original);
+  });
+});
+
+describe("unindexed ProRes playback", () => {
+  it("serves an H.264 preview before the scan writes the codec", async () => {
+    const clip = path.join(root, "unindexed.mov");
+    execFileSync(FFMPEG, [
+      "-v",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc2=size=96x64:rate=12:duration=1",
+      "-c:v",
+      "prores_ks",
+      "-profile:v",
+      "standard",
+      "-pix_fmt",
+      "yuv422p10le",
+      clip,
+    ]);
+    const id = insert("unindexed.mov", clip, null, "pending", "video", "mov");
+    const url = `${base}/ws/${WS}/media/${id}`;
+    const head = await fetch(url, { ...authHeaders(), method: "HEAD" });
+    expect(head.headers.get("content-type")).toBe("video/mp4");
+    const preview = await fetch(url, authHeaders());
+    expect(preview.status).toBe(200);
+    expect(preview.headers.get("content-type")).toBe("video/mp4");
+    const output = Buffer.from(await preview.arrayBuffer());
+    expect(output.subarray(4, 8).toString()).toBe("ftyp");
+    expect(db.prepare("SELECT codec FROM files WHERE id = ?").get(id)).toEqual({
+      codec: null,
+    });
+  });
+});
+
+describe("ProRes preview capacity", () => {
+  it("keeps paused previews when idle and reclaims a slot for a waiting preview", async () => {
+    const clip = path.join(root, "preview-capacity.mov");
+    execFileSync(FFMPEG, [
+      "-v",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc2=size=640x360:rate=24:duration=25",
+      "-c:v",
+      "prores_ks",
+      "-threads",
+      "2",
+      "-profile:v",
+      "standard",
+      "-pix_fmt",
+      "yuv422p10le",
+      clip,
+    ]);
+    const id = insert(
+      "preview-capacity.mov",
+      clip,
+      null,
+      "done",
+      "video",
+      "mov",
+    );
+    db.prepare("UPDATE files SET codec = 'prores' WHERE id = ?").run(id);
+    const route = `/ws/${WS}/media/${id}`;
+    const responses = new Map<string, http.ServerResponse>();
+    const observe = (req: http.IncomingMessage, res: http.ServerResponse) => {
+      const url = new URL(req.url ?? "/", base);
+      if (url.pathname === route)
+        responses.set(url.searchParams.get("t") ?? "", res);
+    };
+    const stalled: http.ClientRequest[] = [];
+    server.on("request", observe);
+    vi.useFakeTimers({
+      toFake: ["performance", "setInterval", "clearInterval"],
+    });
+    try {
+      for (const t of [0, 1]) {
+        const request = http.get(`${base}${route}?t=${t}`, {
+          headers: authHeader(),
+        });
+        request.on("error", () => undefined);
+        request.on("response", (response) => {
+          response.on("error", () => undefined);
+          response.pause();
+        });
+        stalled.push(request);
+      }
+      await expect
+        .poll(
+          () =>
+            [...responses.values()].filter((res) => res.writableNeedDrain)
+              .length,
+          { timeout: 6_000 },
+        )
+        .toBe(2);
+      vi.advanceTimersByTime(130_000);
+      expect([...responses.values()].some((res) => res.destroyed)).toBe(false);
+
+      const queued = fetch(`${base}${route}?t=24`, authHeaders());
+      await expect.poll(() => responses.has("24")).toBe(true);
+      vi.advanceTimersByTime(5_000);
+      const response = await queued;
+      expect(response.status).toBe(200);
+      expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(0);
+      expect(
+        [responses.get("0"), responses.get("1")].filter(
+          (res) => res?.destroyed,
+        ),
+      ).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+      server.off("request", observe);
+      for (const request of stalled) request.destroy();
+      fs.unlinkSync(clip);
+    }
+  }, 15_000);
 });
 
 describe("media remux (ffmpeg path)", () => {

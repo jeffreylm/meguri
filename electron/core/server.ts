@@ -23,6 +23,11 @@ import { FFMPEG } from "./ffmpeg-paths.js";
 import { QueueFullError, Semaphore } from "./concurrency.js";
 import { DECODE_FFMPEG_THREADS, videoDecodeSlots } from "./mediaConcurrency.js";
 import { scopedLog } from "./logger.js";
+import { extractMeta, type ExtractedMeta } from "./media.js";
+import {
+  PREVIEW_AUDIO_TRACK_PARAM,
+  readProResAudioTracks,
+} from "../../shared/proResAudioTracks.js";
 import {
   isTaggedHdr,
   proResPreviewFilter,
@@ -53,6 +58,11 @@ const remuxSlots = new Semaphore(REMUX_MAX_CONCURRENT);
 // Playback can stay open for a long time. Keep its decoders separate from the
 // thumbnail and scrub pool, and cap concurrent previews and FFmpeg threads.
 const proResPreviewSlots = new Semaphore(2);
+// Reclaim a preview only under contention, after sustained socket backpressure.
+const PREVIEW_READER_TIMEOUT_MS = 120_000;
+// A recently indexed file may have a row before the scan writes its codec.
+const playbackProbeSlots = new Semaphore(2);
+const PLAYBACK_PROBE_TIMEOUT_MS = 5_000;
 // Requests queued for a slot are bounded too, so a burst of frame grabs (or
 // a renderer gone haywire) cannot pile up sockets and waiters without limit;
 // beyond this the request is shed with 503. A client that disconnects while
@@ -86,6 +96,33 @@ async function acquireForResponse(
     return null;
   } finally {
     res.off("close", onClose);
+  }
+}
+
+async function probeUnindexedVideo(
+  file: string,
+  res: http.ServerResponse,
+): Promise<ExtractedMeta | null> {
+  const stat = await fs.promises.stat(file).catch(() => null);
+  if (!stat?.isFile() || res.destroyed) return null;
+  const release = await acquireForResponse(playbackProbeSlots, res);
+  if (!release) return null;
+  const disconnected = new AbortController();
+  const onClose = () => disconnected.abort();
+  res.once("close", onClose);
+  try {
+    if (res.destroyed) return null;
+    return await extractMeta(
+      file,
+      "video",
+      AbortSignal.any([
+        disconnected.signal,
+        AbortSignal.timeout(PLAYBACK_PROBE_TIMEOUT_MS),
+      ]),
+    );
+  } finally {
+    res.off("close", onClose);
+    release();
   }
 }
 
@@ -279,8 +316,27 @@ async function handle(
     const startT = url.searchParams.get("t");
     // Repack unsupported containers. ProRes needs a codec conversion even
     // when it lives in a container Chromium can demux, such as MOV.
-    const proResPreview = file.kind === "video" && file.codec === "prores";
+    const probed =
+      file.kind === "video" && file.codec == null
+        ? await probeUnindexedVideo(abs, res)
+        : null;
+    if (res.destroyed || res.writableEnded) return;
+    const proResPreview =
+      file.kind === "video" && (file.codec ?? probed?.codec) === "prores";
     if (proResPreview || REMUX_CONTAINERS.has(ext(abs))) {
+      const requestedTrack = url.searchParams.get(PREVIEW_AUDIO_TRACK_PARAM);
+      const audioTrack =
+        proResPreview && requestedTrack !== null ? Number(requestedTrack) : 0;
+      if (
+        audioTrack !== 0 &&
+        (!Number.isSafeInteger(audioTrack) ||
+          audioTrack < 0 ||
+          audioTrack >=
+            readProResAudioTracks(file.proResMeta ?? probed?.raw).length)
+      ) {
+        res.writeHead(400).end();
+        return;
+      }
       if (req.method === "HEAD") {
         res.writeHead(200, { "Content-Type": "video/mp4" }).end();
         return;
@@ -289,11 +345,11 @@ async function handle(
       const start = Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
       const toneMap =
         proResPreview &&
-        isTaggedHdr(file.proResMeta) &&
+        isTaggedHdr(file.proResMeta ?? JSON.stringify(probed?.raw ?? null)) &&
         (await supportsToneMapping());
       if (!res.destroyed) {
         const mode = toneMap ? "prores-hdr" : proResPreview ? "prores" : "copy";
-        serveRemux(res, abs, start, mode);
+        serveRemux(res, abs, start, mode, audioTrack);
       }
       return;
     }
@@ -418,15 +474,20 @@ type RemuxSession = {
   historyBytes: number;
   joinable: boolean;
   // Clients whose socket buffer is full; ffmpeg stdout stays paused until all drain.
-  blocked: Set<http.ServerResponse>;
+  blocked: Map<http.ServerResponse, { since: number; pending: number }>;
 };
 
 const remuxInflight = new Map<string, RemuxSession>();
 
 type RemuxMode = "copy" | "prores" | "prores-hdr";
 
-function remuxKey(file: string, start: number | null, mode: RemuxMode): string {
-  return `${file}\0${start ?? ""}\0${mode}`;
+function remuxKey(
+  file: string,
+  start: number | null,
+  mode: RemuxMode,
+  audioTrack: number,
+): string {
+  return `${file}\0${start ?? ""}\0${mode}\0${audioTrack}`;
 }
 
 function spawnFfmpegChild(
@@ -466,7 +527,7 @@ function detachRemuxClient(
   session: RemuxSession,
   res: http.ServerResponse,
 ) {
-  session.clients.delete(res);
+  if (!session.clients.delete(res)) return;
   session.blocked.delete(res);
   if (session.clients.size === 0) {
     session.child.kill("SIGKILL");
@@ -508,7 +569,10 @@ function writeRemuxChunk(
   }
   if (!client.write(chunk)) {
     if (!session.blocked.has(client)) {
-      session.blocked.add(client);
+      session.blocked.set(client, {
+        since: performance.now(),
+        pending: client.writableLength,
+      });
       client.once("drain", () => {
         session.blocked.delete(client);
         resumeIfDrained(session);
@@ -552,6 +616,7 @@ function startRemuxSession(
   res: http.ServerResponse,
   releaseSlot: () => void,
   mode: RemuxMode,
+  audioTrack: number,
 ) {
   const proResPreview = mode !== "copy";
   const args = ["-v", "error"];
@@ -569,7 +634,7 @@ function startRemuxSession(
       "-map",
       "0:v:0",
       "-map",
-      "0:a:0?",
+      `0:a:${audioTrack}?`,
       "-write_tmcd",
       "0",
       "-vf",
@@ -612,23 +677,41 @@ function startRemuxSession(
     history: [],
     historyBytes: 0,
     joinable: true,
-    blocked: new Set(),
+    blocked: new Map(),
   };
   remuxInflight.set(key, session);
   res.on("close", () => detachRemuxClient(key, session, res));
 
   let sawOutput = false;
-  let lastOutputAt = Date.now();
+  let lastOutputAt = performance.now();
   const watchdog = proResPreview
     ? setInterval(() => {
-        if (session.blocked.size > 0) lastOutputAt = Date.now();
-        else if (Date.now() - lastOutputAt >= FFMPEG_REQUEST_TIMEOUT_MS)
-          child.kill(FFMPEG_KILL_SIGNAL);
+        const now = performance.now();
+        if (session.blocked.size === 0) {
+          if (now - lastOutputAt >= FFMPEG_REQUEST_TIMEOUT_MS)
+            child.kill(FFMPEG_KILL_SIGNAL);
+          return;
+        }
+        lastOutputAt = now;
+        for (const [client, blocked] of session.blocked) {
+          const pending = client.writableLength;
+          if (pending < blocked.pending) blocked.since = now;
+          blocked.pending = pending;
+          // Pauses and slow readers can hold the stream while capacity is free.
+          if (
+            proResPreviewSlots.waiting > 0 &&
+            now - blocked.since >= PREVIEW_READER_TIMEOUT_MS
+          ) {
+            client.destroy();
+            detachRemuxClient(key, session, client);
+            break;
+          }
+        }
       }, 5_000).unref()
     : undefined;
   child.stdout!.on("data", (chunk: Buffer) => {
     sawOutput = true;
-    lastOutputAt = Date.now();
+    lastOutputAt = performance.now();
     broadcastRemuxChunk(key, session, chunk);
   });
   child.on("error", () => {
@@ -750,8 +833,9 @@ function serveRemux(
   file: string,
   start: number | null,
   mode: RemuxMode,
+  audioTrack: number,
 ) {
-  const key = remuxKey(file, start, mode);
+  const key = remuxKey(file, start, mode, audioTrack);
   const existing = remuxInflight.get(key);
   if (existing) {
     attachRemuxClient(key, existing, res);
@@ -773,7 +857,7 @@ function serveRemux(
     }
 
     try {
-      startRemuxSession(key, file, start, res, releaseSlot, mode);
+      startRemuxSession(key, file, start, res, releaseSlot, mode, audioTrack);
     } catch (e) {
       // spawn() can throw synchronously; the slot would otherwise never be
       // released (it only reaches the session on success).

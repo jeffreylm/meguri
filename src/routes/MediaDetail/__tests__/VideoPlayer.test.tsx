@@ -116,6 +116,69 @@ function fireVideoError(video: HTMLVideoElement, code: number) {
   fireEvent.error(video);
 }
 
+describe("ProRes preview audio tracks", () => {
+  it("keeps a paused playhead and the selected track when seeking", () => {
+    const { video, ref } = renderPlayer({
+      isProResPreview: true,
+      audioTracks: [
+        { title: "Dialogue", language: "eng" },
+        { title: "Music", language: "" },
+      ],
+    });
+    loadVideo(video);
+    video.currentTime = 12.75;
+    const play = vi.spyOn(video, "play").mockResolvedValue(undefined);
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "player.audioTrack" }),
+      {
+        target: { value: "1" },
+      },
+    );
+    expect(new URL(video.src).searchParams.get("audioTrack")).toBe("1");
+    expect(new URL(video.src).searchParams.get("t")).toBe("12.75");
+    expect(video.autoplay).toBe(false);
+    expect(play).not.toHaveBeenCalled();
+
+    loadVideo(video);
+    act(() => ref.current?.seek(5));
+    expect(new URL(video.src).searchParams.get("audioTrack")).toBe("1");
+    expect(new URL(video.src).searchParams.get("t")).toBe("5");
+  });
+});
+
+describe("ProRes preview recovery", () => {
+  it.each([true, false])(
+    "resumes a failed stream at its current time (paused=%s)",
+    async (paused) => {
+      vi.useFakeTimers();
+      try {
+        const { video } = renderPlayer({ isProResPreview: true });
+        video.src += "?t=30";
+        loadVideo(video);
+        video.currentTime = 2.75;
+        Object.defineProperty(video, "paused", {
+          configurable: true,
+          value: paused,
+        });
+        const play = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+        Object.defineProperty(video, "play", {
+          configurable: true,
+          value: play,
+        });
+        fireVideoError(video, 2);
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(300);
+        });
+        expect(new URL(video.src).searchParams.get("t")).toBe("32.75");
+        expect(video.autoplay).toBe(!paused);
+        expect(play).toHaveBeenCalledTimes(paused ? 0 : 1);
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
+});
+
 describe("VideoPlayer", () => {
   beforeEach(() => {
     fileRecordPlay.mockClear();

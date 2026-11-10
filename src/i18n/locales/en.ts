@@ -444,6 +444,8 @@ export const en: Record<TranslationKey, string> = {
   "player.unmute": "Unmute (M)",
   "player.fullscreen": "Fullscreen (F)",
   "player.volume": "Volume",
+  "player.audioTrack": "Audio track",
+  "player.audioTrackNumber": "Track {number}",
   "player.seek": "Seek",
   "player.playFailed": "Could not play in the built-in player.",
   "player.openExternal": "Open in external player",

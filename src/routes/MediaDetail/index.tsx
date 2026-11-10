@@ -29,6 +29,7 @@ import { useResumeStart } from "@/hooks/useResumeStart";
 import { ResumeNotice } from "@/components/ResumeNotice";
 import { MediaModal, TopBar } from "./MediaModal";
 import { VideoPlayer, type PlayerHandle } from "./VideoPlayer";
+import { readProResAudioTracks } from "@shared/proResAudioTracks";
 import { useAudioActions } from "@/audio/useAudioPlayer";
 import { hasThumbFile, thumbUrl } from "@/lib/thumbUrl";
 import { AudioCompact, AudioStage } from "./AudioStage";
@@ -423,6 +424,10 @@ export default function MediaDetail({
               wsId={wsId}
               startAt={startAt}
               autoplay={autoplay}
+              isProResPreview={d.codec === "prores"}
+              audioTracks={
+                d.codec === "prores" ? readProResAudioTracks(d.meta) : undefined
+              }
               navKeys={navBinding}
               fullscreenTargetRef={modalRef}
               bookmarks={d.bookmarks}

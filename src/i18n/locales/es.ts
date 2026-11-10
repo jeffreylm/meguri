@@ -453,6 +453,8 @@ export const es: Record<TranslationKey, string> = {
   "player.unmute": "Activar sonido (M)",
   "player.fullscreen": "Pantalla completa (F)",
   "player.volume": "Volumen",
+  "player.audioTrack": "Pista de audio",
+  "player.audioTrackNumber": "Pista {number}",
   "player.seek": "Buscar",
   "player.playFailed": "No se pudo reproducir en el reproductor integrado.",
   "player.openExternal": "Abrir en un reproductor externo",

@@ -40,7 +40,13 @@ import { matchAny, type NavBinding } from "@/settings/keybindings";
 import type { TFunc } from "@/i18n/I18nProvider";
 import { VideoElement } from "@/video/VideoElement";
 import { isSameSource } from "@/video/videoHandOff";
-import { streamOffsetOf, withStreamSeek } from "@/lib/mediaSrc";
+import {
+  previewAudioTrackOf,
+  streamOffsetOf,
+  withPreviewAudioTrack,
+  withStreamSeek,
+} from "@/lib/mediaSrc";
+import type { readProResAudioTracks } from "@shared/proResAudioTracks";
 import {
   isFatalMediaError,
   MEDIA_ERR_ABORTED,
@@ -116,6 +122,9 @@ export const VideoPlayer = forwardRef<
     startAt: number;
     /** Whether the video should start playing automatically (default true). */
     autoplay?: boolean;
+    /** ProRes streams can be reopened at their current position after a network interruption. */
+    isProResPreview?: boolean;
+    audioTracks?: ReturnType<typeof readProResAudioTracks>;
     /** Active paging chords; the player yields these keys so they don't also seek. */
     navKeys: NavBinding;
     /**
@@ -186,6 +195,8 @@ export const VideoPlayer = forwardRef<
     wsId,
     startAt,
     autoplay = true,
+    isProResPreview = false,
+    audioTracks,
     navKeys,
     fullscreenTargetRef,
     bookmarks,
@@ -212,10 +223,10 @@ export const VideoPlayer = forwardRef<
   const trackRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   // For stream playback, the start second begun on the server side via ?t.
-  const [offset, setOffset] = useState(0);
   // Current playback position for display (seconds).
   const [position, setPosition] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [audioTrack, setAudioTrack] = useState(0);
   const [loaded, setLoaded] = useState(false);
   // Whether this player is currently the fullscreen element (used to drop the max-height cap).
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -290,10 +301,8 @@ export const VideoPlayer = forwardRef<
   const playbackPosition = usePlaybackPosition(wsId, id);
   /**
    * The element's position in the file, or null while it has none to give
-   * (nothing loaded, or a stream being re-served from a new second). Read off
-   * the element, not the `offset` state: an event can arrive before the render
-   * that follows a re-serve, and the `?t=` in the element's own src is the
-   * truth at that moment.
+   * (nothing loaded, or a stream being re-served from a new second). The
+   * `?t=` in the element's source is the offset into the original file.
    */
   const sampleOf = (v: HTMLVideoElement): PositionSample | null => {
     if (v.readyState < HAVE_METADATA) return null;
@@ -337,8 +346,8 @@ export const VideoPlayer = forwardRef<
   // and the reload button on the error screen. Deliberately leaves `playedRef`
   // alone: reloading the same file must not re-fire onPlayed.
   const resetPlaybackState = () => {
+    setAudioTrack(0);
     setError(null);
-    setOffset(0);
     setPosition(0);
     setPlaying(false);
     setLoaded(false);
@@ -366,9 +375,39 @@ export const VideoPlayer = forwardRef<
     attachedRef.current = { el, adopted };
   }, []);
 
-  /** Map a MediaError to the message shown, or handle the transient cases.
-   *  Shared by the element's `error` event and adoption (an element that
-   *  failed while parked has no event left to deliver). */
+  const restartPreview = (
+    v: HTMLVideoElement,
+    nextSrc: string,
+    at: number,
+    resume: boolean,
+  ) => {
+    const next = withStreamSeek(nextSrc, at, true);
+    haveMetadataRef.current = false;
+    appliedStartRef.current = true;
+    setLoaded(false);
+    setPosition(streamOffsetOf(next));
+    v.autoplay = resume;
+    v.src = next;
+    v.load();
+    if (resume) void v.play().catch(() => {});
+  };
+
+  const chooseAudioTrack = (index: number) => {
+    const v = ref.current;
+    if (!v || !haveMetadataRef.current || index === audioTrack) return;
+    const source = v.getAttribute("src") ?? src;
+    const at = streamOffsetOf(source) + v.currentTime;
+    cancelQueuedSeek();
+    if (retryTimerRef.current != null) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+    netRetriedRef.current = false;
+    setAudioTrack(index);
+    restartPreview(v, withPreviewAudioTrack(source, index), at, !v.paused);
+  };
+
+  /** Handles both a live error event and a failed element adopted during a hand-off. */
   const handleElementError = (v: HTMLVideoElement) => {
     const code = v.error?.code;
     // MEDIA_ERR_ABORTED fires on normal load interruptions (src swap /
@@ -384,6 +423,22 @@ export const VideoPlayer = forwardRef<
       networkState: v.networkState,
       code,
     });
+    if (
+      code === MEDIA_ERR_NETWORK &&
+      isProResPreview &&
+      haveMetadataRef.current &&
+      !netRetriedRef.current
+    ) {
+      netRetriedRef.current = true;
+      const source = v.getAttribute("src") ?? src;
+      const at = streamOffsetOf(source) + v.currentTime;
+      const resume = !v.paused;
+      retryTimerRef.current = window.setTimeout(() => {
+        retryTimerRef.current = null;
+        if (ref.current === v && v.error) restartPreview(v, source, at, resume);
+      }, NETWORK_RETRY_DELAY_MS);
+      return;
+    }
     // A network error right after opening is often transient (the media
     // request can be starved while frame previews hold the origin's
     // connection slots) — reload once before surfacing the error. Only
@@ -460,9 +515,9 @@ export const VideoPlayer = forwardRef<
     haveMetadataRef.current = true;
     appliedStartRef.current = true;
     // A stream the other route re-served from `?t=` reports positions
-    // relative to that second (see `offset`).
+    // relative to that second.
     const streamOffset = streamOffsetOf(v.getAttribute("src"));
-    setOffset(streamOffset);
+    setAudioTrack(previewAudioTrackOf(v.getAttribute("src")));
     setPosition(streamOffset + v.currentTime);
     setLoaded(true);
     if (isFinite(v.duration)) {
@@ -535,7 +590,7 @@ export const VideoPlayer = forwardRef<
     // this source can be seeked at all is not knowable until its metadata
     // arrives, and guessing "stream" here re-serves the file with a `?t=` that
     // the server ignores for everything but a remuxed container: playback would
-    // silently restart from the top while `offset` told the UI otherwise.
+    // silently restart from the top while the UI showed the requested offset.
     if (!haveMetadataRef.current) {
       deferredSeekRef.current = t;
       return;
@@ -543,21 +598,23 @@ export const VideoPlayer = forwardRef<
     // Playback has been placed; a start position arriving late (see the
     // effect below `seekRef`) must not move it again.
     appliedStartRef.current = true;
+    const source = v.getAttribute("src") ?? src;
+    const relative = t - streamOffsetOf(source);
     let inSeekable = false;
     for (let i = 0; i < v.seekable.length; i++) {
-      if (t >= v.seekable.start(i) && t <= v.seekable.end(i)) {
+      if (relative >= v.seekable.start(i) && relative <= v.seekable.end(i)) {
         inSeekable = true;
         break;
       }
     }
     if (isFinite(v.duration) && inSeekable) {
-      v.currentTime = t;
+      v.currentTime = relative;
     } else {
       // Stream: re-serve from the specified second.
       lastStreamSeekRef.current = Date.now();
-      setOffset(t);
-      setPosition(t);
-      v.src = withStreamSeek(src, t);
+      const next = withStreamSeek(source, t);
+      setPosition(streamOffsetOf(next));
+      v.src = next;
       v.load();
       void v.play().catch(() => {});
     }
@@ -621,8 +678,10 @@ export const VideoPlayer = forwardRef<
   /** Whether the element can reach `t` on its own, without re-serving. */
   const canSeekNatively = (v: HTMLVideoElement, t: number) => {
     if (!haveMetadataRef.current || !isFinite(v.duration)) return false;
+    const relative = t - streamOffsetOf(v.getAttribute("src"));
     for (let i = 0; i < v.seekable.length; i++) {
-      if (t >= v.seekable.start(i) && t <= v.seekable.end(i)) return true;
+      if (relative >= v.seekable.start(i) && relative <= v.seekable.end(i))
+        return true;
     }
     return false;
   };
@@ -728,6 +787,7 @@ export const VideoPlayer = forwardRef<
         el &&
         (el.tagName === "INPUT" ||
           el.tagName === "TEXTAREA" ||
+          el.tagName === "SELECT" ||
           el.isContentEditable)
       )
         return;
@@ -1013,7 +1073,7 @@ export const VideoPlayer = forwardRef<
         onTimeUpdate={() => {
           const v = ref.current;
           if (!v) return;
-          setPosition(offset + v.currentTime);
+          setPosition(streamOffsetOf(v.getAttribute("src")) + v.currentTime);
           const sample = v.paused ? null : sampleOf(v);
           if (sample) playbackPosition.tick(sample);
         }}
@@ -1027,7 +1087,8 @@ export const VideoPlayer = forwardRef<
           if (!v || target == null) return;
           // The run moved on while this seek was in flight; go where it points
           // now. Landing on the target ends the chain.
-          if (Math.abs(v.currentTime - target) > SEEK_SETTLED_SEC) flushSeek();
+          const reached = streamOffsetOf(v.getAttribute("src")) + v.currentTime;
+          if (Math.abs(reached - target) > SEEK_SETTLED_SEC) flushSeek();
         }}
         onError={() => {
           const v = ref.current;
@@ -1056,7 +1117,7 @@ export const VideoPlayer = forwardRef<
       */}
       {!chromeless && (
         <div
-          className={`absolute inset-x-0 bottom-0 flex flex-col gap-1 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 pb-2 pt-8 text-white transition-opacity ${
+          className={`absolute inset-x-0 bottom-0 flex flex-col gap-1 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 pb-2 pt-8 text-white transition-opacity hover:opacity-100 focus-within:opacity-100 ${
             controlsVisible ? "opacity-100" : "opacity-0"
           } group-hover:opacity-100`}
         >
@@ -1165,6 +1226,28 @@ export const VideoPlayer = forwardRef<
               {total ? fmtTime(total) : "--:--"}
             </span>
             <div className="ml-auto flex items-center gap-1">
+              {audioTracks && audioTracks.length > 1 && (
+                <select
+                  aria-label={t("player.audioTrack")}
+                  title={t("player.audioTrack")}
+                  className="min-w-0 max-w-32 rounded border border-white/30 bg-black/75 px-1 py-1 text-xs text-white"
+                  disabled={!loaded}
+                  value={audioTrack}
+                  onChange={(e) => chooseAudioTrack(Number(e.target.value))}
+                >
+                  {audioTracks.map(({ title, language }, index) => (
+                    <option key={index} value={index}>
+                      {[
+                        t("player.audioTrackNumber", { number: index + 1 }),
+                        title,
+                        language,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </option>
+                  ))}
+                </select>
+              )}
               <div className="group/vol flex items-center">
                 <CtrlButton
                   onClick={toggleMuted}

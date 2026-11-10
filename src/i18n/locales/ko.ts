@@ -437,6 +437,8 @@ export const ko: Record<TranslationKey, string> = {
   "player.unmute": "음소거 해제 (M)",
   "player.fullscreen": "전체화면 (F)",
   "player.volume": "음량",
+  "player.audioTrack": "오디오 트랙",
+  "player.audioTrackNumber": "트랙 {number}",
   "player.seek": "탐색",
   "player.playFailed": "내장 플레이어로 재생할 수 없습니다.",
   "player.openExternal": "외부 플레이어로 열기",

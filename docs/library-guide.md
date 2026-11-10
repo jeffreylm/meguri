@@ -258,3 +258,9 @@ Meguri tone maps ProRes clips tagged as PQ or HLG HDR for the built-in player
 when FFmpeg supports the conversion. This brings bright highlights and wide
 colors into range for a standard display. SDR clips use the regular preview.
 Resolve receives the original HDR file.
+
+For ProRes clips with multiple audio tracks, use **Audio track** beside the
+volume control in the full player. Meguri starts on the first track and keeps
+your place and play or pause state when you switch. This is useful when a clip
+has separate dialogue, music, or alternate mixes. Resolve receives the full
+original with all its audio tracks.

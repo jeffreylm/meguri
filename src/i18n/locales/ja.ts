@@ -443,6 +443,8 @@ export const ja = {
   "player.unmute": "ミュート解除 (M)",
   "player.fullscreen": "全画面 (F)",
   "player.volume": "音量",
+  "player.audioTrack": "音声トラック",
+  "player.audioTrackNumber": "トラック {number}",
   "player.seek": "シーク",
   "player.playFailed": "内蔵プレイヤーで再生できませんでした。",
   "player.openExternal": "外部プレイヤーで開く",
