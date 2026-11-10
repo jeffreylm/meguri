@@ -186,7 +186,23 @@ chip the box draws and the SQL the query produces can never disagree about it.
 tag the user creates. The structured `SearchQuery.tags[]` field still works and
 is what saved searches and Discover URLs carry.
 
-The box itself (`SearchTokenInput`) renders a directive as a **chip** rather than
+Two more directives match a file’s note (`shared/noteSearch.ts`):
+
+- `note:<text>` — the note contains the text, compared after
+  `noteSearchKey()` (NFKC and lowercase for every script, so `note:école`
+  finds `École`). Any
+  length works, since no trigram is involved. Alternatives work as in free
+  text (`note:pexels|pixabay`), and a value with spaces is quoted
+  (`note:"cc0 licence"`). Separate `note:` tokens are ANDed.
+- `has:note` — the file has a note. Any other `has:` value is free text.
+
+Search reads the shared and workspace-local note tables through
+`catalogue_notes`. It scans the notes, then matches their keys to indexed files.
+All `note:` terms are evaluated together by `note_match` so the text is folded
+once per note. Note directives remain editable text in the search box and appear
+as individual conditions in the filter bar.
+
+The box itself (`SearchTokenInput`) renders a `tag:` directive as a **chip** rather than
 as raw text, so it is added and removed as one unit: a directive only means
 anything whole, and backspacing through the middle of one silently turns an exact
 tag match into a substring search. A token becomes a chip once the user closes it

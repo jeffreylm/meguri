@@ -20,6 +20,11 @@ import {
   splitSearchTokens,
   tagIdentityKey,
 } from "../../../shared/tags.js";
+import {
+  isHasNoteToken,
+  noteSearchKey,
+  parseNoteSearchToken,
+} from "../../../shared/noteSearch.js";
 import type {
   FileDetail,
   FileRow,
@@ -66,21 +71,39 @@ function escapeLike(s: string): string {
  *
  *  A token may carry alternatives (`yoga|ヨガ`, see searchTokenTerms), any of
  *  which satisfies it. Each token becomes one `anyOf` group — a plain token is
- *  a group of one — split by whether each term can use the trigram index. */
+ *  a group of one — split by whether each term can use the trigram index.
+ *
+ *  `note:` and `has:note` (shared/noteSearch.ts) are pulled out too: the note
+ *  is not in the index, so they become conditions on the note store. A `note:`
+ *  value may carry alternatives the same way (`note:pexels|pixabay`). */
 function buildSearchTerms(q: string): {
   /** Plain tokens long enough for the index, as one ANDed MATCH expression. */
   match: string | null;
   /** Everything else: per token, a MATCH expression and/or LIKE terms, ORed. */
   anyOf: { match: string | null; likes: string[] }[];
   tagTokens: string[];
+  /** Per `note:` token, the folded texts any of which the note must contain. */
+  noteTerms: string[][];
+  hasNote: boolean;
 } {
   const matchTokens: string[] = [];
   const anyOf: { match: string | null; likes: string[] }[] = [];
   const tagTokens: string[] = [];
+  const noteTerms: string[][] = [];
+  let hasNote = false;
   for (const raw of splitSearchTokens(q)) {
     const tag = parseTagSearchToken(raw);
     if (tag) {
       tagTokens.push(tag);
+      continue;
+    }
+    if (isHasNoteToken(raw)) {
+      hasNote = true;
+      continue;
+    }
+    const note = parseNoteSearchToken(raw);
+    if (note) {
+      noteTerms.push(searchTokenTerms(note).map(noteSearchKey));
       continue;
     }
     const terms = searchTokenTerms(raw);
@@ -96,6 +119,8 @@ function buildSearchTerms(q: string): {
     match: matchTokens.length ? matchTokens.join(" ") : null,
     anyOf,
     tagTokens,
+    noteTerms,
+    hasNote,
   };
 }
 
@@ -196,7 +221,7 @@ export function appendSearchConditions(
     sql = appendSearchConditions(db, sql, args, clause, sep);
   const terms = query.q
     ? buildSearchTerms(query.q)
-    : { match: null, anyOf: [], tagTokens: [] };
+    : { match: null, anyOf: [], tagTokens: [], noteTerms: [], hasNote: false };
   if (terms.match) {
     sql += " AND f.id IN (SELECT rowid FROM files_fts WHERE files_fts MATCH ?)";
     args.push(terms.match);
@@ -245,6 +270,16 @@ export function appendSearchConditions(
     sql +=
       " AND EXISTS (SELECT 1 FROM meta_tags mt WHERE mt.meta_key = f.meta_key AND mt.tag_id IN (SELECT value FROM json_each(?)))";
     args.push(JSON.stringify(ids));
+  }
+  // Start from the note rows, rather than looking up a note for every file.
+  // Each note is folded once, even when there are several note: tokens.
+  if (terms.noteTerms.length > 0) {
+    sql +=
+      " AND f.meta_key IN (SELECT meta_key FROM catalogue_notes WHERE note_match(note, ?))";
+    args.push(JSON.stringify(terms.noteTerms));
+  } else if (terms.hasNote) {
+    sql +=
+      " AND f.meta_key IN (SELECT meta_key FROM catalogue_notes)";
   }
   if (query.folder) {
     const cond = folderCondition(

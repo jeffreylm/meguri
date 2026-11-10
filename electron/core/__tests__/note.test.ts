@@ -6,6 +6,7 @@ import { openDb, openDbReadonly, type DB } from "../db.js";
 import {
   fileDetail,
   migrateMetaKey,
+  searchFiles,
   setNote,
   setRating,
   upsertScanRoot,
@@ -156,6 +157,7 @@ describe("notes across workspaces", () => {
       setNote(first, clipA, "Shared credit");
       expect(fileDetail(second, clipB)?.note).toBe("Shared credit");
       expect(noteRow(reader, "h")?.note).toBe("Shared credit");
+      expect(searchFiles(reader, { q: "note:credit" }).items.map(row => row.id)).toEqual([clipB]);
       setNote(first, pendingA, "From the first folder");
       expect(fileDetail(second, pendingB)?.note).toBeNull();
       migrateMetaKey(first, `p:${rootA}:pending.mp4`, "h");

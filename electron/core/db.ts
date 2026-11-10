@@ -2,6 +2,7 @@
 import Database from "better-sqlite3";
 import { tagIdentityKey } from "../../shared/tags.js";
 import { readAudioMetadata } from "../../shared/audioMetadata.js";
+import { noteMatches } from "../../shared/noteSearch.js";
 
 export type DB = Database.Database;
 
@@ -32,14 +33,26 @@ function openNotes(db: DB, notesPath?: string, readonly = false): void {
 
 /**
  * Make tagIdentityKey callable from SQL as `tag_key(name)`, so a query matches
- * tag names by the same rule as the code around it. SQLite's own `lower()` and
- * NOCASE stop at ASCII. Connection-local: every handle that runs those queries
- * registers it, and nothing in the schema depends on it, so the file still
- * opens anywhere else.
+ * tag names by the same rule as the code around it, and noteMatches as
+ * `note_match(note, groupsJson)` for the `note:` search. SQLite's own
+ * `lower()` and NOCASE stop at ASCII. Connection-local: every handle that runs
+ * those queries registers it, and nothing in the schema depends on it, so the
+ * file still opens anywhere else.
  */
 function registerFunctions(db: DB): void {
   db.function("tag_key", { deterministic: true }, (name: unknown) =>
     typeof name === "string" ? tagIdentityKey(name) : name,
+  );
+  // One call per note however many `note:` tokens and alternatives a query
+  // has, returning only a flag: folding a long note is the cost, so it is
+  // done once, and no folded copy is handed back to SQLite.
+  db.function(
+    "note_match",
+    { deterministic: true },
+    (note: unknown, groups: unknown) =>
+      typeof note === "string" && typeof groups === "string"
+        ? Number(noteMatches(note, JSON.parse(groups) as string[][]))
+        : 0,
   );
 }
 
