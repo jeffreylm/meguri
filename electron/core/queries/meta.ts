@@ -276,6 +276,12 @@ export function pruneOrphanMeta(db: DB): void {
       "DELETE FROM pexels_sources WHERE meta_key NOT IN (SELECT meta_key FROM files)",
     );
     db.exec(
+      "DELETE FROM audio_artwork WHERE meta_key NOT IN (SELECT meta_key FROM files)",
+    );
+    db.exec(
+      "DELETE FROM audio_artwork_images WHERE image_hash NOT IN (SELECT image_hash FROM audio_artwork)",
+    );
+    db.exec(
       "DELETE FROM meta_tags WHERE meta_key NOT IN (SELECT meta_key FROM files)",
     );
     db.exec(

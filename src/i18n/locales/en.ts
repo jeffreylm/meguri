@@ -272,6 +272,22 @@ export const en: Record<TranslationKey, string> = {
   "home.addFromSidebar": "You can also add or switch from the left sidebar.",
   "home.scanWithDeleted": "Resync including deleted items",
   "home.rebuildIndex": "Rebuild index",
+  "home.importAudioArtwork": "Import audio covers",
+  "home.audioArtworkImported":
+    "Audio covers matched: {matched}. Skipped: {skipped}.",
+  "home.audioArtworkImportFailed": "Could not import audio covers.",
+  "home.artlistSignIn": "Open Artlist sign-in",
+  "home.artlistFind": "Find Artlist covers",
+  "home.artlistStop": "Stop Artlist matching",
+  "home.artlistSignInHint":
+    "Sign in in the Artlist window, then return here and choose Find Artlist covers.",
+  "home.artlistFinding": "Matching your Artlist download history…",
+  "home.artlistResult":
+    "Added {added} covers. {remaining} tracks still need covers, including {ambiguous} with multiple matches.",
+  "home.artlistPartial":
+    "Artlist stopped loading older downloads. Added {added} covers from the entries it showed.",
+  "home.artlistStopped": "Matching stopped. Added {added} covers.",
+  "home.artlistError": "Could not find Artlist covers.",
   "home.rebuildConfirm":
     "Discard the file list and thumbnails and rescan from scratch. Favorites, ratings, tags, and play history are preserved, but files you removed from the index will reappear. Continue?",
   "home.scanComplete": "Scan complete",

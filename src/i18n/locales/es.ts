@@ -276,6 +276,24 @@ export const es: Record<TranslationKey, string> = {
     "También puedes añadir o cambiar desde la barra lateral izquierda.",
   "home.scanWithDeleted": "Resincronizar incluyendo elementos eliminados",
   "home.rebuildIndex": "Reconstruir índice",
+  "home.importAudioArtwork": "Importar portadas de audio",
+  "home.audioArtworkImported":
+    "Portadas de audio asociadas: {matched}. Omitidas: {skipped}.",
+  "home.audioArtworkImportFailed":
+    "No se pudieron importar las portadas de audio.",
+  "home.artlistSignIn": "Abrir el inicio de sesión de Artlist",
+  "home.artlistFind": "Buscar portadas de Artlist",
+  "home.artlistStop": "Detener la búsqueda de Artlist",
+  "home.artlistSignInHint":
+    "Inicia sesión en la ventana de Artlist, vuelve aquí y elige Buscar portadas de Artlist.",
+  "home.artlistFinding":
+    "Buscando coincidencias en tu historial de descargas de Artlist…",
+  "home.artlistResult":
+    "Se añadieron {added} portadas. Quedan {remaining} pistas sin portada, incluidas {ambiguous} con varias coincidencias.",
+  "home.artlistPartial":
+    "Artlist dejó de cargar descargas anteriores. Se añadieron {added} portadas de las entradas que mostró.",
+  "home.artlistStopped": "Búsqueda detenida. Se añadieron {added} portadas.",
+  "home.artlistError": "No se pudieron buscar portadas de Artlist.",
   "home.rebuildConfirm":
     "Descarta la lista de archivos y las miniaturas y vuelve a escanear desde cero. Se conservan los favoritos, las valoraciones, las etiquetas y el historial de reproducción, pero los archivos que quitaste del índice volverán a aparecer. ¿Continuar?",
   "home.scanComplete": "Escaneo completado",

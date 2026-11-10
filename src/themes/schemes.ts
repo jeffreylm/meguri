@@ -1,9 +1,61 @@
 // Bundled base16 schemes. Each family has a light/dark pair.
 // To add a new theme, just add one family (one light and one dark entry each).
-// The palettes are the standard values from base16 (chriskempson).
+// Palettes use the base16 slot order (chriskempson).
 import type { Base16Scheme } from "./base16";
 
 export const SCHEMES: Base16Scheme[] = [
+  // --- Dark Studio ---
+  {
+    id: "dark-studio",
+    name: "Dark Studio",
+    family: "studio",
+    familyName: "Dark Studio",
+    appearance: "dark",
+    palette: [
+      "#202020",
+      "#272727",
+      "#343434",
+      "#9c9c9c",
+      "#b4b4b4",
+      "#d9d9d9",
+      "#f1f1f1",
+      "#ffffff",
+      "#f88c99",
+      "#d99d58",
+      "#e2b96b",
+      "#7dba7f",
+      "#6fa3ce",
+      "#fa5b4a",
+      "#b897d2",
+      "#cb9474",
+    ],
+  },
+  {
+    id: "studio-light",
+    name: "Studio Light",
+    family: "studio",
+    familyName: "Dark Studio",
+    appearance: "light",
+    palette: [
+      "#f5f5f5",
+      "#ebebeb",
+      "#dadada",
+      "#666666",
+      "#505050",
+      "#252525",
+      "#191919",
+      "#101010",
+      "#a82940",
+      "#925216",
+      "#826121",
+      "#33683b",
+      "#205c89",
+      "#a73529",
+      "#624981",
+      "#815139",
+    ],
+  },
+
   // --- Gruvbox ---
   {
     id: "gruvbox-dark",

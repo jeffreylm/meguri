@@ -145,6 +145,16 @@ CREATE TABLE IF NOT EXISTS pexels_sources (
   url TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS audio_artwork_images (
+  image_hash TEXT PRIMARY KEY,
+  png BLOB NOT NULL
+);
+CREATE TABLE IF NOT EXISTS audio_artwork (
+  meta_key TEXT PRIMARY KEY,
+  image_hash TEXT NOT NULL REFERENCES audio_artwork_images(image_hash)
+);
+CREATE INDEX IF NOT EXISTS idx_audio_artwork_image ON audio_artwork(image_hash);
+
 CREATE TABLE IF NOT EXISTS meta_tags (
   meta_key TEXT NOT NULL,
   tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,

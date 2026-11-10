@@ -8,13 +8,24 @@ The left rail shows Meguri's version and build ID below the settings cog. Both
 also appear in **Settings → App → About**, where you can select and copy them
 when reporting an issue.
 
+- [Choose the Dark Studio theme](#choose-the-dark-studio-theme)
 - [Make a Smart bin](#make-a-smart-bin)
 - [Find new downloads](#find-new-downloads)
 - [Recover Pexels source links](#recover-pexels-source-links)
 - [Find audio by its properties](#find-audio-by-its-properties)
+- [Import audio covers](#import-audio-covers)
+- [Find Artlist covers](#find-artlist-covers)
 - [Understand empty results and paused filters](#understand-empty-results-and-paused-filters)
 - [Scrub and review footage](#scrub-and-review-footage)
 - [Open a separate player window](#open-a-separate-player-window)
+
+## Choose the Dark Studio theme
+
+Open **Settings → General**, set **Appearance** to **Dark**, then choose
+**Dark Studio** under **Theme**. The palette takes its charcoal panels and red
+selection accents from the DaVinci Resolve Color page, with brighter text for
+Meguri’s filters and labels. The appearance button in the toolbar switches to
+the theme’s neutral light variant.
 
 ## Make a Smart bin
 
@@ -168,6 +179,55 @@ an example; the following three entries represent the same duration:
 Use a colon for `MM:SS`; the seconds part must be `00`–`59`. Changing format keeps
 the duration value. An invalid entry or a minimum above the maximum needs to be
 corrected before saving the bin.
+
+## Import audio covers
+
+In a scanned workspace, open the arrow beside **Scan** and choose **Import audio
+covers**. Select a cover list prepared for that workspace. The list matches exact
+paths within the workspace and checks each track's duration within one second.
+Meguri shows how many tracks matched and how many it skipped. Tracks with
+embedded artwork keep their existing cover.
+
+Covers appear on audio thumbnails and in the player. Meguri stores the images
+in its catalogue and keeps them through scans and index rebuilds. The audio
+files stay untouched. One image can cover multiple tracks on the same album.
+Once imported, the images work offline.
+
+A cover list is a JSON file next to its JPEG or PNG images. Each album has an
+image filename and its verified tracks. Paths are relative to the scanned
+workspace, including the file extension.
+
+```json
+{
+  "version": 1,
+  "albums": [
+    {
+      "image": "album-cover.jpg",
+      "tracks": [{ "path": "Artist - Track.wav", "durationSeconds": 155 }]
+    }
+  ]
+}
+```
+
+## Find Artlist covers
+
+1. Open the workspace that contains your Artlist music. In the menu beside
+   **Scan**, choose **Open Artlist sign-in**.
+2. Sign in to Artlist in the window Meguri opens. On **Downloads → Songs**,
+   choose **All Time** to include older downloads.
+3. Return to your workspace and choose **Find Artlist covers** from the same
+   menu. Meguri reads the song history in that window, verifies the track and
+   artist names against your local filenames, and checks the duration and version.
+
+Meguri adds the square album covers for confirmed matches. It keeps existing
+covers and leaves tracks with multiple possible matches for review. The result
+shows how many covers it added and how many tracks still need artwork.
+Choose **Stop Artlist matching** or close the Artlist window to stop the search.
+Any covers already applied stay in your catalogue.
+
+The Artlist window keeps its sign-in for the current Meguri session. The search
+reads song details and fetches album images. It stores the confirmed covers
+locally so they remain visible when Artlist is closed or you're offline.
 
 ## Understand empty results and paused filters
 

@@ -277,6 +277,23 @@ export const fr: Record<TranslationKey, string> = {
     "Vous pouvez aussi ajouter ou changer depuis la barre latérale gauche.",
   "home.scanWithDeleted": "Resynchroniser en incluant les éléments supprimés",
   "home.rebuildIndex": "Reconstruire l’index",
+  "home.importAudioArtwork": "Importer des pochettes audio",
+  "home.audioArtworkImported":
+    "Pochettes audio associées : {matched}. Ignorées : {skipped}.",
+  "home.audioArtworkImportFailed": "Impossible d’importer les pochettes audio.",
+  "home.artlistSignIn": "Ouvrir la connexion à Artlist",
+  "home.artlistFind": "Trouver les pochettes Artlist",
+  "home.artlistStop": "Arrêter la recherche Artlist",
+  "home.artlistSignInHint":
+    "Connectez-vous dans la fenêtre Artlist, revenez ici et choisissez Trouver les pochettes Artlist.",
+  "home.artlistFinding":
+    "Recherche de correspondances dans votre historique Artlist…",
+  "home.artlistResult":
+    "{added} pochettes ajoutées. {remaining} pistes restent sans pochette, dont {ambiguous} avec plusieurs correspondances.",
+  "home.artlistPartial":
+    "Artlist a cessé de charger les anciens téléchargements. {added} pochettes ont été ajoutées à partir des entrées affichées.",
+  "home.artlistStopped": "Recherche arrêtée. {added} pochettes ajoutées.",
+  "home.artlistError": "Impossible de trouver les pochettes Artlist.",
   "home.rebuildConfirm":
     "Supprime la liste des fichiers et les miniatures, puis relance une analyse complète. Les favoris, les notes, les tags et l’historique de lecture sont conservés, mais les fichiers que vous avez retirés de l’index réapparaîtront. Continuer ?",
   "home.scanComplete": "Analyse terminée",

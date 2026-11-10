@@ -3,6 +3,7 @@
 // means adding a handle() to the matching group here (see docs/architecture.md).
 import type { IpcContext } from "./context.js";
 import { registerActivityHandlers } from "./activity.js";
+import { registerArtlistArtworkHandlers } from "./artlistArtwork.js";
 import { registerAutoTagHandlers } from "./autoTag.js";
 import { registerBookmarkHandlers } from "./bookmarks.js";
 import { registerFileHandlers } from "./files.js";
@@ -35,6 +36,7 @@ export function registerIpc(ctx: IpcContext): void {
   registerAutoTagHandlers(ctx);
   registerBookmarkHandlers(ctx);
   registerThumbHandlers(ctx);
+  registerArtlistArtworkHandlers(ctx);
   registerShellHandlers(ctx);
   registerUpdateHandlers();
   registerLogoHandlers(ctx);

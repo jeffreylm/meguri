@@ -252,6 +252,22 @@ export const zhCN: Record<TranslationKey, string> = {
   "home.addFromSidebar": "你也可以从左侧边栏添加或切换。",
   "home.scanWithDeleted": "重新同步（包含已删除项）",
   "home.rebuildIndex": "重建索引",
+  "home.importAudioArtwork": "导入音频封面",
+  "home.audioArtworkImported":
+    "已匹配 {matched} 个音频封面，已跳过 {skipped} 个。",
+  "home.audioArtworkImportFailed": "无法导入音频封面。",
+  "home.artlistSignIn": "打开 Artlist 登录窗口",
+  "home.artlistFind": "查找 Artlist 封面",
+  "home.artlistStop": "停止 Artlist 匹配",
+  "home.artlistSignInHint":
+    "请在 Artlist 窗口登录，然后返回此处选择“查找 Artlist 封面”。",
+  "home.artlistFinding": "正在匹配您的 Artlist 下载记录…",
+  "home.artlistResult":
+    "已添加 {added} 个封面。还有 {remaining} 首曲目缺少封面，其中 {ambiguous} 首有多个匹配结果。",
+  "home.artlistPartial":
+    "Artlist 停止加载较早的下载记录。已从显示的记录中添加 {added} 个封面。",
+  "home.artlistStopped": "已停止匹配。添加了 {added} 个封面。",
+  "home.artlistError": "无法查找 Artlist 封面。",
   "home.rebuildConfirm":
     "丢弃文件列表和缩略图并从头重新扫描。收藏、评分、标签和播放记录将会保留，但已从索引中删除的文件将重新出现。是否继续？",
   "home.scanComplete": "扫描完成",

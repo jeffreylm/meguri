@@ -2,15 +2,43 @@ import { app, dialog } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { handle } from "../core/ipcHandler.js";
+import { importAudioArtwork } from "../core/audioArtwork.js";
 import { exportFrame, generateThumb } from "../core/media.js";
 import { withVideoDecodeSlot } from "../core/mediaConcurrency.js";
 import { isInsideRoot } from "../core/paths.js";
 import * as q from "../core/queries.js";
 import type { IpcContext } from "./context.js";
+import { normalizeCoverImage } from "./coverImage.js";
 import { coreById, ensureFileInsideRoot } from "./helpers.js";
 
 export function registerThumbHandlers(ctx: IpcContext): void {
   const { ws, emit } = ctx;
+
+  let artworkImportInFlight = false;
+  handle("audio_artwork_import", async ({ workspaceId }) => {
+    if (artworkImportInFlight) return null;
+    artworkImportInFlight = true;
+    try {
+      const result = await dialog.showOpenDialog(
+        ctx.mainWindow() ?? undefined!,
+        {
+          title: "Import audio covers",
+          properties: ["openFile"],
+          filters: [{ name: "Cover import", extensions: ["json"] }],
+        },
+      );
+      if (result.canceled || !result.filePaths[0]) return null;
+      const { fileIds, matched, skipped } = await importAudioArtwork(
+        coreById(ws, workspaceId).db,
+        result.filePaths[0],
+        normalizeCoverImage,
+      );
+      for (const id of fileIds) emit("thumb:done", { id, workspaceId });
+      return { matched, skipped };
+    } finally {
+      artworkImportInFlight = false;
+    }
+  });
 
   // Custom main thumbnail: regenerate the on-disk WebP from the given offset (video only).
   // Passing sec=null reverts to the auto-extracted frame.

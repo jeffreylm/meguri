@@ -6,6 +6,8 @@ import {
   FolderOpen,
   FolderTree,
   History,
+  ImagePlus,
+  Search,
   LayoutGrid,
   List,
   Waypoints,
@@ -61,6 +63,10 @@ export function HomeHeader({
   onScan,
   onScanWithDeleted,
   onRebuild,
+  onImportAudioArtwork,
+  onOpenArtlistArtwork,
+  onFindArtlistArtwork,
+  artlistArtworkRunning,
   t,
 }: {
   root: string | null | undefined;
@@ -83,6 +89,10 @@ export function HomeHeader({
   onScan: () => void;
   onScanWithDeleted: () => void;
   onRebuild: () => void;
+  onImportAudioArtwork: () => void;
+  onOpenArtlistArtwork: () => void;
+  onFindArtlistArtwork: () => void;
+  artlistArtworkRunning: boolean;
   t: TFunc;
 }) {
   return (
@@ -293,6 +303,35 @@ export function HomeHeader({
                   <DatabaseBackup />
                   {t("home.rebuildIndex")}
                 </DropdownMenuItem>
+                {workspace && (
+                  <>
+                    <DropdownMenuSeparator className="mx-0 my-0 bg-muted/35" />
+                    <DropdownMenuItem
+                      className="rounded-none px-3 py-2 text-xs"
+                      onSelect={onOpenArtlistArtwork}
+                    >
+                      {t("home.artlistSignIn")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="rounded-none px-3 py-2 text-xs"
+                      onSelect={onFindArtlistArtwork}
+                    >
+                      <Search />
+                      {t(
+                        artlistArtworkRunning
+                          ? "home.artlistStop"
+                          : "home.artlistFind",
+                      )}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="rounded-none px-3 py-2 text-xs"
+                      onSelect={onImportAudioArtwork}
+                    >
+                      <ImagePlus />
+                      {t("home.importAudioArtwork")}
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -695,6 +695,64 @@ export default function Home() {
     if (ok) void onScan(false, true);
   };
 
+  const onImportAudioArtwork = async () => {
+    if (!activeWorkspace) return;
+    try {
+      const result = await api.audioArtworkImport(activeWorkspace.id);
+      if (result) {
+        toast(t("home.audioArtworkImported", result));
+        void search.refetch();
+      }
+    } catch (error) {
+      toast.error(t("home.audioArtworkImportFailed"), {
+        description: error instanceof Error ? error.message : String(error),
+      });
+    }
+  };
+
+  const [artlistArtworkRunning, setArtlistArtworkRunning] = useState(false);
+  const onOpenArtlistArtwork = async () => {
+    try {
+      await api.artlistArtworkOpen();
+      toast(t("home.artlistSignInHint"));
+    } catch (error) {
+      toast.error(t("home.artlistError"), {
+        description: error instanceof Error ? error.message : String(error),
+      });
+    }
+  };
+  const onFindArtlistArtwork = async () => {
+    if (!activeWorkspace) return;
+    if (artlistArtworkRunning) {
+      await api.artlistArtworkCancel();
+      return;
+    }
+    setArtlistArtworkRunning(true);
+    const id = toast.loading(t("home.artlistFinding"));
+    try {
+      const result = await api.artlistArtworkFind(activeWorkspace.id);
+      if (result?.status === "sign-in") {
+        toast.info(t("home.artlistSignInHint"), { id });
+      } else if (result?.status === "stopped") {
+        toast.info(t("home.artlistStopped", { added: result.added }), { id });
+      } else if (result?.status === "partial") {
+        toast.warning(t("home.artlistPartial", result), { id });
+      } else if (result?.status === "done") {
+        toast.success(t("home.artlistResult", result), { id });
+      } else {
+        toast.dismiss(id);
+      }
+    } catch (error) {
+      toast.error(t("home.artlistError"), {
+        id,
+        description: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setArtlistArtworkRunning(false);
+      void search.refetch();
+    }
+  };
+
   const focusSearch = useCallback(() => {
     const input = document.getElementById(
       "list-search-input",
@@ -989,6 +1047,10 @@ export default function Home() {
           onScan={() => void onScan()}
           onScanWithDeleted={() => void onScan(true)}
           onRebuild={() => void onRebuild()}
+          onImportAudioArtwork={() => void onImportAudioArtwork()}
+          onOpenArtlistArtwork={() => void onOpenArtlistArtwork()}
+          onFindArtlistArtwork={() => void onFindArtlistArtwork()}
+          artlistArtworkRunning={artlistArtworkRunning}
           t={t}
         />
 

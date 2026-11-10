@@ -39,6 +39,7 @@ import {
 import { Workspaces } from "./core/workspaces.js";
 import { PositionWriter } from "./core/positionWriter.js";
 import { registerIpc } from "./ipc/index.js";
+import { isArtlistContents } from "./ipc/artlistArtwork.js";
 import { ScanManager } from "./scanManager.js";
 import { AutoTagWorkerClient } from "./core/autoTagDeriver.js";
 import { WorkspacePasses } from "./core/workspacePasses.js";
@@ -299,6 +300,8 @@ app.on("child-process-gone", (_e, details) => {
 });
 
 app.on("web-contents-created", (_e, contents) => {
+  // The isolated Artlist window installs its own remote navigation policy.
+  if (isArtlistContents(contents)) return;
   contents.setWindowOpenHandler(() => ({ action: "deny" }));
   contents.on("will-navigate", (event, url) => {
     if (isAppUrl(url)) return;

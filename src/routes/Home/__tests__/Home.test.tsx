@@ -46,6 +46,7 @@ const mocks = vi.hoisted(() => ({
   fileSetRating: vi.fn(),
   fileRecordPlay: vi.fn(),
   scanStart: vi.fn(),
+  artlistArtworkFind: vi.fn<(ws: string) => Promise<unknown>>(),
   workspaceStats: vi.fn(),
   foldersList: vi.fn<(ws: string, path: string) => Promise<unknown>>(),
   folderFiles: vi.fn<(ws: string, paths: string[]) => Promise<unknown>>(),
@@ -59,6 +60,7 @@ const mocks = vi.hoisted(() => ({
 const toasts = vi.hoisted(() => ({
   error: vi.fn(),
   info: vi.fn(),
+  loading: vi.fn(),
   success: vi.fn(),
 }));
 vi.mock("sonner", () => ({
@@ -84,6 +86,7 @@ vi.mock("@/ipc/client", () => ({
     fileSetRating: (...args: unknown[]) => mocks.fileSetRating(...args),
     fileRecordPlay: (...args: unknown[]) => mocks.fileRecordPlay(...args),
     scanStart: (...args: unknown[]) => mocks.scanStart(...args),
+    artlistArtworkFind: (ws: string) => mocks.artlistArtworkFind(ws),
     workspaceStats: () => mocks.workspaceStats(),
     foldersList: (ws: string, path: string) => mocks.foldersList(ws, path),
     folderFiles: (ws: string, paths: string[]) => mocks.folderFiles(ws, paths),
@@ -184,6 +187,33 @@ describe("Home + MediaDetail integration", () => {
       expect(screen.getByRole("heading", { name: "sample.mp4" })).toBeTruthy();
     });
     expect(mocks.fileGet).toHaveBeenCalledWith(1, WS_ID);
+  });
+
+  it("replaces the Artlist loading notification when matching completes", async () => {
+    toasts.loading.mockReturnValue("artlist-progress");
+    mocks.artlistArtworkFind.mockResolvedValue({
+      status: "done",
+      added: 3,
+      remaining: 2,
+      ambiguous: 0,
+    });
+    renderWithProviders(<AppRoutes />);
+    const scanMenu = await screen.findByRole("button", {
+      name: "Scan",
+      expanded: false,
+    });
+    fireEvent.keyDown(scanMenu, { key: "Enter" });
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "Find Artlist covers" }),
+    );
+
+    await waitFor(() =>
+      expect(toasts.success).toHaveBeenCalledWith(
+        "Added 3 covers. 2 tracks still need covers, including 0 with multiple matches.",
+        { id: "artlist-progress" },
+      ),
+    );
+    expect(mocks.artlistArtworkFind).toHaveBeenCalledWith(WS_ID);
   });
 
   it("toggles favorite from MediaDetail and patches react-query caches", async () => {
