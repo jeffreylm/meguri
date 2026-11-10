@@ -465,7 +465,7 @@ export const en: Record<TranslationKey, string> = {
   "player.audioTrackDefault": "Default",
   "player.audioTrackUnavailable":
     "This audio track could not play. Restored the previous track.",
-  "player.subtitles": "Subtitles",
+  "player.subtitles": "Subtitle track",
   "player.subtitleAuto": "Match audio language",
   "player.subtitleOff": "Off",
   "player.subtitleUnavailable": "This subtitle track could not be loaded.",

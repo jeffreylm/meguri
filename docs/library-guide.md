@@ -327,7 +327,7 @@ that clip across restarts. Resolve receives the original with all its tracks.
 
 ### Fullscreen subtitles
 
-Open fullscreen and use **Subtitles** to select an embedded text track.
+Open fullscreen and use **Subtitle track** to select an embedded text track.
 **Match audio language** looks for a matching subtitle when the audio language
 is known. Choose a specific track or **Off** to override that match for the clip.
 Your audio and subtitle choices are saved independently. Captions appear in

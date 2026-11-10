@@ -1350,77 +1350,81 @@ export const VideoPlayer = forwardRef<
               {total ? fmtTime(total) : "--:--"}
             </span>
             <div className="ml-auto flex items-center gap-1">
+              {audioTracks && audioTracks.length > 1 && (
+                <label className="flex min-w-0 flex-col gap-0.5 text-xs font-medium">
+                  <span>{t("player.audioTrack")}</span>
+                  <select
+                    title={t("player.audioTrack")}
+                    className="min-w-0 max-w-32 rounded border border-white/30 bg-black/75 px-1 py-1 text-xs text-white"
+                    disabled={!loaded}
+                    value={audioTrack}
+                    onChange={(e) => chooseAudioTrack(Number(e.target.value))}
+                  >
+                    <option value={DEFAULT_AUDIO_TRACK}>
+                      {t("player.audioTrackDefault")}
+                    </option>
+                    {audioTracks.map(({ title, language }, index) => (
+                      <option key={index} value={index}>
+                        {[
+                          t("player.audioTrackNumber", { number: index + 1 }),
+                          title,
+                          language,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               {showSubtitles &&
                 subtitleTracks?.some((track) =>
                   isTextSubtitle(track.codec),
                 ) && (
-                  <select
-                    aria-label={t("player.subtitles")}
-                    title={t("player.subtitles")}
-                    className="min-w-0 max-w-32 rounded border border-white/30 bg-black/75 px-1 py-1 text-xs text-white"
-                    value={
-                      subtitle >= 0 &&
-                      !isTextSubtitle(subtitleTracks[subtitle]?.codec ?? "")
-                        ? SUBTITLES_OFF
-                        : subtitle
-                    }
-                    onChange={(e) => {
-                      const choice = Number(e.target.value);
-                      setSubtitle(choice);
-                      savePlaybackPreference(preferenceKey, {
-                        subtitle: choice,
-                      });
-                    }}
-                  >
-                    <option value={AUTO_SUBTITLE}>
-                      {t("player.subtitleAuto")}
-                    </option>
-                    <option value={SUBTITLES_OFF}>
-                      {t("player.subtitleOff")}
-                    </option>
-                    {subtitleTracks.map(
-                      ({ title, language, codec }, index) =>
-                        isTextSubtitle(codec) && (
-                          <option key={index} value={index}>
-                            {[
-                              t("player.audioTrackNumber", {
-                                number: index + 1,
-                              }),
-                              title,
-                              language,
-                            ]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          </option>
-                        ),
-                    )}
-                  </select>
+                  <label className="flex min-w-0 flex-col gap-0.5 text-xs font-medium">
+                    <span>{t("player.subtitles")}</span>
+                    <select
+                      title={t("player.subtitles")}
+                      className="min-w-0 max-w-32 rounded border border-white/30 bg-black/75 px-1 py-1 text-xs text-white"
+                      value={
+                        subtitle >= 0 &&
+                        !isTextSubtitle(subtitleTracks[subtitle]?.codec ?? "")
+                          ? SUBTITLES_OFF
+                          : subtitle
+                      }
+                      onChange={(e) => {
+                        const choice = Number(e.target.value);
+                        setSubtitle(choice);
+                        savePlaybackPreference(preferenceKey, {
+                          subtitle: choice,
+                        });
+                      }}
+                    >
+                      <option value={AUTO_SUBTITLE}>
+                        {t("player.subtitleAuto")}
+                      </option>
+                      <option value={SUBTITLES_OFF}>
+                        {t("player.subtitleOff")}
+                      </option>
+                      {subtitleTracks.map(
+                        ({ title, language, codec }, index) =>
+                          isTextSubtitle(codec) && (
+                            <option key={index} value={index}>
+                              {[
+                                t("player.audioTrackNumber", {
+                                  number: index + 1,
+                                }),
+                                title,
+                                language,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </option>
+                          ),
+                      )}
+                    </select>
+                  </label>
                 )}
-              {audioTracks && audioTracks.length > 1 && (
-                <select
-                  aria-label={t("player.audioTrack")}
-                  title={t("player.audioTrack")}
-                  className="min-w-0 max-w-32 rounded border border-white/30 bg-black/75 px-1 py-1 text-xs text-white"
-                  disabled={!loaded}
-                  value={audioTrack}
-                  onChange={(e) => chooseAudioTrack(Number(e.target.value))}
-                >
-                  <option value={DEFAULT_AUDIO_TRACK}>
-                    {t("player.audioTrackDefault")}
-                  </option>
-                  {audioTracks.map(({ title, language }, index) => (
-                    <option key={index} value={index}>
-                      {[
-                        t("player.audioTrackNumber", { number: index + 1 }),
-                        title,
-                        language,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </option>
-                  ))}
-                </select>
-              )}
               <div className="group/vol flex items-center">
                 <CtrlButton
                   onClick={toggleMuted}
