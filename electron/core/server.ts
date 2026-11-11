@@ -2,9 +2,10 @@
 //
 // Policy: Chromium's <video> can play MP4(H.264)/WebM etc. with Range seeking
 // (even with non-faststart where moov is at the end, it can read it via a Range request to the tail).
-// So these are served as raw files via Range to enable full seeking. Only containers Chromium
+// Directly playable files use Range for full seeking. Containers Chromium
 // cannot demux (mkv/avi/wmv/flv/ts) are remuxed on the fly to fragmented MP4 with ffmpeg
-// and served. Dolby Digital audio is converted to AAC in the preview. ProRes
+// and served. Dolby Digital audio is converted to AAC in the preview, including
+// when it is the default track of a directly playable MP4, M4V or MOV. ProRes
 // also needs a compatible H.264 picture instead of stream copy.
 // Both streams support time seeking via ?t=<seconds>.
 //
@@ -17,6 +18,7 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { spawn, type ChildProcess } from "node:child_process";
+import { canHaveDirectDolby, directDolbyTracks } from "./dolbyAudio.js";
 import type { Core } from "./index.js";
 import { getFilmPoster } from "./queries/filmMetadata.js";
 import { thumbPathIfDone } from "./tags.js";
@@ -361,6 +363,35 @@ async function handle(
     if (res.destroyed || res.writableEnded) return;
     const proResPreview =
       file.kind === "video" && (file.codec ?? probed?.codec) === "prores";
+    const parsed = startT != null ? Number(startT) : NaN;
+    const start = Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+    // Chromium can show the picture from an MP4/MOV while silently dropping
+    // Dolby audio. Copy the primary video and convert only its default audio.
+    if (
+      !proResPreview &&
+      file.kind === "video" &&
+      canHaveDirectDolby(ext(abs))
+    ) {
+      const row = core.db
+        .prepare("SELECT meta FROM files WHERE id = ?")
+        .get(id) as { meta: string | null } | undefined;
+      const metadata =
+        row?.meta ??
+        probed?.raw ??
+        (file.codec != null
+          ? (await probeUnindexedVideo(abs, res))?.raw
+          : null);
+      if (res.destroyed || res.writableEnded) return;
+      const track = directDolbyTracks(metadata);
+      if (track) {
+        if (req.method === "HEAD") {
+          res.writeHead(200, { "Content-Type": "video/mp4" }).end();
+          return;
+        }
+        serveRemux(res, abs, start, "aac", track);
+        return;
+      }
+    }
     if (proResPreview || REMUX_CONTAINERS.has(ext(abs))) {
       const requested = url.searchParams.get(PREVIEW_AUDIO_TRACK_PARAM);
       const needsStreams =
@@ -400,8 +431,6 @@ async function handle(
         res.writeHead(200, { "Content-Type": "video/mp4" }).end();
         return;
       }
-      const parsed = startT != null ? Number(startT) : NaN;
-      const start = Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
       const toneMap =
         proResPreview &&
         isTaggedHdr(file.proResMeta ?? JSON.stringify(probed?.raw ?? null)) &&

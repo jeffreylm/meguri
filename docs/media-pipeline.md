@@ -78,8 +78,10 @@ is currently focused.
 
 ### Range streaming
 
-`mp4` / `m4v` / `mov` / `webm` are served as raw files with HTTP Range support,
-giving full seeking.
+`mp4` / `m4v` / `mov` / `webm` normally use HTTP Range streaming for full
+seeking. When the default audio in MP4, M4V, or MOV is Dolby Digital or Dolby
+Digital Plus, the built-in player uses a fragmented MP4 preview. Meguri copies
+the primary video stream and converts that audio track to AAC during playback.
 
 ### On-the-fly remux
 
