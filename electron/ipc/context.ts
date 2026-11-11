@@ -27,6 +27,10 @@ export interface IpcContext {
     sec: number;
     autoplay: boolean;
   }) => Promise<void>;
+  openNoteWindow?: (input: {
+    id: number;
+    workspaceId: string;
+  }) => Promise<void>;
   mediaBase: () => string | null;
   isDevMode: () => boolean;
   /** Send an event to the renderer (no-op when the window is gone). */

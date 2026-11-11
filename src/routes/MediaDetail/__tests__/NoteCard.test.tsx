@@ -18,12 +18,15 @@ import { NOTE_MAX_CHARS } from "@shared/note";
 const mocks = vi.hoisted(() => ({
   fileSetNote: vi.fn(),
   openUrl: vi.fn(),
+  notePopout: vi.fn(),
 }));
 
 vi.mock("@/ipc/client", () => ({
   api: {
     fileSetNote: (...args: unknown[]): Promise<unknown> =>
       mocks.fileSetNote(...args) as Promise<unknown>,
+    notePopout: (...args: unknown[]): Promise<unknown> =>
+      mocks.notePopout(...args) as Promise<unknown>,
     openUrl: (url: string): Promise<unknown> =>
       mocks.openUrl(url) as Promise<unknown>,
   },
@@ -51,6 +54,7 @@ afterAll(() => {
 beforeEach(() => {
   mocks.fileSetNote.mockReset().mockResolvedValue(undefined);
   mocks.openUrl.mockReset().mockResolvedValue(undefined);
+  mocks.notePopout.mockReset().mockResolvedValue(undefined);
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -114,14 +118,68 @@ describe("NoteCard", () => {
     await screen.findByText("Saved");
   });
 
-  it("writes what is left at once when the card goes away", () => {
+  it("writes what is left at once when the card goes away", async () => {
     const { unmount } = renderWithProviders(
       <NoteCard fileId={7} wsId="ws" note={null} />,
     );
     fireEvent.click(screen.getByRole("button", { name: /Add a note/ }));
     paste("unsaved");
     unmount();
-    expect(mocks.fileSetNote).toHaveBeenCalledWith(7, "ws", "unsaved");
+    await waitFor(() =>
+      expect(mocks.fileSetNote).toHaveBeenCalledWith(7, "ws", "unsaved"),
+    );
+  });
+
+  it("waits for pending inline text to save before opening the window", async () => {
+    let finishSave = () => {};
+    mocks.fileSetNote.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishSave = resolve;
+        }),
+    );
+    renderWithProviders(<NoteCard fileId={7} wsId="ws" note={null} />);
+    fireEvent.click(screen.getByRole("button", { name: /Add a note/ }));
+    paste("Take this draft with me");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open note in new window" }),
+    );
+    await waitFor(() =>
+      expect(mocks.fileSetNote).toHaveBeenCalledWith(
+        7,
+        "ws",
+        "Take this draft with me",
+      ),
+    );
+    expect(mocks.notePopout).not.toHaveBeenCalled();
+    finishSave();
+    await waitFor(() => expect(mocks.notePopout).toHaveBeenCalledWith(7, "ws"));
+  });
+
+  it("waits for the detached note to save before Done closes the window", async () => {
+    const close = vi.fn();
+    let finishSave = () => {};
+    mocks.fileSetNote.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishSave = resolve;
+        }),
+    );
+    renderWithProviders(
+      <NoteCard fileId={7} wsId="ws" note={null} onClose={close} />,
+    );
+    paste("Finish in the window");
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    await waitFor(() =>
+      expect(mocks.fileSetNote).toHaveBeenCalledWith(
+        7,
+        "ws",
+        "Finish in the window",
+      ),
+    );
+    expect(close).not.toHaveBeenCalled();
+    finishSave();
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
   });
 
   it("keeps the text and offers a retry when the write fails", async () => {

@@ -43,6 +43,13 @@ export function registerFileHandlers(ctx: IpcContext): void {
     await ctx.openMediaWindow(input);
   });
 
+  handle("note_popout", async (input) => {
+    const file = q.fileDetail(coreById(ws, input.workspaceId).db, input.id);
+    if (!file) throw new Error("The file is no longer in the catalogue");
+    if (!ctx.openNoteWindow) throw new Error("Note window unavailable");
+    await ctx.openNoteWindow(input);
+  });
+
   // List queries can be invalidated by the renderer just as the active workspace
   // disappears (e.g. removing the last workspace). Return empty instead of throwing
   // so a brief race during workspace:changed doesn't surface as an error toast.

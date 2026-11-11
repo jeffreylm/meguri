@@ -440,6 +440,8 @@ export const en: Record<TranslationKey, string> = {
   "media.note.saved": "Saved",
   "media.note.saveFailed": "Couldn't save",
   "media.note.retry": "Retry",
+  "media.note.popout": "Open note in new window",
+  "media.note.popoutFailed": "Couldn’t open the note window.",
   "media.note.showAll": "Show all",
   "media.note.showLess": "Show less",
   "media.note.count": "{count} / {max}",

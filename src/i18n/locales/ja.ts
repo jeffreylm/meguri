@@ -440,6 +440,8 @@ export const ja = {
   "media.note.saved": "保存済み",
   "media.note.saveFailed": "保存できませんでした",
   "media.note.retry": "再試行",
+  "media.note.popout": "ノートを別ウィンドウで開く",
+  "media.note.popoutFailed": "ノートウィンドウを開けませんでした。",
   "media.note.showAll": "すべて表示",
   "media.note.showLess": "折りたたむ",
   "media.note.count": "{count} / {max}",

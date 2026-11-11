@@ -31,11 +31,13 @@ import {
   ListTodo,
   LoaderCircle,
   Pencil,
+  SquareArrowOutUpRight,
   Plus,
   Strikethrough,
   TextQuote,
   type LucideIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 import log from "@/lib/logger";
 import { api } from "@/ipc/client";
 import { useI18n, type TFunc } from "@/i18n/I18nProvider";
@@ -77,15 +79,24 @@ export default function NoteCard({
   fileId,
   wsId,
   note,
+  onClose,
 }: {
   fileId: number;
   wsId: string;
   /** The note as the detail last loaded it. */
   note: string | null;
+  onClose?: () => void;
 }) {
   const { t, lang } = useI18n();
-  const { state, schedule, flush, adopt } = useNoteWriter(fileId, wsId, note);
-  const [editing, setEditing] = useState(false);
+  const inWindow = onClose !== undefined;
+  const { state, schedule, flush, adopt, saveNow } = useNoteWriter(
+    fileId,
+    wsId,
+    note,
+    onClose,
+  );
+  const [editing, setEditing] = useState(inWindow);
+  const [opening, setOpening] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [overflowing, setOverflowing] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -93,9 +104,15 @@ export default function NoteCard({
   // Stable for the card's lifetime, as the writer's callbacks are: the editor
   // is configured once and keeps calling the ones it was given.
   const finishEditing = useCallback(() => {
+    if (onClose) {
+      void saveNow().then((saved) => {
+        if (saved) onClose();
+      });
+      return;
+    }
     flush();
     setEditing(false);
-  }, [flush]);
+  }, [flush, onClose, saveNow]);
 
   // The note the editor was created with. A note changed elsewhere is shown
   // by creating the editor again with it rather than by setContent, which
@@ -194,9 +211,23 @@ export default function NoteCard({
     setExpanded(true);
   };
   useEffect(() => {
-    editor.setEditable(editing, false);
-    if (editing) editor.commands.focus("end");
-  }, [editor, editing]);
+    editor.setEditable(editing && !opening, false);
+    if (editing && !opening) editor.commands.focus(inWindow ? "start" : "end");
+  }, [editor, editing, inWindow, opening]);
+
+  const openWindow = async () => {
+    setOpening(true);
+    try {
+      if (!(await saveNow())) return;
+      await api.notePopout(fileId, wsId);
+      setEditing(false);
+    } catch (error) {
+      log.warn("could not open note window:", error);
+      toast.error(t("media.note.popoutFailed"));
+    } finally {
+      setOpening(false);
+    }
+  };
 
   // The note changed elsewhere (another window, a merge) while nothing is
   // being typed here: show it. Our own saves land as the same text.
@@ -212,14 +243,14 @@ export default function NoteCard({
   // Whether the shown note is taller than the collapsed height.
   useLayoutEffect(() => {
     const el = contentRef.current;
-    if (!el) return;
+    if (!el || inWindow) return;
     const measure = () => setOverflowing(el.scrollHeight > COLLAPSED_PX + 24);
     measure();
     if (typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [inWindow]);
 
   const collapsed = !editing && !expanded && overflowing;
   const showAdd = !editing && view.isEmpty;
@@ -229,10 +260,14 @@ export default function NoteCard({
       aria-label={t("media.note")}
       className={cn(
         "flex flex-col gap-3 rounded-xl border bg-surface p-4",
-        editing ? "border-primary" : "border-border",
+        inWindow
+          ? "h-full min-h-0 border-border"
+          : editing
+            ? "border-primary"
+            : "border-border",
       )}
     >
-      <div className="flex min-h-8 items-center gap-2">
+      <div className="flex min-h-8 shrink-0 items-center gap-2">
         <span className="text-xs font-semibold uppercase text-muted">
           {t("media.note")}
         </span>
@@ -242,10 +277,24 @@ export default function NoteCard({
             variant="outline"
             size="sm"
             className="ml-auto"
+            disabled={opening}
             onClick={startEditing}
           >
             <Pencil />
             {t("media.note.edit")}
+          </Button>
+        )}
+        {!inWindow && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={editing || view.isEmpty ? "ml-auto" : undefined}
+            disabled={opening}
+            onClick={() => void openWindow()}
+          >
+            <SquareArrowOutUpRight />
+            {t("media.note.popout")}
           </Button>
         )}
       </div>
@@ -254,6 +303,7 @@ export default function NoteCard({
         <button
           type="button"
           onClick={startEditing}
+          disabled={opening}
           className="flex h-14 items-center justify-center gap-2 rounded-lg border border-dashed border-border-strong text-sm text-muted hover:bg-accent hover:text-accent-foreground"
         >
           <Plus className="size-4" />
@@ -269,7 +319,10 @@ export default function NoteCard({
         className={cn(
           "relative",
           editing &&
-            "min-h-40 rounded-lg border border-border-strong bg-background px-3.5 py-3",
+            "rounded-lg border border-border-strong bg-background px-3.5 py-3",
+          inWindow
+            ? "min-h-0 flex-1 overflow-y-auto overscroll-contain"
+            : editing && "min-h-40",
           collapsed && "overflow-hidden",
         )}
         style={
@@ -281,7 +334,14 @@ export default function NoteCard({
             : undefined
         }
       >
-        <EditorContent editor={editor} />
+        <EditorContent
+          editor={editor}
+          className={
+            inWindow
+              ? "flex min-h-full flex-col [&>.note-content]:flex-1 [&>.note-content]:text-base"
+              : undefined
+          }
+        />
       </div>
 
       {!editing && overflowing && !view.isEmpty && (
@@ -296,7 +356,7 @@ export default function NoteCard({
       )}
 
       {editing && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           <span
             className={cn(
               "text-xs",
@@ -472,7 +532,7 @@ function Toolbar({
     <div
       role="toolbar"
       aria-label={t("media.note.toolbar")}
-      className="flex flex-wrap items-center gap-0.5 rounded-lg border border-border bg-background p-1"
+      className="flex shrink-0 flex-wrap items-center gap-0.5 rounded-lg border border-border bg-background p-1"
     >
       {items.map((group, i) => (
         <div key={i} className="flex items-center gap-0.5">

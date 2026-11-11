@@ -419,6 +419,8 @@ export const zhCN: Record<TranslationKey, string> = {
   "media.note.saved": "已保存",
   "media.note.saveFailed": "无法保存",
   "media.note.retry": "重试",
+  "media.note.popout": "在新窗口中打开备注",
+  "media.note.popoutFailed": "无法打开备注窗口。",
   "media.note.showAll": "显示全部",
   "media.note.showLess": "收起",
   "media.note.count": "{count} / {max}",

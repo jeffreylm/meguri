@@ -433,6 +433,8 @@ export const ko: Record<TranslationKey, string> = {
   "media.note.saved": "저장됨",
   "media.note.saveFailed": "저장하지 못했습니다",
   "media.note.retry": "다시 시도",
+  "media.note.popout": "새 창에서 메모 열기",
+  "media.note.popoutFailed": "메모 창을 열 수 없습니다.",
   "media.note.showAll": "모두 보기",
   "media.note.showLess": "접기",
   "media.note.count": "{count} / {max}",

@@ -289,6 +289,7 @@ export const ChannelInputs = {
     sec: z.number().finite().min(0).max(MAX_MEDIA_SEC),
     autoplay: z.boolean(),
   }),
+  note_popout: FileTarget,
   about_info: z.void(),
   workspace_stats: z.void(),
   workspaces_list: z.void(),
@@ -648,6 +649,7 @@ export interface WorkspaceAddResult {
 export interface ChannelOutputs {
   app_status: AppStatus;
   media_popout: void;
+  note_popout: void;
   about_info: AboutInfo;
   workspace_stats: WorkspaceStats;
   workspaces_list: WorkspacesList;

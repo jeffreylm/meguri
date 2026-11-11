@@ -450,6 +450,8 @@ export const es: Record<TranslationKey, string> = {
   "media.note.saved": "Guardado",
   "media.note.saveFailed": "No se pudo guardar",
   "media.note.retry": "Reintentar",
+  "media.note.popout": "Abrir nota en otra ventana",
+  "media.note.popoutFailed": "No se pudo abrir la ventana de la nota.",
   "media.note.showAll": "Mostrar todo",
   "media.note.showLess": "Mostrar menos",
   "media.note.count": "{count} / {max}",

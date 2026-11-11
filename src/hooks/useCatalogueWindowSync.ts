@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { invalidateNoteSearches } from "@/lib/queryCache";
 
 /** A successful edit in a separate preview updates the other open window's
  * active catalogue queries. Local mutations keep their existing targeted
@@ -11,9 +12,16 @@ export function useCatalogueWindowSync() {
     const channel = new BroadcastChannel("meguri.catalogue.windows.v1");
     const unsubscribe = client.getMutationCache().subscribe((event) => {
       if (event.type === "updated" && event.action.type === "success")
-        channel.postMessage("changed");
+        channel.postMessage(
+          event.mutation.meta?.catalogueChange === "note" ? "note" : "changed",
+        );
     });
-    channel.onmessage = () => {
+    channel.onmessage = (event: MessageEvent<unknown>) => {
+      if (event.data === "note") {
+        void client.invalidateQueries({ queryKey: ["file_get"] });
+        invalidateNoteSearches(client);
+        return;
+      }
       void client.invalidateQueries({ refetchType: "active" });
     };
     return () => {

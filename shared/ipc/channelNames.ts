@@ -6,6 +6,7 @@
 export const INVOKE_CHANNELS = [
   "app_status",
   "media_popout",
+  "note_popout",
   "about_info",
   "workspace_stats",
   "workspaces_list",

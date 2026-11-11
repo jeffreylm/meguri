@@ -385,6 +385,12 @@ page, license, credit, or editing reminder. The formatting toolbar supports
 links, lists, and emphasis. Meguri saves as you type and shows the save status.
 Use **Done** or Escape to finish. Clicking a saved link opens it in your browser.
 
+For longer notes, choose **Open note in new window** on the note card. The
+editor opens in its own window. Drag its title bar to move it beside Meguri or
+to another display, and drag a window edge or corner to resize it. The toolbar
+and save status stay visible while you scroll. Closing the editor saves pending
+changes and returns you to the same note in the file’s details.
+
 Find notes with `note:opening`, a phrase such as `note:"opening montage"`, or
 `has:note` for every annotated file. Search respects the current workspace and
 other filters. In **All**, you can search every indexed workspace. Matching

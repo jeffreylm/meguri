@@ -2,7 +2,7 @@
 // rather than through useDetailMutations: a write per pause in typing, queued
 // and flushed when the card goes, does not fit a mutation per action.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import log from "@/lib/logger";
 import { api } from "@/ipc/client";
 import {
@@ -25,47 +25,54 @@ export function useNoteWriter(
   fileId: number,
   wsId: string,
   initial: string | null,
+  onClose?: () => void,
 ) {
   const qc = useQueryClient();
+  const { mutateAsync: save } = useMutation({
+    mutationFn: (value: string | null) => api.fileSetNote(fileId, wsId, value),
+    meta: { catalogueChange: "note" },
+  });
   /** What the database holds, as far as this view knows. */
   const saved = useRef(normalizeNote(initial));
   /** Text waiting to be written; undefined when there is none. */
   const pending = useRef<string | null | undefined>(undefined);
-  const inFlight = useRef(false);
+  const inFlight = useRef<Promise<boolean> | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [state, setState] = useState<SaveState>("idle");
 
-  const write = useCallback(async () => {
+  const write = useCallback((): Promise<boolean> => {
     clearTimeout(timer.current);
-    if (inFlight.current) return;
-    let wrote = false;
-    while (pending.current !== undefined) {
-      const value = pending.current;
-      pending.current = undefined;
-      if (value === saved.current) continue;
-      inFlight.current = true;
-      setState("saving");
-      try {
-        await api.fileSetNote(fileId, wsId, value);
-        saved.current = value;
-        wrote = true;
-        patchFileDetailInCache(qc, wsId, fileId, { note: value });
-        // Only the views filtered by a note can change membership.
-        invalidateNoteSearches(qc);
-      } catch (e) {
-        log.warn("could not save the note:", e);
-        // Newer text typed meanwhile wins; otherwise retry this one.
-        if (pending.current === undefined) pending.current = value;
-        inFlight.current = false;
-        setState("error");
-        return;
+    if (inFlight.current) return inFlight.current;
+    if (pending.current === undefined) return Promise.resolve(true);
+    const drain = async () => {
+      let wrote = false;
+      while (pending.current !== undefined) {
+        const value = pending.current;
+        pending.current = undefined;
+        if (value === saved.current) continue;
+        setState("saving");
+        try {
+          await save(value);
+          saved.current = value;
+          wrote = true;
+          patchFileDetailInCache(qc, wsId, fileId, { note: value });
+          invalidateNoteSearches(qc);
+        } catch (e) {
+          log.warn("could not save the note:", e);
+          // A retry saves the newest text, including edits made during the write.
+          if (pending.current === undefined) pending.current = value;
+          setState("error");
+          return false;
+        }
       }
-      inFlight.current = false;
-    }
-    // Nothing left to write: a failure shown earlier no longer applies (the
-    // text was taken back to what is saved, say).
-    setState((s) => (wrote ? "saved" : s === "error" ? "idle" : s));
-  }, [fileId, wsId, qc]);
+      setState((s) => (wrote ? "saved" : s === "error" ? "idle" : s));
+      return true;
+    };
+    inFlight.current = drain().finally(() => {
+      inFlight.current = null;
+    });
+    return inFlight.current;
+  }, [fileId, wsId, qc, save]);
 
   const schedule = useCallback(
     (value: string | null) => {
@@ -81,14 +88,26 @@ export function useNoteWriter(
   useEffect(() => {
     // Quitting the app or reloading the window runs no React cleanup: send
     // what is waiting while the window still can.
-    const onUnload = () => void write();
+    const onUnload = (event: BeforeUnloadEvent) => {
+      if (pending.current === undefined && !inFlight.current) return;
+      if (!onClose) {
+        void write();
+        return;
+      }
+      // Keep the detached editor open until the native close has saved.
+      event.preventDefault();
+      event.returnValue = "";
+      void write().then((saved) => {
+        if (saved) onClose();
+      });
+    };
     window.addEventListener("beforeunload", onUnload);
     return () => {
       window.removeEventListener("beforeunload", onUnload);
       // Leaving the file (prev/next, closing the detail) writes what is left.
       void write();
     };
-  }, [write]);
+  }, [onClose, write]);
 
   /**
    * Take a note changed elsewhere as the saved one, unless text typed here is
@@ -101,5 +120,5 @@ export function useNoteWriter(
     return true;
   }, []);
 
-  return { state, schedule, flush, adopt };
+  return { state, schedule, flush, adopt, saveNow: write };
 }

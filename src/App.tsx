@@ -1,4 +1,5 @@
 // Routing. List / detail / settings.
+import { lazy, Suspense } from "react";
 import { createHashRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { useCatalogueWindowSync } from "@/hooks/useCatalogueWindowSync";
@@ -23,7 +24,16 @@ import { registerRouterNavigate } from "@/lib/routerBridge";
 // In a webview, a hash router is more stable than a file-path-style history.
 // /file/:id, /play and /settings are child routes of Home so a modal overlays on top while the list stays mounted
 // (the player also inherits the list order through MediaNavContext).
+const NoteWindow = lazy(() => import("@/routes/MediaDetail/NoteWindow"));
 const router = createHashRouter([
+  {
+    path: "/note/:id",
+    element: (
+      <Suspense fallback={null}>
+        <NoteWindow />
+      </Suspense>
+    ),
+  },
   { path: "/detached/:id", element: <MediaDetail detached /> },
   {
     path: "/",
@@ -49,6 +59,8 @@ export default function App() {
   useContentZoom();
   useSelectAllGuard();
   useUpdateNotifier();
+  if (window.location.hash.startsWith("#/note/"))
+    return <RouterProvider router={router} />;
   if (window.location.hash.startsWith("#/detached/"))
     return (
       <AudioPlayerProvider>

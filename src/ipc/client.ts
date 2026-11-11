@@ -66,6 +66,8 @@ export const api = {
     sec: number,
     autoplay: boolean,
   ) => invoke("media_popout", { id, workspaceId, sec, autoplay }),
+  notePopout: (id: number, workspaceId: string) =>
+    invoke("note_popout", { id, workspaceId }),
   appStatus: () => invoke("app_status"),
   /** Version, build ID, and runtime versions. */
   aboutInfo: () => invoke("about_info"),

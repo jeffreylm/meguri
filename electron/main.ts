@@ -69,6 +69,7 @@ const controlToken = randomBytes(32).toString("base64url");
 const MEDIA_TOKEN_HEADER = "X-Api-Token";
 let mainWindow: BrowserWindow | null = null;
 let mediaWindow: BrowserWindow | null = null;
+const noteWindows = new Map<string, BrowserWindow>();
 let tray: Tray | null = null;
 // Quit lifecycle. "disposing" = async teardown in flight (see before-quit),
 // "done" = teardown finished (or skipped) and the quit may proceed. Any
@@ -516,6 +517,55 @@ async function openMediaWindow(input: {
   }
 }
 
+/** A top-level window so the note can be arranged independently of the library. */
+async function openNoteWindow(input: {
+  id: number;
+  workspaceId: string;
+}): Promise<void> {
+  if (isQuitting()) return;
+  const key = `${input.workspaceId}:${input.id}`;
+  const existing = noteWindows.get(key);
+  if (existing && !existing.isDestroyed()) {
+    if (existing.isMinimized()) existing.restore();
+    existing.show();
+    existing.focus();
+    return;
+  }
+
+  const win = new BrowserWindow({
+    width: 900,
+    height: 720,
+    minWidth: 400,
+    minHeight: 340,
+    title: "Meguri",
+    resizable: true,
+    show: false,
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: path.join(__dirname, "../preload/preload.js"),
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false,
+      webSecurity: true,
+      devTools: isDevMode(),
+    },
+  });
+  noteWindows.set(key, win);
+  win.once("closed", () => noteWindows.delete(key));
+  win.webContents.on("will-prevent-unload", (event) => {
+    if (isQuitting()) event.preventDefault();
+  });
+
+  try {
+    const params = new URLSearchParams({ ws: input.workspaceId });
+    await loadRenderer(win, `/note/${input.id}?${params.toString()}`);
+    if (!win.isDestroyed()) win.show();
+  } catch (error) {
+    if (!win.isDestroyed()) win.destroy();
+    throw error;
+  }
+}
+
 /** Show and focus the main window, recreating it if it was destroyed. */
 function showWindow(): void {
   if (isQuitting()) return;
@@ -634,6 +684,7 @@ void app.whenReady().then(async () => {
     positions,
     mainWindow: () => mainWindow,
     openMediaWindow,
+    openNoteWindow,
     mediaBase: () => (mediaPort ? `http://127.0.0.1:${mediaPort}` : null),
     isDevMode,
     emit,
