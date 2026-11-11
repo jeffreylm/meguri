@@ -361,8 +361,8 @@ already run Electron apps locally.
 | Scan       | Runs automatically at startup. Re-scan via the header "Scan" (incremental, move tracking)                            |
 | Play       | Click a thumbnail → play in the detail view (audio plays in the bottom bar). When unsupported, use "Open externally" |
 | Tag / Rate | Assign in the detail view (tags have autocomplete). Click a tag in the grid to search                                |
-| Note       | Write a Markdown note in the detail view (source URL, licence, where it was used). It saves as you type            |
-| Find notes | Search `note:pexels` for files whose note contains the text, or `has:note` for files that have a note              |
+| Note       | Write a Markdown note in the detail view (source URL, licence, where it was used). It saves as you type              |
+| Find notes | Search `note:pexels` for files whose note contains the text, or `has:note` for files that have a note                |
 | Search     | Filter and sort by full text, kind, and rating in the top bar (conditions shown as badges, individually removable)   |
 | Theme      | Switch from Theme at the top-right of the header                                                                     |
 | Zoom       | Ctrl + wheel, Ctrl +/-, Ctrl + 0 to reset                                                                            |
@@ -378,6 +378,22 @@ Smart bin, watching a download folder, filtering audio by its properties, and
 reviewing clips without losing sight of the catalogue. It also explains what to
 do when a filter has no matches or is paused.
 
+### Notes for clips, images, and audio
+
+Open a file and choose **Add a note** below its ratings and tags. Add a source
+page, license, credit, or editing reminder. The formatting toolbar supports
+links, lists, and emphasis. Meguri saves as you type and shows the save status.
+Use **Done** or Escape to finish. Clicking a saved link opens it in your browser.
+
+Find notes with `note:opening`, a phrase such as `note:"opening montage"`, or
+`has:note` for every annotated file. Search respects the current workspace and
+other filters. In **All**, you can search every indexed workspace. Matching
+copies share one note once their content is indexed.
+
+For a batch of Pexels clips, use **Recover source links** to review and save the
+links together. The clip’s **Source** section keeps the confirmed link handy.
+Use the note for extra context, such as the license or why you kept that shot.
+
 ## Where Data Is Stored
 
 Scan root paths are hashed for identification and managed centrally under
@@ -386,6 +402,7 @@ Electron's userData.
 ```text
 <userData>/                 # e.g. ~/.config/Meguri
 ├─ config.json              # registered workspaces and the active root
+├─ notes.sqlite             # notes shared by matching copies across workspaces
 └─ roots/<hash of root>/
    ├─ db.sqlite             # metadata (WAL)
    └─ thumbs/               # generated thumbnails (webp)

@@ -278,8 +278,7 @@ export function appendSearchConditions(
       " AND f.meta_key IN (SELECT meta_key FROM catalogue_notes WHERE note_match(note, ?))";
     args.push(JSON.stringify(terms.noteTerms));
   } else if (terms.hasNote) {
-    sql +=
-      " AND f.meta_key IN (SELECT meta_key FROM catalogue_notes)";
+    sql += " AND f.meta_key IN (SELECT meta_key FROM catalogue_notes)";
   }
   if (query.folder) {
     const cond = folderCondition(

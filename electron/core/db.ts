@@ -7,7 +7,8 @@ import { noteMatches } from "../../shared/noteSearch.js";
 export type DB = Database.Database;
 
 const noteConnections = new WeakSet<DB>();
-const NOTE_COLUMNS = "(meta_key TEXT PRIMARY KEY, note TEXT NOT NULL) WITHOUT ROWID";
+const NOTE_COLUMNS =
+  "(meta_key TEXT PRIMARY KEY, note TEXT NOT NULL) WITHOUT ROWID";
 
 /** The shared store only accepts content keys. Path keys are workspace-local. */
 export function noteTableForKey(db: DB, key: string): string {
@@ -21,11 +22,14 @@ function openNotes(db: DB, notesPath?: string, readonly = false): void {
     db.prepare("ATTACH DATABASE ? AS shared_notes").run(notesPath);
     if (!readonly) {
       db.pragma("shared_notes.journal_mode = WAL");
-      db.exec(`CREATE TABLE IF NOT EXISTS shared_notes.file_notes ${NOTE_COLUMNS}`);
+      db.exec(
+        `CREATE TABLE IF NOT EXISTS shared_notes.file_notes ${NOTE_COLUMNS}`,
+      );
     }
     noteConnections.add(db);
   }
-  if (!readonly) db.exec(`CREATE TABLE IF NOT EXISTS main.file_notes ${NOTE_COLUMNS}`);
+  if (!readonly)
+    db.exec(`CREATE TABLE IF NOT EXISTS main.file_notes ${NOTE_COLUMNS}`);
   db.exec(`CREATE TEMP VIEW catalogue_notes AS
     SELECT meta_key, note FROM main.file_notes
     ${notesPath ? "UNION ALL SELECT meta_key, note FROM shared_notes.file_notes" : ""}`);

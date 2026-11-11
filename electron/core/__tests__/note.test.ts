@@ -55,7 +55,9 @@ describe("setNote", () => {
 
   it("reports that a file was removed instead of reporting a save", () => {
     const { db } = newDb();
-    expect(() => setNote(db, 999, "note")).toThrow("no longer in the catalogue");
+    expect(() => setNote(db, 999, "note")).toThrow(
+      "no longer in the catalogue",
+    );
   });
 });
 
@@ -128,7 +130,10 @@ describe("merging notes", () => {
 
   it("changes nothing when the same row is merged again", () => {
     const { db } = newDb();
-    seedNotes(db, [["h", "held"], ["path:a", "incoming"]]);
+    seedNotes(db, [
+      ["h", "held"],
+      ["path:a", "incoming"],
+    ]);
     migrateMetaKey(db, "path:a", "h");
     const once = noteRow(db, "h")?.note;
     seedNotes(db, [["path:a", "incoming"]]);
@@ -150,14 +155,22 @@ describe("notes across workspaces", () => {
     try {
       const rootA = upsertScanRoot(first, "/first", "first");
       const rootB = upsertScanRoot(second, "/second", "second");
-      const clipA = insertFile(first, rootA, { relPath: "clip.mp4", contentHash: "h" });
-      const clipB = insertFile(second, rootB, { relPath: "copy.mp4", contentHash: "h" });
+      const clipA = insertFile(first, rootA, {
+        relPath: "clip.mp4",
+        contentHash: "h",
+      });
+      const clipB = insertFile(second, rootB, {
+        relPath: "copy.mp4",
+        contentHash: "h",
+      });
       const pendingA = insertFile(first, rootA, { relPath: "pending.mp4" });
       const pendingB = insertFile(second, rootB, { relPath: "pending.mp4" });
       setNote(first, clipA, "Shared credit");
       expect(fileDetail(second, clipB)?.note).toBe("Shared credit");
       expect(noteRow(reader, "h")?.note).toBe("Shared credit");
-      expect(searchFiles(reader, { q: "note:credit" }).items.map(row => row.id)).toEqual([clipB]);
+      expect(
+        searchFiles(reader, { q: "note:credit" }).items.map((row) => row.id),
+      ).toEqual([clipB]);
       setNote(first, pendingA, "From the first folder");
       expect(fileDetail(second, pendingB)?.note).toBeNull();
       migrateMetaKey(first, `p:${rootA}:pending.mp4`, "h");

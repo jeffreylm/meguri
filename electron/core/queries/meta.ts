@@ -39,7 +39,9 @@ export function setFavorite(db: DB, fileId: number, favorite: boolean): void {
 /** Replace the note without touching the media, its ratings or source link. */
 export function setNote(db: DB, fileId: number, note: string | null): void {
   const row = db
-    .prepare("SELECT meta_key AS key FROM files WHERE id = ? AND deleted_at IS NULL")
+    .prepare(
+      "SELECT meta_key AS key FROM files WHERE id = ? AND deleted_at IS NULL",
+    )
     .get(fileId) as { key: string } | undefined;
   if (!row) throw new Error("The file is no longer in the catalogue");
   const table = noteTableForKey(db, row.key);
@@ -56,8 +58,9 @@ export function setNote(db: DB, fileId: number, note: string | null): void {
 
 export function noteByKey(db: DB, key: string): string | null {
   const table = noteTableForKey(db, key);
-  const row = db.prepare(`SELECT note FROM ${table} WHERE meta_key = ?`).get(key) as
-    { note: string } | undefined;
+  const row = db
+    .prepare(`SELECT note FROM ${table} WHERE meta_key = ?`)
+    .get(key) as { note: string } | undefined;
   return row?.note ?? null;
 }
 
@@ -68,7 +71,11 @@ function migrateNoteKey(db: DB, fromKey: string, toKey: string): void {
   if (incoming == null) return;
   const held = noteByKey(db, toKey);
   let note = incoming;
-  if (held != null && held !== incoming && !incoming.split(NOTE_DIVIDER).includes(held)) {
+  if (
+    held != null &&
+    held !== incoming &&
+    !incoming.split(NOTE_DIVIDER).includes(held)
+  ) {
     note = held.split(NOTE_DIVIDER).includes(incoming)
       ? held
       : held + NOTE_DIVIDER + incoming;

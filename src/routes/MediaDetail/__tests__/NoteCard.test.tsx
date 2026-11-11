@@ -1,6 +1,15 @@
 // The note card: Markdown shown in place, edited with the same editor, and
 // written as the user types, with what is left written when the card goes.
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import NoteCard from "@/routes/MediaDetail/NoteCard";
 import { renderWithProviders } from "@/test/renderWithProviders";
@@ -19,6 +28,25 @@ vi.mock("@/ipc/client", () => ({
       mocks.openUrl(url) as Promise<unknown>,
   },
 }));
+
+// jsdom has no text layout. The editor still asks its selection for bounds
+// when it focuses the note, so provide empty bounds for these component tests.
+const rangeGeometry = {
+  getClientRects: () => [],
+  getBoundingClientRect: () => new DOMRect(),
+};
+const addedRangeMethods: string[] = [];
+beforeAll(() => {
+  for (const [name, value] of Object.entries(rangeGeometry)) {
+    if (name in Range.prototype) continue;
+    Object.defineProperty(Range.prototype, name, { configurable: true, value });
+    addedRangeMethods.push(name);
+  }
+});
+afterAll(() => {
+  for (const name of addedRangeMethods)
+    Reflect.deleteProperty(Range.prototype, name);
+});
 
 beforeEach(() => {
   mocks.fileSetNote.mockReset().mockResolvedValue(undefined);

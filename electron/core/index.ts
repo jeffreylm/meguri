@@ -2,7 +2,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { openDb, type DB } from "./db.js";
-import { baseDataDir, dataDirForRoot, dbPathForDataDir, pathHash } from "./paths.js";
+import {
+  baseDataDir,
+  dataDirForRoot,
+  dbPathForDataDir,
+  pathHash,
+} from "./paths.js";
 import { upsertScanRoot } from "./queries.js";
 
 export class Core {
@@ -14,7 +19,13 @@ export class Core {
   readonly dbPath: string;
   readonly notesPath: string;
 
-  private constructor(db: DB, root: string, rootId: number, dataDir: string, notesPath: string) {
+  private constructor(
+    db: DB,
+    root: string,
+    rootId: number,
+    dataDir: string,
+    notesPath: string,
+  ) {
     this.db = db;
     this.root = root;
     this.rootId = rootId;
