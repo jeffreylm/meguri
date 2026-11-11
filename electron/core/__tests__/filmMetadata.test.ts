@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { detectFilm } from "../../../shared/filmMetadata.js";
+import { detectFilm, omdbKeyFromUrl } from "../../../shared/filmMetadata.js";
 import { lookupFilms, loadFilm } from "../omdb.js";
 import { searchFiles } from "../queries/files.js";
 import {
@@ -124,6 +124,25 @@ describe("film catalogue", () => {
 });
 
 describe("manual OMDb lookup", () => {
+  it("extracts only the key from the sample API URL and rejects unrelated links", () => {
+    expect(
+      omdbKeyFromUrl(" http://www.omdbapi.com/?i=tt3896198&apikey=demo123 "),
+    ).toBe("demo123");
+    expect(
+      omdbKeyFromUrl("https://omdbapi.com/?apikey=Demo123&plot=full"),
+    ).toBe("Demo123");
+    for (const url of [
+      "https://www.omdbapi.com/apikey.aspx?VERIFYKEY=demo123",
+      "https://www.omdbapi.com/?apikey=first&apikey=second",
+      "https://www.omdbapi.com/?apikey=bad%20key",
+      "https://www.omdbapi.com/?apikey=",
+      "https://www.omdbapi.com@another.example/?apikey=demo123",
+      "https://www.omdbapi.com.another.example/?apikey=demo123",
+      "ftp://www.omdbapi.com/?apikey=demo123",
+    ])
+      expect(omdbKeyFromUrl(url)).toBeNull();
+  });
+
   const record = {
     imdbID: details.imdbId,
     Title: "A City at Night",

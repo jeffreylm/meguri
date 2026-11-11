@@ -11,8 +11,10 @@ export const ja = {
   "film.reviewHelp":
     "候補のタイトルを確認して検索し、保存する作品を選びます。Meguri はタイトルと公開年、または IMDb ID を OMDb に送ります。",
   "film.key": "OMDb API キー",
+  "film.keyUrl": "メールに記載の OMDb API URL",
+  "film.keyUrlInvalid": "apikey= を含む OMDb API の URL を貼り付けてください。",
   "film.keyHelp":
-    "ご自身のキーを入力してください。キーはこのセッション中のみ保持します。",
+    "キーまたは API URL を入力してください。キーはこのセッション中のみ保持します。",
   "film.titleInput": "映画タイトル、IMDb ID、URL",
   "film.year": "公開年",
   "film.match": "一致する映画",

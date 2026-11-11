@@ -6,6 +6,30 @@ export const FILM_SAVED_TOKEN = "has:film";
 export const IMDbId = z.string().regex(/^tt\d{7,12}$/);
 export const FilmTitle = z.string().trim().min(1).max(300);
 export const FilmYear = z.number().int().min(1870).max(2199);
+export const OmdbKey = z
+  .string()
+  .trim()
+  .regex(/^[a-z0-9]{1,128}$/i);
+
+export function omdbKeyFromUrl(value: string): string | null {
+  try {
+    const url = new URL(value.trim());
+    if (
+      (url.protocol !== "http:" && url.protocol !== "https:") ||
+      !["www.omdbapi.com", "omdbapi.com"].includes(url.host) ||
+      url.username ||
+      url.password ||
+      url.pathname !== "/"
+    )
+      return null;
+    const keys = url.searchParams.getAll("apikey");
+    if (keys.length !== 1) return null;
+    const result = OmdbKey.safeParse(keys[0]);
+    return result.success ? result.data : null;
+  } catch {
+    return null;
+  }
+}
 
 export interface FilmGuess {
   title: string;

@@ -12,8 +12,10 @@ export const fr: Record<TranslationKey, string> = {
   "film.reviewHelp":
     "Vérifiez les titres proposés, recherchez-les, puis choisissez les correspondances à enregistrer. Meguri envoie le titre et l’année ou l’identifiant IMDb à OMDb.",
   "film.key": "Clé API OMDb",
+  "film.keyUrl": "URL de l’API OMDb reçue par e-mail",
+  "film.keyUrlInvalid": "Collez l’URL de l’API OMDb qui contient apikey=.",
   "film.keyHelp":
-    "Utilisez votre propre clé. Elle est conservée pour cette session uniquement.",
+    "Saisissez la clé ou l’URL de l’API. Meguri conserve la clé uniquement pour cette session.",
   "film.titleInput": "Titre, identifiant IMDb ou URL",
   "film.year": "Année",
   "film.match": "Film correspondant",

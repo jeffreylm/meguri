@@ -12,7 +12,10 @@ export const en: Record<TranslationKey, string> = {
   "film.reviewHelp":
     "Check the suggested titles, look them up, then choose which matches to save. Meguri sends the title and year or IMDb ID to OMDb.",
   "film.key": "OMDb API key",
-  "film.keyHelp": "Use your own key. Meguri keeps it for this session only.",
+  "film.keyUrl": "OMDb API URL from your email",
+  "film.keyUrlInvalid": "Paste the OMDb API URL that contains apikey=.",
+  "film.keyHelp":
+    "Enter either the key or the API URL. Meguri keeps the key for this session only.",
   "film.titleInput": "Film title, IMDb ID or URL",
   "film.year": "Year",
   "film.match": "Matching film",

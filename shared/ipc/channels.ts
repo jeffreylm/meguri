@@ -5,6 +5,7 @@
 // renderer trusts data coming from main (no runtime check needed).
 import { z } from "zod";
 import {
+  OmdbKey,
   FilmTitle,
   FilmYear,
   IMDbId,
@@ -292,10 +293,6 @@ const FilmTarget = z.object({
 const FilmEditTarget = FilmTarget.extend({
   metaKey: z.string().min(1).max(32_768),
 });
-const OmdbKey = z
-  .string()
-  .trim()
-  .regex(/^[a-z0-9]{1,128}$/i);
 
 const PexelsEditTarget = z.object({
   id: z.number().int().positive(),

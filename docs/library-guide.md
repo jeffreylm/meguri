@@ -356,7 +356,9 @@ corrected before lookup.
   a longer view. Check which suggestions to look up, choose the correct match
   in each row, and save the matches you confirmed.
 - Online lookup uses your own [OMDb key](https://www.omdbapi.com/apikey.aspx).
-  The key stays in memory for the current window session. Meguri contacts
+  Paste either the short key or the full API URL from the OMDb email. The
+  **Look up film** button sits directly below these fields. Meguri extracts
+  the key from the URL and keeps it in memory for the current session. Meguri contacts
   OMDb only when you press a lookup or save button. It sends the proposed title
   and year or IMDb ID, and requests the poster for a confirmed match when
   available. Local paths and video contents stay on your computer.

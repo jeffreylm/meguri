@@ -12,7 +12,9 @@ export const zhCN: Record<TranslationKey, string> = {
   "film.reviewHelp":
     "检查建议的片名并查询，然后选择要保存的匹配项。Meguri 会向 OMDb 发送片名和年份或 IMDb ID。",
   "film.key": "OMDb API 密钥",
-  "film.keyHelp": "使用您自己的密钥。Meguri 仅在本次会话中保留密钥。",
+  "film.keyUrl": "邮件中的 OMDb API 网址",
+  "film.keyUrlInvalid": "请粘贴包含 apikey= 的 OMDb API 网址。",
+  "film.keyHelp": "请输入密钥或 API 网址。Meguri 仅在当前会话中保留密钥。",
   "film.titleInput": "片名、IMDb ID 或网址",
   "film.year": "年份",
   "film.match": "匹配的电影",

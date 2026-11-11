@@ -13,7 +13,12 @@ import { Input } from "@/components/ui/input";
 import { useI18n } from "@/i18n/I18nProvider";
 import { api } from "@/ipc/client";
 import { fileNameOf } from "@/lib/relPath";
-import type { FilmMatch, FilmReviewRow } from "@shared/filmMetadata";
+import {
+  OmdbKey,
+  omdbKeyFromUrl,
+  type FilmMatch,
+  type FilmReviewRow,
+} from "@shared/filmMetadata";
 import {
   filmLookupKey,
   rememberFilmLookupKey,
@@ -46,7 +51,17 @@ export function FilmInfoDialog({
   const { t } = useI18n();
   const qc = useQueryClient();
   const save = useMutation({ mutationFn: api.saveFilm });
-  const [key, setKey] = useState(filmLookupKey);
+  const [credential, setCredential] = useState<{
+    field: "key" | "url";
+    value: string;
+  }>(() => ({ field: "key", value: filmLookupKey() }));
+  const parsedKey = OmdbKey.safeParse(credential.value);
+  const key =
+    credential.field === "url"
+      ? omdbKeyFromUrl(credential.value)
+      : parsedKey.success
+        ? parsedKey.data
+        : null;
   const [busy, setBusy] = useState<"lookup" | "save" | null>(null);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [error, setError] = useState("");
@@ -75,7 +90,6 @@ export function FilmInfoDialog({
       ...current,
       [id]: { ...current[id], ...update },
     }));
-  const validKey = /^[a-z0-9]{1,128}$/i.test(key.trim());
   const eligible = rows.filter((row) => {
     const item = staged[rowKey(row)];
     return (
@@ -88,11 +102,12 @@ export function FilmInfoDialog({
   const confirmed = eligible.filter((row) => staged[rowKey(row)].choice);
 
   async function run(action: "lookup" | "save", work: FilmReviewRow[]) {
+    if (!key) return;
     setError("");
     setBusy(action);
     setProgress({ done: 0, total: work.length });
     cancelled.current = false;
-    rememberFilmLookupKey(key.trim());
+    rememberFilmLookupKey(key);
     try {
       for (const [index, row] of work.entries()) {
         if (cancelled.current) break;
@@ -101,7 +116,7 @@ export function FilmInfoDialog({
         if (action === "lookup") {
           setRow(id, { results: undefined, choice: undefined });
           const results = await api.lookupFilm({
-            key: key.trim(),
+            key,
             text: stage.text.trim(),
             year: stage.year ? Number(stage.year) : undefined,
           });
@@ -109,7 +124,7 @@ export function FilmInfoDialog({
         } else if (stage.choice) {
           const { workspaceId, metaKey } = row;
           const film = await save.mutateAsync({
-            key: key.trim(),
+            key,
             imdbId: stage.choice,
             id: row.id,
             workspaceId,
@@ -143,19 +158,53 @@ export function FilmInfoDialog({
           <DialogTitle>{t(batch ? "film.batch" : "film.get")}</DialogTitle>
           <DialogDescription>{t("film.reviewHelp")}</DialogDescription>
         </DialogHeader>
-        <label className="block space-y-1 text-sm">
-          <span>{t("film.key")}</span>
-          <Input
-            type="password"
-            autoComplete="off"
-            spellCheck={false}
-            value={key}
-            maxLength={128}
-            disabled={!!busy}
-            onChange={(e) => setKey(e.currentTarget.value)}
-          />
-          <span className="text-xs text-muted">{t("film.keyHelp")}</span>
-        </label>
+        <div className="space-y-2">
+          <label className="block space-y-1 text-sm">
+            <span>{t("film.key")}</span>
+            <Input
+              type="password"
+              autoComplete="off"
+              spellCheck={false}
+              value={credential.field === "key" ? credential.value : ""}
+              maxLength={128}
+              disabled={!!busy}
+              onChange={(e) =>
+                setCredential({ field: "key", value: e.currentTarget.value })
+              }
+            />
+          </label>
+          <label className="block space-y-1 text-sm">
+            <span>{t("film.keyUrl")}</span>
+            <Input
+              type="password"
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="https://www.omdbapi.com/?apikey=…"
+              value={credential.field === "url" ? credential.value : ""}
+              maxLength={2048}
+              disabled={!!busy}
+              aria-invalid={
+                credential.field === "url" && !!credential.value && !key
+              }
+              onChange={(e) =>
+                setCredential({ field: "url", value: e.currentTarget.value })
+              }
+            />
+          </label>
+          <p className="text-xs text-muted">{t("film.keyHelp")}</p>
+          {credential.field === "url" && credential.value && !key && (
+            <p role="alert" className="text-sm text-destructive">
+              {t("film.keyUrlInvalid")}
+            </p>
+          )}
+          <Button
+            variant="outline"
+            disabled={!key || !!busy || !eligible.length}
+            onClick={() => void run("lookup", eligible)}
+          >
+            {t(batch ? "film.lookupBatch" : "film.lookup")}
+          </Button>
+        </div>
         <div className="min-h-0 space-y-2 overflow-y-auto pr-1">
           {rows.map((row) => {
             const id = rowKey(row);
@@ -279,14 +328,7 @@ export function FilmInfoDialog({
             </Button>
           )}
           <Button
-            variant="outline"
-            disabled={!validKey || !!busy || !eligible.length}
-            onClick={() => void run("lookup", eligible)}
-          >
-            {t(batch ? "film.lookupBatch" : "film.lookup")}
-          </Button>
-          <Button
-            disabled={!validKey || !!busy || !confirmed.length}
+            disabled={!key || !!busy || !confirmed.length}
             onClick={() => void run("save", confirmed)}
           >
             {t("film.saveMatches", { count: confirmed.length })}
