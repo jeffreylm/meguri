@@ -3,6 +3,43 @@ import type { TranslationKey } from "./ja";
 
 export const ko: Record<TranslationKey, string> = {
   // App name: the single-kanji display name (guideline 00), identical in every locale.
+  "film.title": "영화 정보",
+  "film.get": "영화 정보 가져오기",
+  "film.add": "영화 정보 추가",
+  "film.change": "일치 항목 변경",
+  "film.remove": "영화 정보 제거",
+  "film.batch": "영화 후보 검토",
+  "film.reviewHelp":
+    "제안된 제목을 확인해 검색한 후 저장할 항목을 선택하세요. Meguri는 제목과 연도 또는 IMDb ID를 OMDb로 보냅니다.",
+  "film.key": "OMDb API 키",
+  "film.keyHelp": "본인의 키를 사용하세요. 이 세션 동안만 키를 보관합니다.",
+  "film.titleInput": "영화 제목, IMDb ID 또는 URL",
+  "film.year": "연도",
+  "film.match": "일치하는 영화",
+  "film.choose": "일치 항목 선택",
+  "film.noMatch":
+    "영화를 찾을 수 없습니다. 제목을 바꾸거나 연도를 지우거나 IMDb 링크를 붙여 넣으세요.",
+  "film.saved": "영화 정보를 저장했습니다.",
+  "film.progress": "{total}개 중 {done}개 완료",
+  "film.stop": "현재 요청 후 중지",
+  "film.lookup": "영화 검색",
+  "film.lookupBatch": "체크한 영화 검색",
+  "film.saveMatches": "일치 항목 저장 ({count})",
+  "film.directors": "감독: {names}",
+  "film.cast": "출연: {names}",
+  "film.attribution": "영화 정보 제공: OMDb",
+  "film.detected": "영화 후보: {title} {year}",
+  "film.removeFailed": "영화 정보를 제거하지 못했습니다.",
+  "film.batchLimit": "후보를 한 번에 최대 {count}개까지 표시합니다.",
+  "film.nextBatch": "다음 후보",
+  "film.readFailed": "영화 후보를 읽지 못했습니다.",
+  "film.noCandidates": "이 화면에 연결되지 않은 영화 후보가 없습니다.",
+  "window.resize": "창 크기 조절",
+  "settings.tooltips": "버튼 도구 설명",
+  "settings.tooltipsDesc":
+    "마우스를 올리거나 키보드로 초점을 맞추면 짧은 설명이 표시됩니다.",
+  "playlist.tooltip": "현재 화면을 재생 목록으로 재생",
+  "discover.tooltip": "현재 화면의 미디어 찾아보기",
   "source.title": "출처",
   "source.recover": "출처 링크 복구",
   "source.recoverSelected": "선택한 동영상 출처 복구",
@@ -742,7 +779,7 @@ export const ko: Record<TranslationKey, string> = {
   "discover.empty": "추천할 미디어가 없습니다.",
   "discover.emptyHint":
     "「스캔」으로 동영상과 이미지를 가져오면 여기에서 무작위로 추천됩니다.",
-  "discover.sceneHint": "마우스를 올리면 확대 · 클릭하면 해당 지점부터 재생",
+  "discover.sceneHint": "장면을 클릭하면 해당 위치로 이동합니다",
   "discover.moreScenes": "+{count}",
 
   // 재생 기록

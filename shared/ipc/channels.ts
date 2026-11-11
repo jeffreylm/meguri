@@ -4,6 +4,14 @@
 // Output is declared as TypeScript types rather than Zod schemas because the
 // renderer trusts data coming from main (no runtime check needed).
 import { z } from "zod";
+import {
+  FilmTitle,
+  FilmYear,
+  IMDbId,
+  type FilmMatch,
+  type FilmMetadata,
+  type FilmReviewRow,
+} from "../filmMetadata.js";
 import type { SubtitleCue } from "../embeddedSubtitles.js";
 import {
   MAX_SOURCE_URL,
@@ -277,6 +285,18 @@ const PexelsSourceUrl = z
   .refine((url) => parsePexelsVideoUrl(url) !== null, {
     message: "expected a Pexels video page URL",
   });
+const FilmTarget = z.object({
+  id: z.number().int().positive(),
+  workspaceId: z.string().min(1).max(MAX_WORKSPACE_ID),
+});
+const FilmEditTarget = FilmTarget.extend({
+  metaKey: z.string().min(1).max(32_768),
+});
+const OmdbKey = z
+  .string()
+  .trim()
+  .regex(/^[a-z0-9]{1,128}$/i);
+
 const PexelsEditTarget = z.object({
   id: z.number().int().positive(),
   workspaceId: z.string().min(1).max(MAX_WORKSPACE_ID),
@@ -417,6 +437,29 @@ export const ChannelInputs = {
     track: z.number().int().nonnegative(),
     windowStart: z.number().int().nonnegative().max(31_536_000),
   }),
+  window_resize: z.discriminatedUnion("mode", [
+    z.object({ mode: z.literal("player") }),
+    z.object({
+      mode: z.literal("corner"),
+      width: z.number().int().min(1).max(32768),
+      height: z.number().int().min(1).max(32768),
+    }),
+  ]),
+  film_get: FilmTarget,
+  film_candidates: z.union([
+    z.object({
+      targets: BulkTargets,
+      offset: z.number().int().min(0).max(MAX_BULK_FILES).optional(),
+    }),
+    z.object({ query: SearchQuerySchema }),
+  ]),
+  film_lookup: z.object({
+    key: OmdbKey,
+    text: FilmTitle,
+    year: FilmYear.optional(),
+  }),
+  film_save: FilmEditTarget.extend({ key: OmdbKey, imdbId: IMDbId }),
+  film_remove: FilmEditTarget,
   pexels_sources_preview: z.union([
     z.object({ targets: BulkTargets }),
     z.object({ globalQuery: SearchQuerySchema }),
@@ -685,6 +728,17 @@ export interface ChannelOutputs {
   timeline_counts: TimelineCounts;
   file_get: FileDetail | null;
   file_subtitles: SubtitleCue[];
+  window_resize: void;
+  film_get: { row: FilmReviewRow; film: FilmMetadata | null } | null;
+  film_candidates: {
+    rows: FilmReviewRow[];
+    more: boolean;
+    next?: SearchResult["nextCursor"];
+    nextOffset?: number;
+  };
+  film_lookup: FilmMatch[];
+  film_save: FilmMetadata;
+  film_remove: boolean;
   pexels_sources_preview: { rows: SourceReviewRow[]; overLimit: boolean };
   pexels_source_set: boolean;
   pexels_sources_save: { saved: number; skipped: number };

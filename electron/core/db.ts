@@ -4,6 +4,9 @@ import { tagIdentityKey } from "../../shared/tags.js";
 import { readAudioMetadata } from "../../shared/audioMetadata.js";
 import { noteMatches } from "../../shared/noteSearch.js";
 
+import { detectFilm } from "../../shared/filmMetadata.js";
+import { FILM_TABLE } from "./queries/filmMetadata.js";
+
 export type DB = Database.Database;
 
 const noteConnections = new WeakSet<DB>();
@@ -44,6 +47,9 @@ function openNotes(db: DB, notesPath?: string, readonly = false): void {
  * file still opens anywhere else.
  */
 function registerFunctions(db: DB): void {
+  db.function("film_candidate", { deterministic: true }, (name: unknown) =>
+    Number(typeof name === "string" && detectFilm(name) !== null),
+  );
   db.function("tag_key", { deterministic: true }, (name: unknown) =>
     typeof name === "string" ? tagIdentityKey(name) : name,
   );
@@ -248,6 +254,7 @@ export function openDb(file: string, notesPath?: string): DB {
   migrateKindCheck(db);
   backfillColumns(db);
   migrateFtsToTrigram(db);
+  db.exec(FILM_TABLE);
   try {
     openNotes(db, notesPath);
     return db;

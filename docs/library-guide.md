@@ -338,3 +338,51 @@ embedded text track. Meguri loads cues around the playhead as you watch or seek.
 is known. Choose a specific track or **Off** to override that match for the clip.
 Your audio and subtitle choices are saved independently. Bitmap subtitles
 such as PGS and VobSub need a separate renderer.
+
+## Film information
+
+Meguri can flag likely films while you browse your local catalogue. It looks for
+a title and year followed by release details such as `1080p`, `AMZN` or `WEB-DL`.
+For example, `A City at Night (2025) (1080p AMZN WEB-DL x265).mkv` suggests
+**A City at Night (2025)**. Episodic names are skipped. A name is a suggestion and can be
+corrected before lookup.
+
+- Open a detected film and choose **Get film info** in the player header. For
+  other videos, **Add film info** is available in the Film details section.
+  Search by title and optional year, or paste an IMDb title link or ID.
+- Use **Review film candidates** beside the library or folder actions to look up
+  a batch. The review uses the selected videos when there is a selection and
+  the current filtered view otherwise. Use **Next batch** to continue through
+  a longer view. Check which suggestions to look up, choose the correct match
+  in each row, and save the matches you confirmed.
+- Online lookup uses your own [OMDb key](https://www.omdbapi.com/apikey.aspx).
+  The key stays in memory for the current window session. Meguri contacts
+  OMDb only when you press a lookup or save button. It sends the proposed title
+  and year or IMDb ID, and requests the poster for a confirmed match when
+  available. Local paths and video contents stay on your computer.
+
+Confirmed details and artwork are available offline. The Film details section
+shows the title, cast, director, genres, synopsis, runtime, certificate and
+IMDb rating when available. Available poster art appears on the catalogue card,
+where hover scrubbing still shows the original clip. The film link can be
+changed or removed from the same section. Opening the video in VLC or another
+external player continues to open the original file.
+
+Search for `has:film` to show saved films, `has:film-candidate` to show
+unmatched suggestions, or use `film:thriller` and `film:"Alex Rivera"` to
+search saved fields. Combine those with the library's other filters.
+
+When Finder removes a file, the next completed scan of that folder removes
+film details and poster data if the workspace has no remaining copy. Watch
+folders can reconcile the removal automatically.
+
+## Player and button controls
+
+The detail player's expand control also enlarges a small Meguri window,
+within the current display's usable area. Shrinking the player leaves the
+Meguri window at its current size. Drag the marked bottom-right corner of
+the main window, detached player or detached note editor to resize it.
+
+Button tooltips are on by default. They appear briefly after hovering over
+a control or reaching it with the keyboard. Toggle **Button tooltips** in
+**Settings**. Meguri remembers the setting between launches.

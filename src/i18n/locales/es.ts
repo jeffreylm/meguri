@@ -3,6 +3,44 @@ import type { TranslationKey } from "./ja";
 
 export const es: Record<TranslationKey, string> = {
   // App name: the single-kanji display name (guideline 00), identical in every locale.
+  "film.title": "Información de la película",
+  "film.get": "Buscar información",
+  "film.add": "Añadir información",
+  "film.change": "Cambiar coincidencia",
+  "film.remove": "Eliminar información",
+  "film.batch": "Revisar películas detectadas",
+  "film.reviewHelp":
+    "Revisa los títulos sugeridos, búscalos y elige qué coincidencias guardar. Meguri envía el título y el año o el ID de IMDb a OMDb.",
+  "film.key": "Clave API de OMDb",
+  "film.keyHelp":
+    "Usa tu propia clave. Meguri solo la conserva durante esta sesión.",
+  "film.titleInput": "Título, ID de IMDb o URL",
+  "film.year": "Año",
+  "film.match": "Película coincidente",
+  "film.choose": "Elegir una coincidencia",
+  "film.noMatch":
+    "No se encontraron películas. Prueba otro título, borra el año o pega el enlace de IMDb.",
+  "film.saved": "Información guardada",
+  "film.progress": "{done} de {total} completadas",
+  "film.stop": "Detener tras esta solicitud",
+  "film.lookup": "Buscar película",
+  "film.lookupBatch": "Buscar películas marcadas",
+  "film.saveMatches": "Guardar coincidencias ({count})",
+  "film.directors": "Dirección: {names}",
+  "film.cast": "Reparto: {names}",
+  "film.attribution": "Información de OMDb",
+  "film.detected": "Posible película: {title} {year}",
+  "film.removeFailed": "No se pudo eliminar la información.",
+  "film.batchLimit": "Se muestran hasta {count} candidatos a la vez.",
+  "film.nextBatch": "Siguiente lote",
+  "film.readFailed": "No se pudieron leer las películas detectadas.",
+  "film.noCandidates": "No hay películas sin vincular en esta vista.",
+  "window.resize": "Cambiar tamaño de ventana",
+  "settings.tooltips": "Información al pasar sobre botones",
+  "settings.tooltipsDesc":
+    "Muestra explicaciones breves al pasar el cursor o enfocar con el teclado.",
+  "playlist.tooltip": "Reproducir esta vista como lista",
+  "discover.tooltip": "Descubrir archivos de esta vista",
   "source.title": "Fuente",
   "source.recover": "Recuperar enlaces de origen",
   "source.recoverSelected": "Recuperar enlaces de la selección",
@@ -768,8 +806,7 @@ export const es: Record<TranslationKey, string> = {
   "discover.empty": "No hay medios para recomendar.",
   "discover.emptyHint":
     "Ejecuta «Escanear» para importar vídeos e imágenes y se recomendarán aquí al azar.",
-  "discover.sceneHint":
-    "Pasa el cursor para ampliar · haz clic para reproducir desde ese punto",
+  "discover.sceneHint": "Haz clic en una escena para saltar a ese punto",
   "discover.moreScenes": "+{count}",
 
   // Historial de reproducción

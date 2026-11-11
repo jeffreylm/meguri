@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { api } from "@/ipc/client";
 import { useIsFullscreen } from "@/hooks/useIsFullscreen";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import {
@@ -28,10 +29,11 @@ export function useDetailPresentation({
     "small",
     (raw) => (raw === "large" ? "large" : "small"),
   );
-  const toggleModalSize = useCallback(
-    () => setModalSize((prev) => (prev === "small" ? "large" : "small")),
-    [setModalSize],
-  );
+  const toggleModalSize = useCallback(() => {
+    const expand = modalSize === "small";
+    setModalSize(expand ? "large" : "small");
+    if (expand) void api.resizeWindow({ mode: "player" }).catch(() => {});
+  }, [modalSize, setModalSize]);
   const compactModal = useCallback(() => setModalSize("small"), [setModalSize]);
   const [presentation, setPresentation] = useLocalStorage<Presentation>(
     PRESENTATION_KEY,

@@ -132,8 +132,9 @@ export async function runScan(
   // before reconciling, in case the drive disappeared during the walk.
   await ensureScanRoot(core);
 
-  // A rebuild discards the derived file index (keeping durable metadata) before rescanning.
-  const firstSeen = opts.rebuild ? await clearIndex(core) : undefined;
+  // Keep rows under unreadable paths during a full scan. A transient access
+  // failure must not be treated as a Finder deletion.
+  const unreadable: string[] = [];
 
   // --- walk + sync (both async with concurrent IO, so they don't block the event loop) ---
   // On SMB these phases dominate the time before thumbnails start, so report their progress.
@@ -160,7 +161,7 @@ export async function runScan(
             total: 0,
           }),
         signal,
-        undefined,
+        (absolute) => unreadable.push(path.relative(core.root, absolute)),
         opts.ignoredRoots,
       );
 
@@ -171,6 +172,12 @@ export async function runScan(
   }
 
   await ensureScanRoot(core);
+  if (opts.rebuild && unreadable.length)
+    throw new Error(
+      "Some files or folders could not be read. Restore access before rebuilding.",
+    );
+  // A rebuild discards the derived file index, keeping durable metadata.
+  const firstSeen = opts.rebuild ? await clearIndex(core) : undefined;
   const { stats, ftsTargets } = await syncFiles(
     db,
     core.rootId,
@@ -180,6 +187,7 @@ export async function runScan(
     signal,
     changes?.scope,
     firstSeen,
+    unreadable,
   );
   q.touchScanRoot(db, core.rootId);
 

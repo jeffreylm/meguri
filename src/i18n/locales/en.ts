@@ -3,6 +3,43 @@ import type { TranslationKey } from "./ja";
 
 export const en: Record<TranslationKey, string> = {
   // App name: the single-kanji display name (guideline 00), identical in every locale.
+  "film.title": "Film details",
+  "film.get": "Get film info",
+  "film.add": "Add film info",
+  "film.change": "Change film match",
+  "film.remove": "Remove film info",
+  "film.batch": "Review film candidates",
+  "film.reviewHelp":
+    "Check the suggested titles, look them up, then choose which matches to save. Meguri sends the title and year or IMDb ID to OMDb.",
+  "film.key": "OMDb API key",
+  "film.keyHelp": "Use your own key. Meguri keeps it for this session only.",
+  "film.titleInput": "Film title, IMDb ID or URL",
+  "film.year": "Year",
+  "film.match": "Matching film",
+  "film.choose": "Choose a match",
+  "film.noMatch":
+    "No films found. Try a different title, clear the year, or paste the IMDb link.",
+  "film.saved": "Film details saved",
+  "film.progress": "{done} of {total} complete",
+  "film.stop": "Stop after this request",
+  "film.lookup": "Look up film",
+  "film.lookupBatch": "Look up checked films",
+  "film.saveMatches": "Save matches ({count})",
+  "film.directors": "Directed by {names}",
+  "film.cast": "Cast: {names}",
+  "film.attribution": "Film information from OMDb",
+  "film.detected": "Possible film: {title} {year}",
+  "film.removeFailed": "Could not remove film details.",
+  "film.batchLimit": "Showing up to {count} candidates at a time.",
+  "film.nextBatch": "Next batch",
+  "film.readFailed": "Could not read film candidates.",
+  "film.noCandidates": "No unlinked film candidates in this view.",
+  "window.resize": "Resize window",
+  "settings.tooltips": "Button tooltips",
+  "settings.tooltipsDesc":
+    "Show short explanations for controls on hover or keyboard focus.",
+  "playlist.tooltip": "Play the current view as a playlist",
+  "discover.tooltip": "Discover media from the current view",
   "source.title": "Source",
   "source.recover": "Recover source links",
   "source.recoverSelected": "Recover selected links",
@@ -748,7 +785,7 @@ export const en: Record<TranslationKey, string> = {
   "discover.empty": "No media to recommend.",
   "discover.emptyHint":
     'Run "Scan" to import videos and images, and they\'ll be recommended here at random.',
-  "discover.sceneHint": "Hover to enlarge · click to play from that point",
+  "discover.sceneHint": "Click a scene to jump to it",
   "discover.moreScenes": "+{count}",
 
   // Play history

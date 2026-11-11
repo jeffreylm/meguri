@@ -8,7 +8,7 @@
 // also needs a compatible H.264 picture instead of stream copy.
 // Both streams support time seeking via ?t=<seconds>.
 //
-// URLs have the form /ws/<workspaceId>/<kind>/<fileId> (kind = thumb|media|frame).
+// URLs have the form /ws/<workspaceId>/<kind>/<fileId> (kind = thumb|media|frame|poster).
 // Requests must include X-Api-Token; the Electron session injects it for in-app media loads.
 // Resolving the DB by workspace ID lets it serve correctly without depending on the active switch,
 // and the browser cache key is naturally separated by ID as well.
@@ -18,6 +18,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawn, type ChildProcess } from "node:child_process";
 import type { Core } from "./index.js";
+import { getFilmPoster } from "./queries/filmMetadata.js";
 import { thumbPathIfDone } from "./tags.js";
 import { audioArtworkFor } from "./audioArtwork.js";
 import { isInsideRoot } from "./paths.js";
@@ -219,7 +220,7 @@ export function startServer(
 const AUTH_HEADER = "x-api-token";
 
 // URLs have the form /ws/<workspaceId>/<kind>/<fileId>.
-const ROUTE = /^\/ws\/([0-9a-f]+)\/(thumb|media|frame)\/(\d+)$/;
+const ROUTE = /^\/ws\/([0-9a-f]+)\/(thumb|media|frame|poster)\/(\d+)$/;
 
 async function handle(
   req: http.IncomingMessage,
@@ -266,6 +267,27 @@ async function handle(
       return;
     }
     const id = Number(idStr);
+
+    if (kind === "poster") {
+      const poster = getFilmPoster(core.db, id);
+      if (!poster || url.searchParams.get("v") !== poster.version) {
+        res.writeHead(404).end();
+        return;
+      }
+      const etag = `"${poster.version}"`;
+      res.setHeader("Cache-Control", "private, no-cache");
+      res.setHeader("ETag", etag);
+      if (etagMatches(req.headers["if-none-match"], etag)) {
+        res.writeHead(304).end();
+        return;
+      }
+      res.writeHead(200, {
+        "Content-Type": poster.type,
+        "Content-Length": poster.bytes.length,
+      });
+      res.end(req.method === "HEAD" ? undefined : poster.bytes);
+      return;
+    }
 
     if (kind === "thumb") {
       const tp = thumbPathIfDone(core.db, id);

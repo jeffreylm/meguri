@@ -35,3 +35,13 @@ export function thumbUrl(
   const base = `${mediaBase}/ws/${encodeURIComponent(workspaceId)}/thumb/${fileId}`;
   return version == null ? base : `${base}?v=${version}`;
 }
+
+export function filmPosterUrl(
+  mediaBase: string,
+  workspaceId: string,
+  fileId: number,
+  version?: string | null,
+): string | undefined {
+  if (!mediaBase || !workspaceId || !version) return;
+  return `${mediaBase}/ws/${encodeURIComponent(workspaceId)}/poster/${fileId}?v=${encodeURIComponent(version)}`;
+}

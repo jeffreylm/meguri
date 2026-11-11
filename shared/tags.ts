@@ -294,12 +294,13 @@ export function tagSearchToken(name: string): string {
  */
 function foldSpacedDirectives(tokens: string[]): string[] {
   // `note:` (shared/noteSearch.ts) the same way, for the same reason.
-  const bare = [`${TAG_SEARCH_PREFIX}:`, `${NOTE_SEARCH_PREFIX}:`];
+  const bare = [`${TAG_SEARCH_PREFIX}:`, `${NOTE_SEARCH_PREFIX}:`, "film:"];
   // A directive typed after an abandoned `note: ` is a condition of its own,
   // not the value: `note: tag:beach` must not search notes for "tag:beach".
   const isDirectiveStart = (token: string) =>
     bare.some((head) => token.toLowerCase().startsWith(head)) ||
-    isHasNoteToken(token);
+    isHasNoteToken(token) ||
+    token.toLowerCase().startsWith("has:film");
   const out: string[] = [];
   for (let i = 0; i < tokens.length; i++) {
     if (

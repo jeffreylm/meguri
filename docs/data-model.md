@@ -387,3 +387,18 @@ across `electron/core/queries/`:
 - `bookmarks.ts` — scene bookmark operations.
 - `thumbs.ts` — thumbnail-related queries.
 - `scanRoots.ts` — scan-root bookkeeping.
+
+## Film metadata
+
+The workspace database has a `film_metadata` table keyed by the same content
+identity as other file metadata, with an IMDb title ID, normalized film
+details, searchable text and an optional poster BLOB. Keeping the poster
+in the same row couples its lifetime to the metadata. A content-keyed
+record can reattach after a rename or index rebuild. A path-keyed record
+migrates when scanning computes its content key.
+
+A file disappearing, changing content or becoming a non-video removes its
+old record once no live video in that workspace references it. A completed
+full scan prunes entries that could not reattach after a rebuild. The update
+trigger runs during incremental scans too. Film metadata is distinct from
+user notes, ratings, and the underlying media files.

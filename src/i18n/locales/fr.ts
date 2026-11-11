@@ -3,6 +3,44 @@ import type { TranslationKey } from "./ja";
 
 export const fr: Record<TranslationKey, string> = {
   // App name: the single-kanji display name (guideline 00), identical in every locale.
+  "film.title": "Informations sur le film",
+  "film.get": "Rechercher le film",
+  "film.add": "Ajouter les infos du film",
+  "film.change": "Modifier la correspondance",
+  "film.remove": "Supprimer les infos du film",
+  "film.batch": "Examiner les films détectés",
+  "film.reviewHelp":
+    "Vérifiez les titres proposés, recherchez-les, puis choisissez les correspondances à enregistrer. Meguri envoie le titre et l’année ou l’identifiant IMDb à OMDb.",
+  "film.key": "Clé API OMDb",
+  "film.keyHelp":
+    "Utilisez votre propre clé. Elle est conservée pour cette session uniquement.",
+  "film.titleInput": "Titre, identifiant IMDb ou URL",
+  "film.year": "Année",
+  "film.match": "Film correspondant",
+  "film.choose": "Choisir une correspondance",
+  "film.noMatch":
+    "Aucun film trouvé. Modifiez le titre, effacez l’année ou collez le lien IMDb.",
+  "film.saved": "Informations enregistrées",
+  "film.progress": "{done} sur {total} terminés",
+  "film.stop": "Arrêter après cette requête",
+  "film.lookup": "Rechercher le film",
+  "film.lookupBatch": "Rechercher les films cochés",
+  "film.saveMatches": "Enregistrer ({count})",
+  "film.directors": "Réalisation : {names}",
+  "film.cast": "Distribution : {names}",
+  "film.attribution": "Informations fournies par OMDb",
+  "film.detected": "Film possible : {title} {year}",
+  "film.removeFailed": "Impossible de supprimer les informations.",
+  "film.batchLimit": "Affichage de {count} candidats maximum à la fois.",
+  "film.nextBatch": "Lot suivant",
+  "film.readFailed": "Impossible de lire les films détectés.",
+  "film.noCandidates": "Aucun film sans correspondance dans cette vue.",
+  "window.resize": "Redimensionner la fenêtre",
+  "settings.tooltips": "Infobulles des boutons",
+  "settings.tooltipsDesc":
+    "Afficher de brèves explications au survol ou au focus clavier.",
+  "playlist.tooltip": "Lire cette vue en liste de lecture",
+  "discover.tooltip": "Découvrir les médias de cette vue",
   "source.title": "Source",
   "source.recover": "Récupérer les liens source",
   "source.recoverSelected": "Récupérer les liens de la sélection",
@@ -771,8 +809,7 @@ export const fr: Record<TranslationKey, string> = {
   "discover.empty": "Aucun média à recommander.",
   "discover.emptyHint":
     "Lancez « Analyser » pour importer des vidéos et des images ; elles seront recommandées ici au hasard.",
-  "discover.sceneHint":
-    "Survolez pour agrandir · cliquez pour lire à partir de ce point",
+  "discover.sceneHint": "Cliquez sur une scène pour y accéder",
   "discover.moreScenes": "+{count}",
 
   // Historique de lecture

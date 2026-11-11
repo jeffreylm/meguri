@@ -319,6 +319,7 @@ export function TopBar({
   onOpenPlaylist,
   canOpenPlaylist = true,
   onPopout,
+  filmAction,
   size,
   onToggleSize,
   presentation = "modal",
@@ -340,6 +341,7 @@ export function TopBar({
   /** False while the list does not hold this file. */
   canOpenPlaylist?: boolean;
   onPopout?: () => void;
+  filmAction?: ReactNode;
   size?: ModalSize;
   onToggleSize?: () => void;
   presentation?: Presentation;
@@ -406,6 +408,7 @@ export function TopBar({
         </span>
       )}
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
+        {filmAction}
         {/* Not a toggle: this one leaves the detail view for the playlist,
             the way the player's own detail button leaves the playlist. */}
         {onOpenPlaylist && (

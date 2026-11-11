@@ -8,6 +8,8 @@
 // saves as the user types (useNoteWriter), audio in the bottom bar
 // (useAudioDetail), prev/next (usePrevNextNavigation), and the title row,
 // rating/tags card and play history as components.
+import { Clapperboard } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   Suspense,
@@ -53,6 +55,7 @@ import { useDetailPresentation } from "./useDetailPresentation";
 import { useThumbVersion } from "./useThumbVersion";
 import { Scenes } from "./Scenes";
 import { SceneBookmarks } from "./SceneBookmarks";
+import { FilmInfoSection } from "./FilmInfoSection";
 import { PexelsSourceSection } from "./PexelsSourceSection";
 import { MetaChips } from "./MetaChips";
 import { usePrevNextNavigation } from "./usePrevNextNavigation";
@@ -146,6 +149,13 @@ export default function MediaDetail({
     enabled: Number.isFinite(fileId) && wsId !== "",
   });
   const kind = detail.data?.kind;
+  const [filmReview, setFilmReview] = useState<string | null>(null);
+  const filmTarget = `${wsId}:${fileId}`;
+  const film = useQuery({
+    queryKey: ["film_get", wsId, fileId],
+    queryFn: () => api.getFilm({ workspaceId: wsId, id: fileId }),
+    enabled: kind === "video" && wsId !== "",
+  });
   // Where playback starts: `?t=` wins, else where the file was left last time
   // (settled once per visit; see useResumeStart). Keyed on `?t=` too, so a
   // scene or bookmark opened for the same file is a visit of its own.
@@ -398,6 +408,21 @@ export default function MediaDetail({
           detached={detached}
           onClose={onClose}
           title={basename}
+          filmAction={
+            film.data?.row.guess && !film.data.film ? (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2"
+                aria-label={t("film.get")}
+                title={t("film.get")}
+                onClick={() => setFilmReview(filmTarget)}
+              >
+                <Clapperboard aria-hidden />
+                <span className="hidden md:inline">{t("film.get")}</span>
+              </Button>
+            ) : undefined
+          }
           onPrev={goPrev}
           onNext={goNext}
           canPrev={canPrev}
@@ -586,6 +611,18 @@ export default function MediaDetail({
               onRemove={actions.removeBookmark}
               onSetMainThumb={actions.setMainThumb}
               t={t}
+            />
+          )}
+
+          {d.kind === "video" && wsId && (
+            <FilmInfoSection
+              key={`film:${filmTarget}`}
+              id={fileId}
+              workspaceId={wsId}
+              mediaBase={mediaBase}
+              data={film.data ?? null}
+              open={filmReview === filmTarget}
+              onOpen={(open) => setFilmReview(open ? filmTarget : null)}
             />
           )}
 

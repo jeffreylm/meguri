@@ -295,6 +295,10 @@ export function migrateMetaKey(db: DB, fromKey: string, toKey: string): void {
   db.transaction(() => {
     migrateNoteKey(db, fromKey, toKey);
     db.prepare(
+      "UPDATE OR IGNORE film_metadata SET meta_key = ? WHERE meta_key = ?",
+    ).run(toKey, fromKey);
+    db.prepare("DELETE FROM film_metadata WHERE meta_key = ?").run(fromKey);
+    db.prepare(
       "UPDATE OR IGNORE file_meta SET meta_key = ? WHERE meta_key = ?",
     ).run(toKey, fromKey);
     db.prepare("DELETE FROM file_meta WHERE meta_key = ?").run(fromKey);
@@ -348,6 +352,10 @@ export function pruneOrphanMeta(db: DB): void {
     db.exec(
       "DELETE FROM scene_bookmarks WHERE meta_key NOT IN (SELECT meta_key FROM files)",
     );
+    db.exec(`DELETE FROM film_metadata WHERE NOT EXISTS (
+      SELECT 1 FROM files WHERE files.meta_key = film_metadata.meta_key
+        AND deleted_at IS NULL AND kind = 'video'
+    )`);
     // Tags are referenced only via meta_tags; drop any left with no references.
     db.exec("DELETE FROM tags WHERE id NOT IN (SELECT tag_id FROM meta_tags)");
   })();

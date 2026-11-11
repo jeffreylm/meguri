@@ -2,6 +2,44 @@
 // 補間は {name} 形式。en.ts はこのキー集合と同型でなければならない（型で強制）。
 export const ja = {
   // アプリ名（表示名の漢字1文字。ガイドライン00）
+  "film.title": "映画情報",
+  "film.get": "映画情報を取得",
+  "film.add": "映画情報を追加",
+  "film.change": "作品の一致を変更",
+  "film.remove": "映画情報を削除",
+  "film.batch": "映画候補を確認",
+  "film.reviewHelp":
+    "候補のタイトルを確認して検索し、保存する作品を選びます。Meguri はタイトルと公開年、または IMDb ID を OMDb に送ります。",
+  "film.key": "OMDb API キー",
+  "film.keyHelp":
+    "ご自身のキーを入力してください。キーはこのセッション中のみ保持します。",
+  "film.titleInput": "映画タイトル、IMDb ID、URL",
+  "film.year": "公開年",
+  "film.match": "一致する映画",
+  "film.choose": "作品を選択",
+  "film.noMatch":
+    "映画が見つかりません。タイトルを変更するか、公開年を消すか、IMDb リンクを貼り付けてください。",
+  "film.saved": "映画情報を保存しました",
+  "film.progress": "{total} 件中 {done} 件完了",
+  "film.stop": "このリクエストの後で停止",
+  "film.lookup": "映画を検索",
+  "film.lookupBatch": "チェックした映画を検索",
+  "film.saveMatches": "一致した作品を保存（{count}）",
+  "film.directors": "監督：{names}",
+  "film.cast": "出演：{names}",
+  "film.attribution": "映画情報の提供元：OMDb",
+  "film.detected": "映画候補：{title} {year}",
+  "film.removeFailed": "映画情報を削除できませんでした。",
+  "film.batchLimit": "候補を一度に最大 {count} 件表示します。",
+  "film.nextBatch": "次の候補",
+  "film.readFailed": "映画候補を読み込めませんでした。",
+  "film.noCandidates": "このビューに未登録の映画候補はありません。",
+  "window.resize": "ウィンドウをリサイズ",
+  "settings.tooltips": "ボタンのツールチップ",
+  "settings.tooltipsDesc":
+    "ポインターを重ねるかキーボードでフォーカスすると操作の説明を表示します。",
+  "playlist.tooltip": "現在のビューをプレイリストとして再生",
+  "discover.tooltip": "現在のビューからメディアを発見",
   "source.title": "出典",
   "source.recover": "出典リンクを復元",
   "source.recoverSelected": "選択した動画の出典を復元",
@@ -750,7 +788,7 @@ export const ja = {
   "discover.empty": "おすすめできるメディアがありません。",
   "discover.emptyHint":
     "「スキャン」で動画や画像を取り込むと、ここでランダムにおすすめされます。",
-  "discover.sceneHint": "ホバーで拡大 · クリックでその時点から再生",
+  "discover.sceneHint": "シーンをクリックするとその位置に移動します",
   "discover.moreScenes": "+{count}",
 
   // 再生履歴

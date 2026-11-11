@@ -143,6 +143,16 @@ export const api = {
     xy: number[],
     dims: GraphDims = 2,
   ) => invoke("graph_layout_set", { scope, keys, xy, dims }),
+  resizeWindow: (input: ChannelInput<"window_resize">) =>
+    invoke("window_resize", input),
+  getFilm: (input: ChannelInput<"film_get">) => invoke("film_get", input),
+  filmCandidates: (input: ChannelInput<"film_candidates">) =>
+    invoke("film_candidates", input),
+  lookupFilm: (input: ChannelInput<"film_lookup">) =>
+    invoke("film_lookup", input),
+  saveFilm: (input: ChannelInput<"film_save">) => invoke("film_save", input),
+  removeFilm: (input: ChannelInput<"film_remove">) =>
+    invoke("film_remove", input),
   previewPexelsSources: (input: ChannelInput<"pexels_sources_preview">) =>
     invoke("pexels_sources_preview", input),
   setPexelsSource: (input: ChannelInput<"pexels_source_set">) =>

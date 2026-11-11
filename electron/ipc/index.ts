@@ -1,11 +1,13 @@
 // IPC handler registration, one module per domain. main.ts builds the
 // IpcContext and calls registerIpc() once the app is ready; adding a channel
 // means adding a handle() to the matching group here (see docs/architecture.md).
+import { registerWindowSizingHandlers } from "./windowSizing.js";
 import type { IpcContext } from "./context.js";
 import { registerActivityHandlers } from "./activity.js";
 import { registerArtlistArtworkHandlers } from "./artlistArtwork.js";
 import { registerAutoTagHandlers } from "./autoTag.js";
 import { registerBookmarkHandlers } from "./bookmarks.js";
+import { registerFilmHandlers } from "./filmMetadata.js";
 import { registerFileHandlers } from "./files.js";
 import { registerFolderHandlers } from "./folders.js";
 import { registerGraphHandlers } from "./graph.js";
@@ -24,9 +26,11 @@ export type { IpcContext } from "./context.js";
 
 export function registerIpc(ctx: IpcContext): void {
   registerStatusHandlers(ctx);
+  registerWindowSizingHandlers(ctx);
   registerWorkspaceHandlers(ctx);
   registerScanHandlers(ctx);
   registerFileHandlers(ctx);
+  registerFilmHandlers(ctx);
   registerPexelsSourceHandlers(ctx);
   registerFolderHandlers(ctx);
   registerGraphHandlers(ctx);

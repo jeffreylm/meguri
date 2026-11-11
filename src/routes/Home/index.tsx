@@ -92,6 +92,7 @@ import { useFolderNavKeys } from "./useFolderNavKeys";
 import { useFolderPlaylist } from "./useFolderPlaylist";
 import { useTour } from "@/tour/TourProvider";
 import { HomeHeader } from "./HomeHeader";
+import { FilmBatchAction } from "./FilmBatchAction";
 import { SelectionLayer, SourceReviewAction } from "./SelectionLayer";
 import {
   VIEW_KEY,
@@ -978,14 +979,17 @@ export default function Home() {
   const sourceReviewAction =
     workspaceId &&
     (workspaceId === ALL_ID ? status.data?.ready : folderAvailable) ? (
-      <SourceReviewAction
-        fallback={
-          workspaceId === ALL_ID
-            ? { globalQuery: searchQuery }
-            : { workspaceId, folder: folderView ? folderNav.path : "" }
-        }
-        thumbVersion={thumbVersion}
-      />
+      <>
+        <FilmBatchAction query={searchQuery} />
+        <SourceReviewAction
+          fallback={
+            workspaceId === ALL_ID
+              ? { globalQuery: searchQuery }
+              : { workspaceId, folder: folderView ? folderNav.path : "" }
+          }
+          thumbVersion={thumbVersion}
+        />
+      </>
     ) : null;
   const setScopeMode = (mode: LibraryScope) => {
     if (mode === "global") onOpenLocation(ALL_ID);
@@ -1375,7 +1379,7 @@ export default function Home() {
           watching, and neither is subordinate to the other. */}
         <Link
           to="/play"
-          title={t("playlist.start")}
+          data-control-tooltip={t("playlist.tooltip")}
           aria-label={t("playlist.start")}
           aria-disabled={!hasPool}
           tabIndex={hasPool ? undefined : -1}
@@ -1383,7 +1387,7 @@ export default function Home() {
             // Stacked above the discovery button; both lift together when the
             // audio player bar is showing, and both move left of the detail
             // side peek while it is docked (each variable is 0 otherwise).
-            "fixed bottom-[calc(6rem+var(--meguri-player-bar-inset))] right-[calc(1.25rem+var(--meguri-peek-inset))] z-30 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl shadow-black/25 transition hover:scale-105 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "fixed bottom-[calc(7rem+var(--meguri-player-bar-inset))] right-[calc(1.25rem+var(--meguri-peek-inset))] z-30 flex size-[3.125rem] items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl shadow-black/25 transition hover:scale-105 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             !hasPool && "pointer-events-none opacity-45",
           )}
         >
@@ -1393,14 +1397,14 @@ export default function Home() {
         <Link
           to={discoverPath(subtreeFilter)}
           data-tour="discover"
-          title={t("discover.title")}
+          data-control-tooltip={t("discover.tooltip")}
           aria-label={t("discover.title")}
           aria-disabled={!hasPool}
           tabIndex={hasPool ? undefined : -1}
           className={cn(
             // Lifted clear of the audio player bar when one is showing (the
             // variable is 0 otherwise, keeping the original offset).
-            "fixed bottom-[calc(1.25rem+var(--meguri-player-bar-inset))] right-[calc(1.25rem+var(--meguri-peek-inset))] z-30 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl shadow-black/25 transition hover:scale-105 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "fixed bottom-[calc(3.125rem+var(--meguri-player-bar-inset))] right-[calc(1.25rem+var(--meguri-peek-inset))] z-30 flex size-[3.125rem] items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl shadow-black/25 transition hover:scale-105 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             !hasPool && "pointer-events-none opacity-45",
           )}
         >

@@ -129,7 +129,7 @@
     "vitest": "^4.1.12"
   },
   "build": {
-    "buildVersion": "16",
+    "buildVersion": "17",
     "appId": "dev.amgsk.meguri",
     "productName": "Meguri",
     "directories": {

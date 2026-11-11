@@ -84,6 +84,7 @@ interface Prefs {
   keybindingPreset: KeybindingPreset;
   hideSupportLink: boolean;
   hoverPreview: boolean;
+  buttonTooltips: boolean;
   frameQuality: FrameQuality;
   emojiStyle: EmojiStyle;
   /** Seconds a still image is shown in the playlist player before advancing. */
@@ -128,6 +129,7 @@ const DEFAULTS: Prefs = {
   keybindingPreset: DEFAULT_KEYBINDING_PRESET,
   hideSupportLink: false,
   hoverPreview: true,
+  buttonTooltips: true,
   frameQuality: DEFAULT_FRAME_QUALITY,
   emojiStyle: DEFAULT_EMOJI_STYLE,
   playlistImageSeconds: DEFAULT_PLAYLIST_IMAGE_SECONDS,
@@ -179,6 +181,10 @@ function loadPrefs(): Prefs {
           typeof parsed.hoverPreview === "boolean"
             ? parsed.hoverPreview
             : DEFAULTS.hoverPreview,
+        buttonTooltips:
+          typeof parsed.buttonTooltips === "boolean"
+            ? parsed.buttonTooltips
+            : DEFAULTS.buttonTooltips,
         frameQuality: isFrameQuality(parsed.frameQuality)
           ? parsed.frameQuality
           : DEFAULT_FRAME_QUALITY,
@@ -241,6 +247,7 @@ interface PrefsCtx extends Prefs {
   setKeybindingPreset: (p: KeybindingPreset) => void;
   setHideSupportLink: (hidden: boolean) => void;
   setHoverPreview: (enabled: boolean) => void;
+  setButtonTooltips: (enabled: boolean) => void;
   setFrameQuality: (q: FrameQuality) => void;
   setEmojiStyle: (s: EmojiStyle) => void;
   setPlaylistImageSeconds: (n: number) => void;
@@ -289,6 +296,8 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
         setPrefs((p) => ({ ...p, hideSupportLink: hidden })),
       setHoverPreview: (enabled) =>
         setPrefs((p) => ({ ...p, hoverPreview: enabled })),
+      setButtonTooltips: (enabled) =>
+        setPrefs((p) => ({ ...p, buttonTooltips: enabled })),
       setFrameQuality: (q) => setPrefs((p) => ({ ...p, frameQuality: q })),
       setEmojiStyle: (s) => setPrefs((p) => ({ ...p, emojiStyle: s })),
       setPlaylistImageSeconds: (n) =>

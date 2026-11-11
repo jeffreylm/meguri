@@ -151,6 +151,8 @@ export default function Settings() {
     setHideSupportLink,
     hoverPreview,
     setHoverPreview,
+    buttonTooltips,
+    setButtonTooltips,
     frameQuality,
     playlistImageSeconds,
     setPlaylistImageSeconds,
@@ -246,6 +248,25 @@ export default function Settings() {
                     ))}
                   </SelectContent>
                 </Select>
+              </section>
+
+              <section className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface px-4 py-3">
+                <div className="flex flex-col">
+                  <label
+                    htmlFor="button-tooltips"
+                    className="text-sm font-semibold text-bright-fg"
+                  >
+                    {t("settings.tooltips")}
+                  </label>
+                  <span className="text-xs text-muted">
+                    {t("settings.tooltipsDesc")}
+                  </span>
+                </div>
+                <Switch
+                  id="button-tooltips"
+                  checked={buttonTooltips}
+                  onCheckedChange={setButtonTooltips}
+                />
               </section>
 
               {/* Keybinding preset (file paging keys) */}

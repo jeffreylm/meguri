@@ -1,5 +1,10 @@
 // File search, listing and detail queries. Dynamic SQL is built safely with placeholders.
 import { selectedMediaKinds } from "../../../shared/mediaKindFilter.js";
+import {
+  FILM_CANDIDATE_TOKEN,
+  FILM_SAVED_TOKEN,
+  filmSearchKey,
+} from "../../../shared/filmMetadata.js";
 import type { DB } from "../db.js";
 import { RESOLUTIONS } from "../../../shared/resolutions.js";
 import { recentFilesRange } from "../../../shared/recentFiles.js";
@@ -43,7 +48,7 @@ const MAX_LIMIT = 500;
 // Metadata (rating/favorite/last_accessed) lives in file_meta, keyed by meta_key, so it
 // is reached through a LEFT JOIN. COALESCE supplies defaults for files with no meta row.
 // Exported for queries that join files under the same `f`/`m` aliases (see history.ts).
-export const FILE_COLS = `f.id, f.rel_path AS relPath, f.kind, f.ext, f.size, f.width, f.height, f.duration, COALESCE(m.rating, 0) AS rating, COALESCE(m.favorite, 0) AS favorite, f.thumb_status AS thumbStatus, ${FILE_HAS_THUMB} AS hasThumb, f.content_hash AS contentHash, f.captured_at AS capturedAt, f.btime, f.created_at AS addedAt, m.last_accessed_at AS lastAccessedAt, m.resume_position AS resumePosition, CASE WHEN m.resume_position IS NOT NULL AND f.duration > 0 THEN MIN(1.0, m.resume_position / f.duration) END AS progress`;
+export const FILE_COLS = `f.id, f.rel_path AS relPath, f.kind, f.ext, f.size, f.width, f.height, f.duration, COALESCE(m.rating, 0) AS rating, COALESCE(m.favorite, 0) AS favorite, f.thumb_status AS thumbStatus, ${FILE_HAS_THUMB} AS hasThumb, f.content_hash AS contentHash, (SELECT poster_version FROM film_metadata WHERE meta_key = f.meta_key AND f.kind = 'video') AS filmPosterVersion, f.captured_at AS capturedAt, f.btime, f.created_at AS addedAt, m.last_accessed_at AS lastAccessedAt, m.resume_position AS resumePosition, CASE WHEN m.resume_position IS NOT NULL AND f.duration > 0 THEN MIN(1.0, m.resume_position / f.duration) END AS progress`;
 
 export const FILE_FROM =
   "FROM files f LEFT JOIN file_meta m ON m.meta_key = f.meta_key";
@@ -85,12 +90,18 @@ function buildSearchTerms(q: string): {
   /** Per `note:` token, the folded texts any of which the note must contain. */
   noteTerms: string[][];
   hasNote: boolean;
+  filmTerms: string[];
+  hasFilm: boolean;
+  filmCandidate: boolean;
 } {
   const matchTokens: string[] = [];
   const anyOf: { match: string | null; likes: string[] }[] = [];
   const tagTokens: string[] = [];
   const noteTerms: string[][] = [];
   let hasNote = false;
+  const filmTerms: string[] = [];
+  let hasFilm = false;
+  let filmCandidate = false;
   for (const raw of splitSearchTokens(q)) {
     const tag = parseTagSearchToken(raw);
     if (tag) {
@@ -104,6 +115,20 @@ function buildSearchTerms(q: string): {
     const note = parseNoteSearchToken(raw);
     if (note) {
       noteTerms.push(searchTokenTerms(note).map(noteSearchKey));
+      continue;
+    }
+    const filmToken = filmSearchKey(raw);
+    if (filmToken === FILM_CANDIDATE_TOKEN) {
+      filmCandidate = true;
+      continue;
+    }
+    if (filmToken === FILM_SAVED_TOKEN) {
+      hasFilm = true;
+      continue;
+    }
+    if (filmToken.startsWith("film:")) {
+      const value = filmToken.slice(5).trim();
+      if (value) filmTerms.push(value);
       continue;
     }
     const terms = searchTokenTerms(raw);
@@ -121,6 +146,9 @@ function buildSearchTerms(q: string): {
     tagTokens,
     noteTerms,
     hasNote,
+    filmTerms,
+    hasFilm,
+    filmCandidate,
   };
 }
 
@@ -219,9 +247,7 @@ export function appendSearchConditions(
   if (query.matchNone) return sql + " AND 0";
   for (const clause of query.allOf ?? [])
     sql = appendSearchConditions(db, sql, args, clause, sep);
-  const terms = query.q
-    ? buildSearchTerms(query.q)
-    : { match: null, anyOf: [], tagTokens: [], noteTerms: [], hasNote: false };
+  const terms = buildSearchTerms(query.q ?? "");
   if (terms.match) {
     sql += " AND f.id IN (SELECT rowid FROM files_fts WHERE files_fts MATCH ?)";
     args.push(terms.match);
@@ -279,6 +305,21 @@ export function appendSearchConditions(
     args.push(JSON.stringify(terms.noteTerms));
   } else if (terms.hasNote) {
     sql += " AND f.meta_key IN (SELECT meta_key FROM catalogue_notes)";
+  }
+  if (terms.filmCandidate) {
+    sql +=
+      " AND f.kind = 'video' AND film_candidate(f.rel_path) AND f.meta_key NOT IN (SELECT meta_key FROM film_metadata)";
+  }
+  if (terms.hasFilm || terms.filmTerms.length) {
+    sql +=
+      " AND f.kind = 'video' AND f.meta_key IN (SELECT meta_key FROM film_metadata";
+    if (terms.filmTerms.length) {
+      sql +=
+        " WHERE " +
+        terms.filmTerms.map(() => "instr(search_text, ?) > 0").join(" AND ");
+      args.push(...terms.filmTerms);
+    }
+    sql += ")";
   }
   if (query.folder) {
     const cond = folderCondition(

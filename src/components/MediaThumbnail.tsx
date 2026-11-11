@@ -2,7 +2,7 @@ import { createElement, useState } from "react";
 import { createPortal } from "react-dom";
 import { Play } from "lucide-react";
 import { kindIcon } from "@/lib/mediaKind";
-import { hasThumbFile, thumbUrl } from "@/lib/thumbUrl";
+import { filmPosterUrl, hasThumbFile, thumbUrl } from "@/lib/thumbUrl";
 import type { FileRow } from "@/ipc/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useThumbnailScrub } from "@/hooks/useThumbnailScrub";
@@ -81,9 +81,18 @@ export function MediaThumbnail({
   // marked thumb_status 'done' whether or not it embeds cover art, so status
   // alone would build a URL that 404s for the cover-less ones. Audio *with* a
   // cover renders it like any other thumbnail.
-  const src = hasThumbFile(file)
+  const frame = hasThumbFile(file)
     ? (thumbUrl(mediaBase, file.workspaceId, file.id, version) ?? undefined)
     : undefined;
+  const poster = filmPosterUrl(
+    mediaBase,
+    file.workspaceId,
+    file.id,
+    file.filmPosterVersion,
+  );
+  const [failedPoster, setFailedPoster] = useState<string | null>(null);
+  const showPoster = !!poster && failedPoster !== poster;
+  const src = showPoster ? poster : frame;
   // Also false until the media origin is known, so nothing tries to load early.
   const hasThumb = src !== undefined;
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -137,10 +146,12 @@ export function MediaThumbnail({
         alt={file.relPath}
         loading="lazy"
         onLoad={() => setImgLoaded(true)}
-        onError={() => setFailedSrc(src)}
+        onError={() => (showPoster ? setFailedPoster(src) : setFailedSrc(src))}
         className={cn(
           "absolute inset-0 h-full w-full transition-opacity",
-          file.kind === "audio" ? "object-contain" : "object-cover",
+          showPoster || file.kind === "audio"
+            ? "object-contain"
+            : "object-cover",
           imgLoaded ? "opacity-100" : "opacity-0",
         )}
       />

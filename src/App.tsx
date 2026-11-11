@@ -12,6 +12,8 @@ import Duplicates from "@/routes/Duplicates";
 import Tags from "@/routes/Tags";
 import AutoTag from "@/routes/AutoTag";
 import Settings from "@/routes/Settings";
+import { ButtonTooltips } from "@/components/ButtonTooltips";
+import { WindowResizeGrip } from "@/components/WindowResizeGrip";
 import { WorkspaceRail } from "@/components/WorkspaceRail";
 import { AudioPlayerProvider } from "@/audio/AudioPlayerProvider";
 import { AudioPlayerBar } from "@/audio/AudioPlayerBar";
@@ -55,23 +57,39 @@ const router = createHashRouter([
 registerRouterNavigate((to, opts) => void router.navigate(to, opts));
 
 export default function App() {
+  return (
+    <>
+      <AppLayout />
+      <ButtonTooltips />
+    </>
+  );
+}
+
+function AppLayout() {
   useCatalogueWindowSync();
   useContentZoom();
   useSelectAllGuard();
   useUpdateNotifier();
   if (window.location.hash.startsWith("#/note/"))
-    return <RouterProvider router={router} />;
+    return (
+      <>
+        <RouterProvider router={router} />
+        <WindowResizeGrip />
+      </>
+    );
   if (window.location.hash.startsWith("#/detached/"))
     return (
       <AudioPlayerProvider>
         <div className="h-full">
           <RouterProvider router={router} />
+          <WindowResizeGrip />
         </div>
       </AudioPlayerProvider>
     );
   return (
     <div className="flex h-full">
       <WorkspaceRail />
+      <WindowResizeGrip />
       {/* The provider and its single <audio> element sit OUTSIDE RouterProvider, so
           navigation never unmounts them and playback continues across route changes.
           Moving it inside a route would break that guarantee. */}

@@ -447,6 +447,7 @@ export async function syncFiles(
   signal?: AbortSignal,
   scope?: readonly string[],
   firstSeen?: ReadonlyMap<string, number>,
+  unreadable: readonly string[] = [],
 ): Promise<{ stats: ScanStats; needsThumb: number[]; ftsTargets: number[] }> {
   const stats: ScanStats = {
     inserted: 0,
@@ -680,7 +681,13 @@ export async function syncFiles(
       .all(...scopeArgs) as { id: number; rel_path: string }[];
     const del = db.prepare("UPDATE files SET deleted_at = ? WHERE id = ?");
     for (const row of alive) {
-      if (!seen.has(row.rel_path)) {
+      if (
+        !seen.has(row.rel_path) &&
+        !unreadable.some(
+          (p) =>
+            !p || row.rel_path === p || row.rel_path.startsWith(p + path.sep),
+        )
+      ) {
         del.run(now, row.id);
         stats.deleted++;
       }

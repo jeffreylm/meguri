@@ -93,6 +93,7 @@ export const FileRowSchema = z.object({
   hasThumb: z.number(),
   /** Sampled content hash (see scan.ts). Null until the scan computes it; used by the "hash" sort. */
   contentHash: z.string().nullable().optional(),
+  filmPosterVersion: z.string().nullable().optional(),
   capturedAt: z.number().nullable(),
   /** Filesystem creation time (birthtime, Unix seconds). Null where the FS doesn't provide it. */
   btime: z.number().nullable(),
