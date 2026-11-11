@@ -212,6 +212,23 @@ describe("NoteCard", () => {
     expect(screen.queryByRole("toolbar", { name: "Formatting" })).toBeNull();
   });
 
+  it("reveals the first note saved in another window without opening the editor", () => {
+    const { rerender } = renderWithProviders(
+      <NoteCard fileId={7} wsId="ws" note={null} />,
+    );
+    expect(screen.getByRole("button", { name: /Add a note/ })).toBeTruthy();
+
+    rerender(
+      <NoteCard fileId={7} wsId="ws" note="First note from another window" />,
+    );
+
+    expect(screen.queryByRole("button", { name: /Add a note/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Edit" })).toBeTruthy();
+    const preview = screen.getByText("First note from another window");
+    expect(preview.closest("[hidden]")).toBeNull();
+    expect(mocks.fileSetNote).not.toHaveBeenCalled();
+  });
+
   it("shows a note changed elsewhere, even one over the editing limit", () => {
     const { rerender, unmount } = renderWithProviders(
       <NoteCard fileId={7} wsId="ws" note="short" />,

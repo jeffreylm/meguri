@@ -188,21 +188,21 @@ export default function NoteCard({
 
   const view = useEditorState({
     editor,
-    selector: ({ editor: e }) => ({
-      isEmpty: e.isEmpty,
-      // While the editor is created again for a note changed elsewhere, this
-      // still sees the old one once, already destroyed (its storage gone).
-      chars: e.isDestroyed ? 0 : e.storage.characterCount.characters(),
-      heading: e.isActive("heading"),
-      bold: e.isActive("bold"),
-      italic: e.isActive("italic"),
-      strike: e.isActive("strike"),
-      code: e.isActive("code"),
-      bulletList: e.isActive("bulletList"),
-      orderedList: e.isActive("orderedList"),
-      taskList: e.isActive("taskList"),
-      blockquote: e.isActive("blockquote"),
-      link: e.isActive("link"),
+    // A replacement editor can render before it emits its first transaction.
+    // Read the live editor so the previous editor's empty state can't hide it.
+    selector: () => ({
+      isEmpty: editor.isEmpty,
+      chars: editor.storage.characterCount.characters(),
+      heading: editor.isActive("heading"),
+      bold: editor.isActive("bold"),
+      italic: editor.isActive("italic"),
+      strike: editor.isActive("strike"),
+      code: editor.isActive("code"),
+      bulletList: editor.isActive("bulletList"),
+      orderedList: editor.isActive("orderedList"),
+      taskList: editor.isActive("taskList"),
+      blockquote: editor.isActive("blockquote"),
+      link: editor.isActive("link"),
     }),
   });
 
@@ -287,7 +287,6 @@ export default function NoteCard({
         {!inWindow && (
           <Button
             type="button"
-            variant="outline"
             size="sm"
             className={editing || view.isEmpty ? "ml-auto" : undefined}
             disabled={opening}
