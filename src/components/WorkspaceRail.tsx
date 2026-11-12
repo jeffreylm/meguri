@@ -317,7 +317,7 @@ export function WorkspaceRail() {
     <>
       <nav
         aria-label={t("workspace.navigation")}
-        className="flex h-full w-max min-w-16 shrink-0 flex-col items-center gap-2 border-r border-border bg-bg py-3"
+        className="flex h-full w-max min-w-[4.875rem] shrink-0 flex-col items-center gap-2 border-r border-border bg-bg py-3"
       >
         <img
           src={LOGO_SRC[logo]}
