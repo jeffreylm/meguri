@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import { detectFilm, omdbKeyFromUrl } from "../../../shared/filmMetadata.js";
 import { lookupFilms, loadFilm } from "../omdb.js";
 import { searchFiles } from "../queries/files.js";
@@ -179,11 +180,33 @@ describe("manual OMDb lookup", () => {
           Poster: "https://m.media-amazon.com/images/poster.jpg",
         }),
       )
-      .mockResolvedValueOnce(new Response(Uint8Array.from([255, 216, 255, 1])));
-    await expect(
-      loadFilm("test-key", details.imdbId, request),
-    ).resolves.toMatchObject({ film: details, poster: { type: "image/jpeg" } });
+      .mockResolvedValueOnce(
+        new Response(
+          new Uint8Array(
+            readFileSync(
+              new URL("../../../e2e/fixtures/media/test.png", import.meta.url),
+            ),
+          ),
+          { headers: { "Content-Type": "image/png" } },
+        ),
+      );
+    const normalize = vi.fn().mockResolvedValue(Buffer.from([255, 216, 255]));
+    const result = await loadFilm(
+      "test-key",
+      details.imdbId,
+      normalize,
+      request,
+    );
+    expect(result).toMatchObject({
+      film: details,
+      poster: { type: "image/jpeg" },
+    });
+    expect(result.poster?.bytes.subarray(0, 3).toString("hex")).toBe("ffd8ff");
+    expect(normalize).toHaveBeenCalledWith(expect.any(Buffer), "image/png");
     expect(request.mock.calls[2][1]).toMatchObject({ redirect: "error" });
+    expect((request.mock.calls[2][0] as URL).searchParams.has("apikey")).toBe(
+      false,
+    );
     request.mockResolvedValueOnce(
       Response.json({
         ...record,
@@ -191,9 +214,51 @@ describe("manual OMDb lookup", () => {
       }),
     );
     await expect(
-      loadFilm("test-key", details.imdbId, request),
+      loadFilm("test-key", details.imdbId, normalize, request),
     ).resolves.toMatchObject({ film: details, poster: undefined });
     expect(request).toHaveBeenCalledTimes(4);
+  });
+
+  it.each([
+    ["text/html", "<script>alert(1)</script>"],
+    ["image/png", "<svg onload='alert(1)'/>"],
+    ["image/jpeg", Uint8Array.from([255, 216, 255, 1])],
+  ])(
+    "keeps film details but rejects invalid poster bytes labeled %s",
+    async (type, body) => {
+      const request = vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(
+          Response.json({
+            ...record,
+            Poster: "https://m.media-amazon.com/images/poster.jpg",
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(body, { headers: { "Content-Type": type } }),
+        );
+      await expect(
+        loadFilm(
+          "test-key",
+          details.imdbId,
+          () => Promise.resolve(undefined),
+          request,
+        ),
+      ).resolves.toMatchObject({ film: details, poster: undefined });
+    },
+  );
+
+  it("skips malformed search results without interpreting their fields", async () => {
+    const request = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      Response.json({
+        Search: [{ ...record, Year: { toString: null } }, record],
+      }),
+    );
+    await expect(
+      lookupFilms("test-key", { text: record.Title }, request),
+    ).resolves.toEqual([
+      { imdbId: details.imdbId, title: record.Title, year: 2025 },
+    ]);
   });
 
   it("does not reveal a credential when a request fails", async () => {

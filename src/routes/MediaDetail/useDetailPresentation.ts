@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/ipc/client";
 import { useIsFullscreen } from "@/hooks/useIsFullscreen";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -8,6 +8,11 @@ import {
   type ModalSize,
   type Presentation,
 } from "./MediaModal";
+
+const windowViewport = () => ({
+  width: window.innerWidth,
+  height: window.innerHeight,
+});
 
 /**
  * How the detail view is shown: modal or side peek, the modal's size, and
@@ -29,12 +34,39 @@ export function useDetailPresentation({
     "small",
     (raw) => (raw === "large" ? "large" : "small"),
   );
+  const [expandedViewport, setExpandedViewport] = useState(windowViewport);
+  const expansion = useRef(0);
+  useEffect(() => {
+    const resize = () => {
+      const viewport = windowViewport();
+      setExpandedViewport((current) => {
+        const width = Math.min(current.width, viewport.width);
+        const height = Math.min(current.height, viewport.height);
+        return width === current.width && height === current.height
+          ? current
+          : { width, height };
+      });
+    };
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, []);
   const toggleModalSize = useCallback(() => {
     const expand = modalSize === "small";
+    const request = ++expansion.current;
     setModalSize(expand ? "large" : "small");
-    if (expand) void api.resizeWindow({ mode: "player" }).catch(() => {});
+    if (!expand) return;
+    setExpandedViewport(windowViewport());
+    void api
+      .resizeWindow({ mode: "player" })
+      .then((size) => {
+        if (size && expansion.current === request) setExpandedViewport(size);
+      })
+      .catch(() => {});
   }, [modalSize, setModalSize]);
-  const compactModal = useCallback(() => setModalSize("small"), [setModalSize]);
+  const compactModal = useCallback(() => {
+    expansion.current++;
+    setModalSize("small");
+  }, [setModalSize]);
   const [presentation, setPresentation] = useLocalStorage<Presentation>(
     PRESENTATION_KEY,
     "modal",
@@ -60,6 +92,7 @@ export function useDetailPresentation({
 
   return {
     modalSize,
+    expandedViewport,
     toggleModalSize,
     compactModal,
     presentation,

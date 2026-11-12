@@ -10,12 +10,15 @@ export const en: Record<TranslationKey, string> = {
   "film.remove": "Remove film info",
   "film.batch": "Review film candidates",
   "film.reviewHelp":
-    "Check the suggested titles, look them up, then choose which matches to save. Meguri sends the title and year or IMDb ID to OMDb.",
+    "Check the suggested titles before looking them up. Meguri sends your key and the title and year or IMDb ID to OMDb. Saving a match may fetch a poster from IMDb or Amazon.",
   "film.key": "OMDb API key",
   "film.keyUrl": "OMDb API URL from your email",
   "film.keyUrlInvalid": "Paste the OMDb API URL that contains apikey=.",
   "film.keyHelp":
-    "Enter either the key or the API URL. Meguri keeps the key for this session only.",
+    "Enter the key or API URL once. Meguri saves it after a successful lookup when protected storage is available.",
+  "film.keySaved": "A saved OMDb key is ready to use.",
+  "film.keySession":
+    "Your OMDb key is available for this session. Protected storage is unavailable.",
   "film.titleInput": "Film title, IMDb ID or URL",
   "film.year": "Year",
   "film.match": "Matching film",

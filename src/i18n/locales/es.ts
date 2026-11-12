@@ -10,12 +10,15 @@ export const es: Record<TranslationKey, string> = {
   "film.remove": "Eliminar información",
   "film.batch": "Revisar películas detectadas",
   "film.reviewHelp":
-    "Revisa los títulos sugeridos, búscalos y elige qué coincidencias guardar. Meguri envía el título y el año o el ID de IMDb a OMDb.",
+    "Revisa los títulos sugeridos antes de buscarlos. Meguri envía tu clave y el título y el año o el ID de IMDb a OMDb. Al guardar una coincidencia, puede descargar el cartel de IMDb o Amazon.",
   "film.key": "Clave API de OMDb",
   "film.keyUrl": "URL de la API de OMDb del correo",
   "film.keyUrlInvalid": "Pega la URL de la API de OMDb que contiene apikey=.",
   "film.keyHelp":
-    "Introduce la clave o la URL de la API. Meguri solo conserva la clave durante esta sesión.",
+    "Introduce la clave o la URL de la API una vez. Meguri la guarda tras una consulta correcta si hay almacenamiento protegido.",
+  "film.keySaved": "La clave de OMDb guardada está lista para usarse.",
+  "film.keySession":
+    "La clave de OMDb está disponible durante esta sesión. El almacenamiento protegido no está disponible.",
   "film.titleInput": "Título, ID de IMDb o URL",
   "film.year": "Año",
   "film.match": "Película coincidente",

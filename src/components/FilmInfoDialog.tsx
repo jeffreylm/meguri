@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,11 +19,7 @@ import {
   type FilmMatch,
   type FilmReviewRow,
 } from "@shared/filmMetadata";
-import {
-  filmLookupKey,
-  rememberFilmLookupKey,
-  refreshFilm,
-} from "@/lib/filmLookup";
+import { refreshFilm } from "@/lib/filmLookup";
 
 const rowKey = (row: FilmReviewRow) => `${row.workspaceId}:${row.id}`;
 type Stage = {
@@ -50,11 +46,14 @@ export function FilmInfoDialog({
 }) {
   const { t } = useI18n();
   const qc = useQueryClient();
-  const save = useMutation({ mutationFn: api.saveFilm });
+  const { data: keyStatus } = useQuery({
+    queryKey: ["film_key_status"],
+    queryFn: api.filmKeyStatus,
+  });
   const [credential, setCredential] = useState<{
     field: "key" | "url";
     value: string;
-  }>(() => ({ field: "key", value: filmLookupKey() }));
+  }>({ field: "key", value: "" });
   const parsedKey = OmdbKey.safeParse(credential.value);
   const key =
     credential.field === "url"
@@ -62,6 +61,9 @@ export function FilmInfoDialog({
       : parsedKey.success
         ? parsedKey.data
         : null;
+  const hasCredential = credential.value
+    ? key !== null
+    : keyStatus === "saved" || keyStatus === "session";
   const [busy, setBusy] = useState<"lookup" | "save" | null>(null);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [error, setError] = useState("");
@@ -102,12 +104,12 @@ export function FilmInfoDialog({
   const confirmed = eligible.filter((row) => staged[rowKey(row)].choice);
 
   async function run(action: "lookup" | "save", work: FilmReviewRow[]) {
-    if (!key) return;
+    if (!hasCredential) return;
     setError("");
     setBusy(action);
     setProgress({ done: 0, total: work.length });
     cancelled.current = false;
-    rememberFilmLookupKey(key);
+    let validated = false;
     try {
       for (const [index, row] of work.entries()) {
         if (cancelled.current) break;
@@ -116,20 +118,22 @@ export function FilmInfoDialog({
         if (action === "lookup") {
           setRow(id, { results: undefined, choice: undefined });
           const results = await api.lookupFilm({
-            key,
+            key: key ?? undefined,
             text: stage.text.trim(),
             year: stage.year ? Number(stage.year) : undefined,
           });
+          validated = true;
           if (!cancelled.current) setRow(id, { results });
         } else if (stage.choice) {
           const { workspaceId, metaKey } = row;
-          const film = await save.mutateAsync({
-            key,
+          const film = await api.saveFilm({
+            key: key ?? undefined,
             imdbId: stage.choice,
             id: row.id,
             workspaceId,
             metaKey,
           });
+          validated = true;
           refreshFilm(qc, row, film.posterVersion);
           if (!cancelled.current) setRow(id, { saved: true });
         }
@@ -139,6 +143,10 @@ export function FilmInfoDialog({
       if (!cancelled.current)
         setError(String(cause).replace(/^.*?Error: /, ""));
     } finally {
+      if (key && validated) {
+        await qc.invalidateQueries({ queryKey: ["film_key_status"] });
+        if (!cancelled.current) setCredential({ field: "key", value: "" });
+      }
       setBusy(null);
     }
   }
@@ -192,6 +200,12 @@ export function FilmInfoDialog({
             />
           </label>
           <p className="text-xs text-muted">{t("film.keyHelp")}</p>
+          {!credential.value &&
+            (keyStatus === "saved" || keyStatus === "session") && (
+              <p className="text-xs text-muted">
+                {t(keyStatus === "saved" ? "film.keySaved" : "film.keySession")}
+              </p>
+            )}
           {credential.field === "url" && credential.value && !key && (
             <p role="alert" className="text-sm text-destructive">
               {t("film.keyUrlInvalid")}
@@ -199,7 +213,7 @@ export function FilmInfoDialog({
           )}
           <Button
             variant="outline"
-            disabled={!key || !!busy || !eligible.length}
+            disabled={!hasCredential || !!busy || !eligible.length}
             onClick={() => void run("lookup", eligible)}
           >
             {t(batch ? "film.lookupBatch" : "film.lookup")}
@@ -328,7 +342,7 @@ export function FilmInfoDialog({
             </Button>
           )}
           <Button
-            disabled={!key || !!busy || !confirmed.length}
+            disabled={!hasCredential || !!busy || !confirmed.length}
             onClick={() => void run("save", confirmed)}
           >
             {t("film.saveMatches", { count: confirmed.length })}

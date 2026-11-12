@@ -32,8 +32,8 @@ import { extractMeta, type ExtractedMeta } from "./media.js";
 import {
   PREVIEW_AUDIO_TRACK_PARAM,
   REMUX_CONTAINERS,
+  hasRemuxVideo,
   readPlaybackTracks,
-  remuxVideoIndex,
 } from "../../shared/playbackTracks.js";
 import {
   isTaggedHdr,
@@ -272,13 +272,19 @@ async function handle(
 
     if (kind === "poster") {
       const poster = getFilmPoster(core.db, id);
-      if (!poster || url.searchParams.get("v") !== poster.version) {
+      if (
+        !poster ||
+        (poster.type !== "image/jpeg" && poster.type !== "image/png") ||
+        url.searchParams.get("v") !== poster.version
+      ) {
         res.writeHead(404).end();
         return;
       }
       const etag = `"${poster.version}"`;
       res.setHeader("Cache-Control", "private, no-cache");
       res.setHeader("ETag", etag);
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
       if (etagMatches(req.headers["if-none-match"], etag)) {
         res.writeHead(304).end();
         return;
@@ -415,17 +421,16 @@ async function handle(
       let track: { audio: number; video?: number } | undefined;
       if (requested !== null) {
         const audio = /^\d+$/.test(requested) ? Number(requested) : -1;
-        const video = proResPreview ? undefined : remuxVideoIndex(metadata);
         if (
           !Number.isSafeInteger(audio) ||
           audio < 0 ||
           audio >= audioTracks.length ||
-          (!proResPreview && video === undefined)
+          (!proResPreview && !hasRemuxVideo(metadata))
         ) {
           res.writeHead(400).end();
           return;
         }
-        track = { audio, video };
+        track = { audio };
       }
       if (req.method === "HEAD") {
         res.writeHead(200, { "Content-Type": "video/mp4" }).end();
@@ -725,6 +730,10 @@ function startRemuxSession(
       "1",
     );
   if (start != null && start > 0) args.push("-ss", start.toFixed(3));
+  // Explicit audio in remuxed containers keeps FFmpeg's usual video selection.
+  // A direct Dolby preview still carries its explicitly mapped video stream.
+  if (!proResPreview && track && track.video === undefined)
+    args.push("-discard:a", "all", `-discard:a:${track.audio}`, "none");
   args.push("-i", file);
   if (proResPreview) {
     args.push(
@@ -750,8 +759,9 @@ function startRemuxSession(
       "aac",
     );
   } else {
-    if (track)
+    if (track?.video !== undefined)
       args.push("-map", `0:${track.video}`, "-map", `0:a:${track.audio}`);
+    else if (track) args.push("-sn", "-dn");
     args.push("-c", "copy");
     if (mode === "aac") args.push("-c:a", "aac", "-b:a", "384k");
   }

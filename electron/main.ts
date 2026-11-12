@@ -31,6 +31,7 @@ import {
   QueryWorkerClient,
 } from "./core/queryWorkerClient.js";
 import { startServer } from "./core/server.js";
+import { isAppRendererUrl, RENDERER_FILE } from "./core/rendererUrl.js";
 import {
   checkForUpdates,
   isAutoCheckEnabled,
@@ -202,22 +203,6 @@ function startControlServer(): Promise<http.Server | null> {
   });
 }
 
-// Restrict in-window navigation to the bundled renderer (or the Vite dev server
-// in development). Anything else is sent to the OS browser via shell.openExternal.
-// setWindowOpenHandler is also applied here so a future BrowserWindow inherits it.
-// `file:` is always permitted (bundled renderer); the dev origin is read on each
-// call so a late-resolved ELECTRON_RENDERER_URL is honored.
-function isAppUrl(url: string): boolean {
-  try {
-    const u = new URL(url);
-    if (u.protocol === "file:") return true;
-    const dev = process.env["ELECTRON_RENDERER_URL"];
-    if (dev) return u.origin === new URL(dev).origin;
-    return false;
-  } catch {
-    return false;
-  }
-}
 // Renderer crash recovery. A crashed renderer (OOM, a decoder fault, ...)
 // otherwise leaves the tray-resident app with a blank window until the user
 // quits and relaunches. Reload the main window instead — with a growing
@@ -272,7 +257,8 @@ app.on("render-process-gone", (_e, wc, details) => {
  * bypassed) is replaced by the app entry instead of being revived.
  */
 function reloadRenderer(win: BrowserWindow): void {
-  if (isAppUrl(win.webContents.getURL())) win.webContents.reload();
+  if (isAppRendererUrl(win.webContents.getURL(), devRendererUrl()))
+    win.webContents.reload();
   else void loadRenderer(win);
 }
 
@@ -304,8 +290,12 @@ app.on("web-contents-created", (_e, contents) => {
   // The isolated Artlist window installs its own remote navigation policy.
   if (isArtlistContents(contents)) return;
   contents.setWindowOpenHandler(() => ({ action: "deny" }));
+  contents.on("will-redirect", (event, url, _inPlace, mainFrame) => {
+    if (mainFrame && !isAppRendererUrl(url, devRendererUrl()))
+      event.preventDefault();
+  });
   contents.on("will-navigate", (event, url) => {
-    if (isAppUrl(url)) return;
+    if (isAppRendererUrl(url, devRendererUrl())) return;
     event.preventDefault();
     try {
       const u = new URL(url);
@@ -463,15 +453,19 @@ function createWindow(): void {
   void loadRenderer(mainWindow);
 }
 
+function devRendererUrl(): string | undefined {
+  return isDevMode() ? process.env.ELECTRON_RENDERER_URL : undefined;
+}
+
 /** Load the app entry (dev server in development, bundled renderer otherwise). */
 function loadRenderer(win: BrowserWindow, hash = ""): Promise<void> {
-  const devUrl = process.env["ELECTRON_RENDERER_URL"];
+  const devUrl = devRendererUrl();
   if (devUrl) {
     const url = new URL(devUrl);
     url.hash = hash;
     return win.loadURL(url.toString());
   }
-  return win.loadFile(path.join(__dirname, "../renderer/index.html"), { hash });
+  return win.loadFile(RENDERER_FILE, { hash });
 }
 
 async function openMediaWindow(input: {

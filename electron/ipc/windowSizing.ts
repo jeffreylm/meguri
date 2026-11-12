@@ -20,20 +20,46 @@ export function registerWindowSizingHandlers({ mainWindow }: IpcContext): void {
     const clamp = (value: number, min: number, max: number) =>
       Math.max(min, Math.min(value, max));
 
-    if (input.mode === "player") {
+    if (input.mode !== "corner") {
       if (win !== mainWindow()) return;
-      // Enlarge from a compact browser window to the normal desktop size.
-      // Keep a larger existing window intact, including on a smaller monitor.
-      const width = Math.max(current.width, Math.min(1280, workArea.width));
-      const height = Math.max(current.height, Math.min(800, workArea.height));
-      if (width === current.width && height === current.height) return;
-      win.setBounds({
-        x: clamp(current.x, workArea.x, workArea.x + workArea.width - width),
-        y: clamp(current.y, workArea.y, workArea.y + workArea.height - height),
-        width,
-        height,
-      });
-      return;
+      const zoom = event.sender.getZoomFactor();
+      const [contentWidth, contentHeight] = win.getContentSize();
+      // The header expands to the normal desktop size. A dragged player edge
+      // asks for just the content area it needs, in renderer CSS pixels.
+      const target =
+        input.mode === "player"
+          ? { width: 1280, height: 800 }
+          : {
+              width:
+                current.width - contentWidth + Math.ceil(input.width * zoom),
+              height:
+                current.height - contentHeight + Math.ceil(input.height * zoom),
+            };
+      const width = Math.max(
+        current.width,
+        Math.min(target.width, workArea.width),
+      );
+      const height = Math.max(
+        current.height,
+        Math.min(target.height, workArea.height),
+      );
+      if (width !== current.width || height !== current.height) {
+        win.setBounds({
+          x: clamp(current.x, workArea.x, workArea.x + workArea.width - width),
+          y: clamp(
+            current.y,
+            workArea.y,
+            workArea.y + workArea.height - height,
+          ),
+          width,
+          height,
+        });
+      }
+      const [actualWidth, actualHeight] = win.getContentSize();
+      return {
+        width: Math.floor(actualWidth / zoom),
+        height: Math.floor(actualHeight / zoom),
+      };
     }
 
     win.setBounds({

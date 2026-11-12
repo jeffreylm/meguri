@@ -2,14 +2,6 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { FilmReviewRow } from "@shared/filmMetadata";
 import { patchFileRowInCaches } from "./queryCache";
 
-let sessionKey = "";
-export function filmLookupKey() {
-  return sessionKey;
-}
-export function rememberFilmLookupKey(key: string) {
-  sessionKey = key;
-}
-
 export function refreshFilm(
   qc: QueryClient,
   row: FilmReviewRow,

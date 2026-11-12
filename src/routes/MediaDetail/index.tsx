@@ -170,6 +170,7 @@ export default function MediaDetail({
   const startAt = resumeStart.startAt;
   const {
     modalSize,
+    expandedViewport,
     toggleModalSize,
     compactModal,
     presentation,
@@ -339,6 +340,7 @@ export default function MediaDetail({
         detached={detached}
         onClose={onClose}
         size={modalSize}
+        expandedViewport={expandedViewport}
         onResize={compactModal}
         presentation={presentation}
         t={t}
@@ -367,6 +369,7 @@ export default function MediaDetail({
         detached={detached}
         onClose={onClose}
         size={modalSize}
+        expandedViewport={expandedViewport}
         onResize={compactModal}
         presentation={presentation}
         t={t}
@@ -397,6 +400,7 @@ export default function MediaDetail({
       detached={detached}
       onClose={onClose}
       size={modalSize}
+      expandedViewport={expandedViewport}
       onResize={compactModal}
       presentation={presentation}
       fullscreen={isFullscreen}

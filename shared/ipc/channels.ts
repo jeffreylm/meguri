@@ -437,12 +437,18 @@ export const ChannelInputs = {
   window_resize: z.discriminatedUnion("mode", [
     z.object({ mode: z.literal("player") }),
     z.object({
+      mode: z.literal("player-fit"),
+      width: z.number().int().min(1).max(32768),
+      height: z.number().int().min(1).max(32768),
+    }),
+    z.object({
       mode: z.literal("corner"),
       width: z.number().int().min(1).max(32768),
       height: z.number().int().min(1).max(32768),
     }),
   ]),
   film_get: FilmTarget,
+  film_key_status: z.void(),
   film_candidates: z.union([
     z.object({
       targets: BulkTargets,
@@ -451,11 +457,11 @@ export const ChannelInputs = {
     z.object({ query: SearchQuerySchema }),
   ]),
   film_lookup: z.object({
-    key: OmdbKey,
+    key: OmdbKey.optional(),
     text: FilmTitle,
     year: FilmYear.optional(),
   }),
-  film_save: FilmEditTarget.extend({ key: OmdbKey, imdbId: IMDbId }),
+  film_save: FilmEditTarget.extend({ key: OmdbKey.optional(), imdbId: IMDbId }),
   film_remove: FilmEditTarget,
   pexels_sources_preview: z.union([
     z.object({ targets: BulkTargets }),
@@ -725,7 +731,7 @@ export interface ChannelOutputs {
   timeline_counts: TimelineCounts;
   file_get: FileDetail | null;
   file_subtitles: SubtitleCue[];
-  window_resize: void;
+  window_resize: { width: number; height: number } | void;
   film_get: { row: FilmReviewRow; film: FilmMetadata | null } | null;
   film_candidates: {
     rows: FilmReviewRow[];
@@ -733,6 +739,7 @@ export interface ChannelOutputs {
     next?: SearchResult["nextCursor"];
     nextOffset?: number;
   };
+  film_key_status: "missing" | "session" | "saved";
   film_lookup: FilmMatch[];
   film_save: FilmMetadata;
   film_remove: boolean;

@@ -9,12 +9,15 @@ export const ja = {
   "film.remove": "映画情報を削除",
   "film.batch": "映画候補を確認",
   "film.reviewHelp":
-    "候補のタイトルを確認して検索し、保存する作品を選びます。Meguri はタイトルと公開年、または IMDb ID を OMDb に送ります。",
+    "検索の前に候補のタイトルを確認してください。Meguri はキーと、タイトルと公開年または IMDb ID を OMDb に送ります。作品を保存すると、IMDb または Amazon からポスターを取得する場合があります。",
   "film.key": "OMDb API キー",
   "film.keyUrl": "メールに記載の OMDb API URL",
   "film.keyUrlInvalid": "apikey= を含む OMDb API の URL を貼り付けてください。",
   "film.keyHelp":
-    "キーまたは API URL を入力してください。キーはこのセッション中のみ保持します。",
+    "キーまたは API URL を一度入力してください。保護されたストレージが利用できる場合、検索に成功するとキーが保存されます。",
+  "film.keySaved": "保存済みの OMDb キーを使用できます。",
+  "film.keySession":
+    "OMDb キーはこのセッション中に使用できます。保護されたストレージは利用できません。",
   "film.titleInput": "映画タイトル、IMDb ID、URL",
   "film.year": "公開年",
   "film.match": "一致する映画",

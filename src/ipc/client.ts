@@ -148,6 +148,7 @@ export const api = {
   getFilm: (input: ChannelInput<"film_get">) => invoke("film_get", input),
   filmCandidates: (input: ChannelInput<"film_candidates">) =>
     invoke("film_candidates", input),
+  filmKeyStatus: () => invoke("film_key_status"),
   lookupFilm: (input: ChannelInput<"film_lookup">) =>
     invoke("film_lookup", input),
   saveFilm: (input: ChannelInput<"film_save">) => invoke("film_save", input),

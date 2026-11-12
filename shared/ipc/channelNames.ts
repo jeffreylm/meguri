@@ -41,6 +41,7 @@ export const INVOKE_CHANNELS = [
   "file_subtitles",
   "window_resize",
   "film_get",
+  "film_key_status",
   "film_candidates",
   "film_lookup",
   "film_save",

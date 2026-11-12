@@ -6,9 +6,7 @@ interface Stream {
   index?: number;
   codec_type?: string;
   codec_name?: string;
-  width?: number;
-  height?: number;
-  disposition?: { attached_pic?: number; default?: number };
+  disposition?: { attached_pic?: number };
   tags?: { title?: string; handler_name?: string; language?: string };
 }
 
@@ -52,21 +50,13 @@ export function readPlaybackTracks(
     });
 }
 
-/** Match FFmpeg's automatic picture selection for the usual remux inputs. */
-export function remuxVideoIndex(raw: unknown): number | undefined {
-  return streams(raw)
-    .filter(
-      (s) =>
-        s.codec_type === "video" &&
-        !s.disposition?.attached_pic &&
-        Number.isSafeInteger(s.index),
-    )
-    .sort(
-      (a, b) =>
-        Number(!!b.disposition?.default) - Number(!!a.disposition?.default) ||
-        (b.width ?? 0) * (b.height ?? 0) - (a.width ?? 0) * (a.height ?? 0) ||
-        a.index! - b.index!,
-    )[0]?.index;
+export function hasRemuxVideo(raw: unknown): boolean {
+  return streams(raw).some(
+    (stream) =>
+      stream.codec_type === "video" &&
+      !stream.disposition?.attached_pic &&
+      Number.isSafeInteger(stream.index),
+  );
 }
 
 export function isRemuxedVideo(

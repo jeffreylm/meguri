@@ -55,6 +55,7 @@ export function MediaModal({
   onClose,
   detached = false,
   size = "small",
+  expandedViewport,
   presentation = "modal",
   fullscreen = false,
   containerRef,
@@ -65,6 +66,7 @@ export function MediaModal({
   onClose: () => void;
   detached?: boolean;
   size?: ModalSize;
+  expandedViewport: { width: number; height: number };
   presentation?: Presentation;
   fullscreen?: boolean;
   containerRef?: Ref<HTMLDivElement>;
@@ -93,8 +95,8 @@ export function MediaModal({
   const isPeek = !detached && presentation === "peek";
   const docked = isPeek && !fullscreen;
 
-  // The panel element, for measuring and for live-resizing during a drag
-  // without a render per pointer move (the parent's ref is served too).
+  // The panel element is measured at the start of a drag and exposed to the
+  // parent's fullscreen and playback controls.
   const panelRef = useRef<HTMLDivElement>(null);
   const pressedBackdrop = useRef(false);
   useImperativeHandle(containerRef, () => panelRef.current as HTMLDivElement);
@@ -103,6 +105,7 @@ export function MediaModal({
     !isPeek && !fullscreen && !detached,
     size,
     panelRef,
+    expandedViewport,
     onResize,
   );
   // Tell Home the list is in use beside the sheet (see peekDocked.ts).

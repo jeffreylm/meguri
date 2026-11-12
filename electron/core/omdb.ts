@@ -9,6 +9,11 @@ import {
 import type { FilmPoster } from "./queries/filmMetadata.js";
 
 type OmdbRecord = Record<string, unknown>;
+export type PosterType = "image/jpeg" | "image/png";
+type NormalizePoster = (
+  bytes: Buffer,
+  type: PosterType,
+) => Promise<Buffer | undefined>;
 
 export function imdbIdFromInput(value: string): string | null {
   if (IMDbId.safeParse(value).success) return value;
@@ -33,7 +38,11 @@ function parseMatch(value: unknown): FilmMatch | null {
   if (!isRecord(value) || value.Type !== "movie") return null;
   const id = IMDbId.safeParse(value.imdbID);
   const title = FilmTitle.safeParse(value.Title);
-  const year = FilmYear.safeParse(Number(value.Year));
+  const year = FilmYear.safeParse(
+    typeof value.Year === "string" && /^\d{4}$/.test(value.Year.trim())
+      ? Number(value.Year)
+      : value.Year,
+  );
   return id.success && title.success && year.success
     ? { imdbId: id.data, title: title.data, year: year.data }
     : null;
@@ -132,6 +141,7 @@ export async function lookupFilms(
 
 async function downloadPoster(
   raw: unknown,
+  normalizePoster: NormalizePoster,
   request: typeof fetch,
 ): Promise<FilmPoster | undefined> {
   if (typeof raw !== "string") return;
@@ -153,18 +163,26 @@ async function downloadPoster(
       signal: AbortSignal.timeout(7_000),
     });
     if (!response.ok) return;
+    const type = response.headers
+      .get("content-type")
+      ?.split(";", 1)[0]
+      .trim()
+      .toLowerCase();
+    if (type !== "image/jpeg" && type !== "image/png") {
+      await response.body?.cancel();
+      return;
+    }
     const bytes = await readBounded(response, 2 * 1024 * 1024);
     const header = bytes.subarray(0, 8).toString("hex");
-    const type = header.startsWith("ffd8ff")
-      ? "image/jpeg"
-      : header === "89504e470d0a1a0a"
-        ? "image/png"
-        : null;
-    if (type)
+    const isJpeg = type === "image/jpeg";
+    if (isJpeg ? !header.startsWith("ffd8ff") : header !== "89504e470d0a1a0a")
+      return;
+    const normalized = await normalizePoster(bytes, type);
+    if (normalized)
       return {
-        bytes,
-        type,
-        version: createHash("sha256").update(bytes).digest("hex"),
+        bytes: normalized,
+        type: "image/jpeg",
+        version: createHash("sha256").update(normalized).digest("hex"),
       };
   } catch {
     // A poster is optional. The confirmed text remains useful without one.
@@ -174,6 +192,7 @@ async function downloadPoster(
 export async function loadFilm(
   key: string,
   imdbId: string,
+  normalizePoster: NormalizePoster,
   request = fetch,
 ): Promise<{ film: FilmMetadata; poster?: FilmPoster }> {
   const body = await queryOmdb(key, { i: imdbId, plot: "full" }, request);
@@ -197,6 +216,6 @@ export async function loadFilm(
       certificate: field("Rated", 40),
       imdbRating: field("imdbRating", 12),
     },
-    poster: await downloadPoster(body.Poster, request),
+    poster: await downloadPoster(body.Poster, normalizePoster, request),
   };
 }

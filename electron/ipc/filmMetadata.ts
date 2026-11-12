@@ -6,6 +6,12 @@ import {
 import { handle } from "../core/ipcHandler.js";
 import { Semaphore } from "../core/concurrency.js";
 import { loadFilm, lookupFilms } from "../core/omdb.js";
+import { normalizeFilmPoster } from "./filmPoster.js";
+import {
+  currentFilmKey,
+  filmKeyStatus,
+  rememberValidatedFilmKey,
+} from "./filmCredentials.js";
 import {
   getFilm,
   getFilmRow,
@@ -17,6 +23,7 @@ import { bulkTargetCores, coreById, queryTargets } from "./helpers.js";
 
 export function registerFilmHandlers({ ws, queryClient }: IpcContext): void {
   const slots = new Semaphore(1);
+  handle("film_key_status", filmKeyStatus);
   handle("film_get", ({ id, workspaceId }) => {
     const { db } = coreById(ws, workspaceId);
     const row = getFilmRow(db, workspaceId, id);
@@ -64,7 +71,11 @@ export function registerFilmHandlers({ ws, queryClient }: IpcContext): void {
   handle("film_lookup", async ({ key, ...input }) => {
     const release = await slots.acquire({ maxWaiting: 4 });
     try {
-      return await lookupFilms(key, input);
+      const credential = key ?? (await currentFilmKey());
+      if (!credential) throw new Error("Enter an OMDb API key.");
+      const results = await lookupFilms(credential, input);
+      if (key) await rememberValidatedFilmKey(key);
+      return results;
     } finally {
       release();
     }
@@ -77,9 +88,16 @@ export function registerFilmHandlers({ ws, queryClient }: IpcContext): void {
           ?.metaKey !== target.metaKey
       )
         throw new Error("This file changed. Reopen film info and try again.");
-      const { film, poster } = await loadFilm(key, imdbId);
+      const credential = key ?? (await currentFilmKey());
+      if (!credential) throw new Error("Enter an OMDb API key.");
+      const { film, poster } = await loadFilm(
+        credential,
+        imdbId,
+        normalizeFilmPoster,
+      );
       if (!writeFilm(coreById(ws, workspaceId).db, target, film, poster))
         throw new Error("This file changed. Reopen film info and try again.");
+      if (key) await rememberValidatedFilmKey(key);
       return getFilm(coreById(ws, workspaceId).db, target.id) ?? film;
     } finally {
       release();

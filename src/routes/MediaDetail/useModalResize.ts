@@ -6,6 +6,7 @@ import {
   type PointerEvent,
   type RefObject,
 } from "react";
+import { api } from "@/ipc/client";
 import type { ModalSize } from "./MediaModal";
 
 export const MODAL_DIMENSIONS_KEY = "meguri.media.detail.dimensions.v1";
@@ -20,11 +21,14 @@ export type ResizeEdge =
   | "bottomLeft"
   | "move";
 type Bounds = { width: number; height: number; left?: number; top?: number };
+type Size = { width: number; height: number };
 const MARGIN = 16;
-const viewport = () => ({
-  width: window.innerWidth - MARGIN * 2,
-  height: window.innerHeight - MARGIN * 2,
+const available = ({ width, height }: Size) => ({
+  width: Math.max(1, width - MARGIN * 2),
+  height: Math.max(1, height - MARGIN * 2),
 });
+const viewport = () =>
+  available({ width: window.innerWidth, height: window.innerHeight });
 const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value));
 function fit(value: Bounds, max: ReturnType<typeof viewport>) {
@@ -85,19 +89,45 @@ function remember(value: Bounds) {
 }
 
 /** Move from the title or resize around the opposite edge/corner. The frame is
- * clamped to the app viewport, while CSS keeps video and scenes together. */
+ * sized independently of the app. Only an inner resize can request more room. */
 export function useModalResize(
   active: boolean,
   size: ModalSize,
   panelRef: RefObject<HTMLDivElement | null>,
+  expandedViewport: Size,
   onResize?: () => void,
 ) {
-  const [bounds, setBounds] = useState(read);
+  const [bounds, setBounds] = useState(() => {
+    const max = viewport();
+    return fit(
+      read() ?? {
+        width: Math.min(960, Math.max(640, (max.width + MARGIN * 2) * 0.55)),
+        height: Math.min(800, max.height * 0.9),
+      },
+      max,
+    );
+  });
   const [max, setMax] = useState(viewport);
+  const lastViewport = useRef(max);
   const drag = useRef<(() => void) | null>(null);
+  const desiredRoom = useRef<Size | null>(null);
+  const growing = useRef<Promise<Size | void> | null>(null);
+  const revision = useRef(0);
   useEffect(() => {
     if (!active) return;
-    const resize = () => setMax(viewport());
+    const resize = () => {
+      const next = viewport();
+      const previous = lastViewport.current;
+      lastViewport.current = next;
+      setMax(next);
+      // If the app becomes too small, keep the fitted frame as its current
+      // size so enlarging the app later cannot pull the player with it.
+      if (
+        !drag.current &&
+        (next.width < previous.width || next.height < previous.height)
+      )
+        setBounds((current) => fit(current, next));
+    };
     resize();
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
@@ -105,13 +135,55 @@ export function useModalResize(
   useEffect(() => () => drag.current?.(), []);
   const fitted = fit(
     size === "large"
-      ? { ...max, left: MARGIN, top: MARGIN }
-      : (bounds ?? {
-          width: Math.min(960, Math.max(640, (max.width + MARGIN * 2) * 0.55)),
-          height: Math.min(800, max.height * 0.9),
-        }),
+      ? { ...available(expandedViewport), left: MARGIN, top: MARGIN }
+      : bounds,
     max,
   );
+
+  function growToFit(next: ReturnType<typeof fit>) {
+    const width = next.left + next.width + MARGIN;
+    const height = next.top + next.height + MARGIN;
+    desiredRoom.current =
+      width > window.innerWidth || height > window.innerHeight
+        ? { width, height }
+        : null;
+    if (growing.current || !desiredRoom.current) return growing.current;
+    const apply = async () => {
+      let actual: Size | void = undefined;
+      try {
+        while (desiredRoom.current) {
+          const target = desiredRoom.current;
+          desiredRoom.current = null;
+          actual = await api.resizeWindow({ mode: "player-fit", ...target });
+        }
+      } catch {
+        desiredRoom.current = null;
+      }
+      return actual;
+    };
+    const task = apply().finally(() => {
+      growing.current = null;
+    });
+    growing.current = task;
+    return task;
+  }
+
+  function saveResize(
+    next: ReturnType<typeof fit>,
+    growth: Promise<Size | void> | null,
+  ) {
+    const current = ++revision.current;
+    if (!growth) {
+      remember(fit(next, viewport()));
+      return;
+    }
+    void growth.then((actual) => {
+      if (current !== revision.current) return;
+      const settled = fit(next, actual ? available(actual) : viewport());
+      setBounds(settled);
+      remember(settled);
+    });
+  }
 
   const adjust = (
     start: ReturnType<typeof fit>,
@@ -127,22 +199,19 @@ export function useModalResize(
       top = start.top,
       bottom = start.top + start.height;
     if (edge === "left" || edge === "topLeft" || edge === "bottomLeft")
-      left = clamp(left + dx, MARGIN, right - Math.min(480, m.width));
+      left = Math.min(left + dx, right - Math.min(480, m.width));
     if (edge === "right" || edge === "topRight" || edge === "corner")
-      right = clamp(
-        right + dx,
-        left + Math.min(480, m.width),
-        m.width + MARGIN,
-      );
+      right = Math.max(right + dx, left + Math.min(480, m.width));
     if (edge === "top" || edge === "topLeft" || edge === "topRight")
-      top = clamp(top + dy, MARGIN, bottom - Math.min(420, m.height));
+      top = Math.min(top + dy, bottom - Math.min(420, m.height));
     if (edge === "bottom" || edge === "bottomLeft" || edge === "corner")
-      bottom = clamp(
-        bottom + dy,
-        top + Math.min(420, m.height),
-        m.height + MARGIN,
-      );
-    return fit({ left, top, width: right - left, height: bottom - top }, m);
+      bottom = Math.max(bottom + dy, top + Math.min(420, m.height));
+    return {
+      left: Math.round(Math.max(MARGIN, left)),
+      top: Math.round(Math.max(MARGIN, top)),
+      width: Math.round(right - left),
+      height: Math.round(bottom - top),
+    };
   };
   const onPointerDown = (edge: ResizeEdge, e: PointerEvent<HTMLElement>) => {
     if (!active || e.button !== 0 || drag.current || !panelRef.current) return;
@@ -157,15 +226,22 @@ export function useModalResize(
       left: rect.left,
       top: rect.top,
     };
-    const x = e.clientX,
-      y = e.clientY;
+    // The native window can shift when it grows near the display edge.
+    const x = e.screenX,
+      y = e.screenY;
     let next = start;
+    let growth: Promise<Size | void> | null = null;
+    revision.current++;
     setBounds(next);
     onResize?.();
+    const update = (ev: globalThis.PointerEvent) => {
+      next = adjust(start, edge, ev.screenX - x, ev.screenY - y);
+      setBounds(next);
+      if (edge !== "move") growth = growToFit(next);
+    };
     const move = (ev: globalThis.PointerEvent) => {
       if (ev.pointerId !== pointerId) return;
-      next = adjust(start, edge, ev.clientX - x, ev.clientY - y);
-      setBounds(next);
+      update(ev);
     };
     const finish = () => {
       drag.current = null;
@@ -174,15 +250,12 @@ export function useModalResize(
       window.removeEventListener("pointercancel", end);
       window.removeEventListener("blur", finish);
       handle.removeEventListener("lostpointercapture", finish);
-      remember(fit(next, viewport()));
+      saveResize(next, growth);
     };
     const end = (ev: globalThis.PointerEvent) => {
       if (ev.pointerId !== pointerId) return;
       // A pointermove can be coalesced immediately before release.
-      if (ev.type === "pointerup") {
-        next = adjust(start, edge, ev.clientX - x, ev.clientY - y);
-        setBounds(next);
-      }
+      if (ev.type === "pointerup") update(ev);
       finish();
     };
     handle.setPointerCapture(pointerId);
@@ -202,7 +275,7 @@ export function useModalResize(
     const next = adjust(fitted, edge, dx, dy);
     setBounds(next);
     onResize?.();
-    remember(next);
+    saveResize(next, edge === "move" ? null : growToFit(next));
   };
   return { ...fitted, max, onPointerDown, onKeyDown };
 }

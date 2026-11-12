@@ -4,6 +4,23 @@ The renderer is a React + TypeScript app under `src/`, talking to the main
 process over `window.api`. This document covers its routing, provider stack, data
 fetching, internationalization, theming, and content zoom.
 
+## Film lookup and native IPC
+
+The main process accepts native IPC from the top-level app entry. Hash routes
+share that entry. The packaged app permits its bundled HTML, and development
+also permits the configured renderer URL. Each channel validates its payload
+after checking the sender.
+
+Film lookup parses bounded OMDb JSON in the main process. The film components
+render metadata as React text. The main process encrypts a working API key
+with the operating system's credential protection when available. The renderer
+can check whether a key is ready for use without reading the saved key.
+A new poster must come from an approved HTTPS
+image host and pass file size, type, and dimension checks. A sandboxed
+`WebContentsView` without an app preload decodes the bytes and produces a small
+JPEG. The decoder starts from a blank document, and the catalogue loads the
+result from its authenticated local media server.
+
 ## Routing
 
 Routing uses `createHashRouter` (`src/App.tsx`); a hash router is the stable
@@ -28,10 +45,18 @@ the app. Handles use resize cursors and focus outlines without colored hover
 fills, which previously looked like scrollbars. Focused handles accept arrow keys;
 the focused title accepts arrows to move the frame.
 
-`useModalResize.ts` clamps the frame to the current viewport, including after a
-window resize or content zoom, and remembers width, height and position on
-release. Existing width/height-only records remain valid and start centered.
-Enlarging and shrinking from the header preserves the compact bounds. Detail uses
+`useModalResize.ts` takes a snapshot of the player bounds when the frame opens.
+An explicit player resize can request a larger content area through
+`window_resize`. Main converts the request from CSS pixels using the current
+zoom and grows the main window within the display's work area. Resizing the
+outer window fits the player only when the viewport becomes too small. That
+fitted size stays in use as the outer window grows again. The player remembers
+the bounds set by its own handles on release. Existing width/height-only
+records remain valid and start centered.
+
+Enlarging and shrinking from the header preserves the compact bounds. The
+expanded layout takes its size from the viewport at the time of the action.
+Detail uses
 `meguri.media.detail.modalSize.v2` and `meguri.media.detail.dimensions.v1`. The
 new mode key starts existing users compact once. Discovery keeps its own size
 preference.

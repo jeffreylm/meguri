@@ -280,9 +280,15 @@ seek to it, or click its star to make that frame the main thumbnail. Scroll the
 strip horizontally for more scenes. You can change the scene count in Settings.
 
 - **Move:** drag the player's title bar inside the Meguri window.
-- **Resize:** grab an edge or any corner. The video and scenes fit together, and
-  the player remembers its size and position. Focus a handle or the title bar
-  and use arrow keys for keyboard resizing or moving.
+- **Resize the player.** Grab an inner edge or corner. Meguri grows its window
+  if the player needs more room and the display has space. Making the player
+  smaller keeps the app window at its current size. The video and scenes stay
+  together, and the player remembers the size and position you set. Focus a
+  handle or the title bar to resize or move it with the arrow keys.
+- **Resize the app.** Grab the outer corner to reveal more of the library
+  around the player. The player keeps its current size and position as the
+  app grows. If you make the app too small for the player, the player fits
+  inside it and stays at that smaller size when you enlarge the app again.
 - **Keep browsing:** use **Open as side peek** to dock the player beside the
   library. Tags, ratings, and history scroll in their own area below the scenes.
 
@@ -358,10 +364,14 @@ corrected before lookup.
 - Online lookup uses your own [OMDb key](https://www.omdbapi.com/apikey.aspx).
   Paste either the short key or the full API URL from the OMDb email. The
   **Look up film** button sits directly below these fields. Meguri extracts
-  the key from the URL and keeps it in memory for the current session. Meguri contacts
-  OMDb only when you press a lookup or save button. It sends the proposed title
-  and year or IMDb ID, and requests the poster for a confirmed match when
-  available. Local paths and video contents stay on your computer.
+  the key from the URL. After a successful lookup, Meguri remembers the key
+  using protected storage on macOS and Windows when available. It shows when
+  the key is saved or available for the current session only. Meguri contacts
+  OMDb only when you press a lookup or save button. It sends the API key and
+  the proposed title and year or IMDb ID. When you save a match, Meguri can
+  request its poster separately from an approved IMDb or Amazon image host.
+  Local paths and video contents stay on your computer. Film details appear
+  as plain text. New posters are converted to a small JPEG before saving.
 
 Confirmed details and artwork are available offline. The Film details section
 shows the title, cast, director, genres, synopsis, runtime, certificate and
