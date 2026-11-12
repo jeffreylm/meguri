@@ -793,6 +793,11 @@ export const en: Record<TranslationKey, string> = {
     'Run "Scan" to import videos and images, and they\'ll be recommended here at random.',
   "discover.sceneHint": "Click a scene to jump to it",
   "discover.moreScenes": "+{count}",
+  "discover.filmTimeline": "Film timeline",
+  "discover.filmThumbnails": "Film thumbnails",
+  "discover.filmOverview": "Overview · every 5 min",
+  "discover.filmMinute": "Every minute",
+  "discover.filmHalfMinute": "Every 30 sec",
 
   // Play history
   "history.title": "Play history",

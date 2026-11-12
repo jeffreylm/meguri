@@ -795,6 +795,11 @@ export const ja = {
     "「スキャン」で動画や画像を取り込むと、ここでランダムにおすすめされます。",
   "discover.sceneHint": "シーンをクリックするとその位置に移動します",
   "discover.moreScenes": "+{count}",
+  "discover.filmTimeline": "映画のタイムライン",
+  "discover.filmThumbnails": "映画のサムネイル",
+  "discover.filmOverview": "概要・5分ごと",
+  "discover.filmMinute": "1分ごと",
+  "discover.filmHalfMinute": "30秒ごと",
 
   // 再生履歴
   "history.title": "再生履歴",

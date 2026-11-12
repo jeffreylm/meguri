@@ -816,6 +816,11 @@ export const fr: Record<TranslationKey, string> = {
     "Lancez « Analyser » pour importer des vidéos et des images ; elles seront recommandées ici au hasard.",
   "discover.sceneHint": "Cliquez sur une scène pour y accéder",
   "discover.moreScenes": "+{count}",
+  "discover.filmTimeline": "Barre de lecture du film",
+  "discover.filmThumbnails": "Vignettes du film",
+  "discover.filmOverview": "Aperçu · toutes les 5 min",
+  "discover.filmMinute": "Toutes les minutes",
+  "discover.filmHalfMinute": "Toutes les 30 s",
 
   // Historique de lecture
   "history.title": "Historique de lecture",

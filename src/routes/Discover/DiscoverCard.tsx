@@ -1,12 +1,13 @@
 import {
   createElement,
+  useCallback,
   useRef,
   useState,
   type ReactNode,
   type Ref,
 } from "react";
 import { Link } from "react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AudioLines, ExternalLink, Pause, Play } from "lucide-react";
 import { kindIcon } from "@/lib/mediaKind";
 import { fileHref } from "@/lib/fileHref";
@@ -24,6 +25,7 @@ import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { useActivateFile } from "@/audio/useActivateFile";
 import { api } from "@/ipc/client";
 import type { FileRow } from "@/ipc/types";
+import { detectFilm } from "@shared/filmMetadata";
 import { cn } from "@/lib/utils";
 import log from "@/lib/logger";
 import {
@@ -49,6 +51,7 @@ import {
   type PlayerHandle,
 } from "@/routes/MediaDetail/VideoPlayer";
 import { SceneRail } from "./SceneRail";
+import { FilmTimeline } from "./FilmTimeline";
 
 // Full-bleed immersive slide: the media fills the card (blurred cover backdrop
 // + sharp contain foreground) and all info/actions are overlaid on gradient
@@ -68,6 +71,8 @@ export function DiscoverCard({
   filterParam,
   workspaceName,
   isActive,
+  filmInterval,
+  onFilmIntervalChange,
   t,
 }: {
   file: FileRow;
@@ -84,6 +89,8 @@ export function DiscoverCard({
   workspaceName?: string;
   /** Whether this slide is the selected one (scene frames load lazily per slide). */
   isActive: boolean;
+  filmInterval: number;
+  onFilmIntervalChange: (seconds: number) => void;
   t: TFunc;
 }) {
   const qc = useQueryClient();
@@ -97,7 +104,8 @@ export function DiscoverCard({
     autoplay: boolean;
   } | null>(null);
   const [videoPlaying, setVideoPlaying] = useState(false);
-  const [selectedScene, setSelectedScene] = useState<number | null>(null);
+  const [selectedTime, setSelectedTime] = useState<number | null>(null);
+  const [videoPosition, setVideoPosition] = useState(0);
   const activePreview = isActive ? preview : null;
   const [wasActive, setWasActive] = useState(isActive);
   // Scene selection and playback belong to this visit to the active card.
@@ -105,13 +113,15 @@ export function DiscoverCard({
     setWasActive(isActive);
     setPreview(null);
     setVideoPlaying(false);
-    setSelectedScene(null);
+    setSelectedTime(null);
+    setVideoPosition(0);
   }
-  const seekVideo = (at: number) => {
-    setSelectedScene(at);
+  const seekVideo = useCallback((at: number) => {
+    setSelectedTime(at);
+    setVideoPosition(at);
     if (videoRef.current) videoRef.current.seek(at);
     else setPreview({ at, autoplay: false });
-  };
+  }, []);
   const toggleVideo = () => {
     if (videoRef.current) videoRef.current.togglePlay();
     else setPreview({ at: 0, autoplay: true });
@@ -136,6 +146,16 @@ export function DiscoverCard({
   const basename = slash >= 0 ? file.relPath.slice(slash + 1) : file.relPath;
   const isVideo = file.kind === "video";
   const isAudio = file.kind === "audio";
+  const knownFilm =
+    isVideo && Boolean(file.filmPosterVersion || detectFilm(file.relPath));
+  const film = useQuery({
+    queryKey: ["film_get", wsId, file.id],
+    queryFn: () => api.getFilm({ workspaceId: wsId, id: file.id }),
+    // A renamed feature may keep its confirmed metadata without a poster.
+    enabled:
+      isActive && isVideo && !knownFilm && (file.duration ?? 0) >= 40 * 60,
+  });
+  const isFilm = knownFilm || Boolean(film.data?.film);
   // Audio follows the list views' gesture split: "Play" starts the track in the
   // bottom bar without leaving Discover, and opening the card is the inspect
   // gesture, so its detail view must not start playback on its own.
@@ -143,7 +163,7 @@ export function DiscoverCard({
     from: "discover",
     filter: filterParam,
     autoplay: !isAudio,
-    t: isVideo && isActive ? (selectedScene ?? undefined) : undefined,
+    t: isVideo && isActive ? (selectedTime ?? undefined) : undefined,
   });
   const playInBar = () => activate(file);
   const isCurrentAudio =
@@ -265,6 +285,7 @@ export function DiscoverCard({
             }}
             onPlaybackStart={claimVideo}
             onPlayingChange={setVideoPlaying}
+            onPositionChange={isFilm ? setVideoPosition : undefined}
             onFatalError={(message) => {
               setPreview(null);
               setVideoPlaying(false);
@@ -329,15 +350,45 @@ export function DiscoverCard({
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between gap-6 p-5 pb-4">
         <div className="min-w-0 flex-1">
           {showRail && file.duration ? (
-            <SceneRail
-              id={file.id}
-              total={file.duration}
-              mediaBase={mediaBase}
-              wsId={wsId}
-              onSeek={seekVideo}
-              t={t}
-              className="pointer-events-auto mb-2"
-            />
+            <div className="pointer-events-auto mb-2" data-discover-navigation>
+              {isFilm && (
+                <>
+                  <FilmTimeline
+                    id={file.id}
+                    total={file.duration}
+                    mediaBase={mediaBase}
+                    wsId={wsId}
+                    position={videoPosition}
+                    onSeek={seekVideo}
+                    t={t}
+                  />
+                  <label className="my-1 flex w-fit items-center gap-2 text-xs font-medium text-bright-fg">
+                    {t("discover.filmThumbnails")}
+                    <select
+                      value={filmInterval}
+                      onChange={(e) =>
+                        onFilmIntervalChange(Number(e.currentTarget.value))
+                      }
+                      className="rounded border border-border bg-surface px-1.5 py-0.5 text-fg"
+                    >
+                      <option value={300}>{t("discover.filmOverview")}</option>
+                      <option value={60}>{t("discover.filmMinute")}</option>
+                      <option value={30}>{t("discover.filmHalfMinute")}</option>
+                    </select>
+                  </label>
+                </>
+              )}
+              <SceneRail
+                id={file.id}
+                total={file.duration}
+                mediaBase={mediaBase}
+                wsId={wsId}
+                onSeek={seekVideo}
+                interval={isFilm ? filmInterval : undefined}
+                selected={selectedTime}
+                t={t}
+              />
+            </div>
           ) : null}
 
           <h2

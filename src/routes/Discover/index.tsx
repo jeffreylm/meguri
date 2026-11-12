@@ -52,6 +52,11 @@ let savedPosition: { wsId: string; filterKey: string; index: number } | null =
 
 export default function Discover() {
   const { t } = useI18n();
+  const [filmInterval, setFilmInterval] = useLocalStorage<number>(
+    "meguri.discovery.filmInterval",
+    300,
+    (raw) => [300, 60, 30].find((interval) => interval === Number(raw)) ?? 300,
+  );
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const qc = useQueryClient();
@@ -175,6 +180,7 @@ export default function Discover() {
       if (
         el &&
         (el.tagName === "INPUT" ||
+          el.tagName === "SELECT" ||
           el.tagName === "TEXTAREA" ||
           el.isContentEditable)
       )
@@ -320,7 +326,15 @@ export default function Discover() {
         ) : (
           <Carousel
             className="h-full w-full"
-            opts={{ loop: false, align: "center" }}
+            opts={{
+              loop: false,
+              align: "center",
+              watchDrag: (_, event) =>
+                !(
+                  event.target instanceof Element &&
+                  event.target.closest("[data-discover-navigation]")
+                ),
+            }}
             setApi={setEmbla}
           >
             <CarouselContent
@@ -350,6 +364,8 @@ export default function Discover() {
                     filterParam={filterParam}
                     workspaceName={wsNames.get(f.workspaceId)}
                     isActive={i === current}
+                    filmInterval={filmInterval}
+                    onFilmIntervalChange={setFilmInterval}
                     t={t}
                   />
                 </CarouselItem>

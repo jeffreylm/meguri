@@ -813,6 +813,11 @@ export const es: Record<TranslationKey, string> = {
     "Ejecuta «Escanear» para importar vídeos e imágenes y se recomendarán aquí al azar.",
   "discover.sceneHint": "Haz clic en una escena para saltar a ese punto",
   "discover.moreScenes": "+{count}",
+  "discover.filmTimeline": "Línea de tiempo de la película",
+  "discover.filmThumbnails": "Miniaturas de la película",
+  "discover.filmOverview": "Vista general · cada 5 min",
+  "discover.filmMinute": "Cada minuto",
+  "discover.filmHalfMinute": "Cada 30 s",
 
   // Historial de reproducción
   "history.title": "Historial de reproducción",

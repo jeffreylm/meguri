@@ -787,6 +787,11 @@ export const ko: Record<TranslationKey, string> = {
     "「스캔」으로 동영상과 이미지를 가져오면 여기에서 무작위로 추천됩니다.",
   "discover.sceneHint": "장면을 클릭하면 해당 위치로 이동합니다",
   "discover.moreScenes": "+{count}",
+  "discover.filmTimeline": "영화 타임라인",
+  "discover.filmThumbnails": "영화 썸네일",
+  "discover.filmOverview": "전체 보기 · 5분마다",
+  "discover.filmMinute": "1분마다",
+  "discover.filmHalfMinute": "30초마다",
 
   // 재생 기록
   "history.title": "재생 기록",

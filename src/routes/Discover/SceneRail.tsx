@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { usePreferences } from "@/settings/PreferencesProvider";
 import { formatDuration } from "@/lib/format";
@@ -8,52 +8,64 @@ import type { TFunc } from "@/i18n/I18nProvider";
 const TILE_W = 104;
 const TILE_GAP = 6;
 
-// Single horizontal row of evenly-spaced scene frames overlaid on the immersive
-// card. Only as many tiles as fit the measured width are rendered; the rest is
-// summarized as "+N". Each tile seeks within the selected Discovery card.
-export function SceneRail({
+// Each tile seeks within the selected Discovery card. The film strip scrolls
+// through the whole runtime, with frames fetched as they come into view.
+export const SceneRail = memo(function SceneRail({
   id,
   total,
   mediaBase,
   wsId,
   onSeek,
+  interval,
+  selected,
   t,
-  className,
 }: {
   id: number;
   total: number;
   mediaBase: string;
   wsId: string;
   onSeek: (sec: number) => void;
+  interval?: number;
+  selected?: number | null;
   t: TFunc;
-  className?: string;
 }) {
   const { sceneCount, frameQuality } = usePreferences();
   const [railEl, setRailEl] = useState<HTMLDivElement | null>(null);
   const [width, setWidth] = useState(0);
 
   useEffect(() => {
-    if (!railEl) return;
+    if (!railEl || interval) return;
     const compute = () => setWidth(railEl.clientWidth);
     compute();
     const ro = new ResizeObserver(compute);
     ro.observe(railEl);
     return () => ro.disconnect();
-  }, [railEl]);
+  }, [railEl, interval]);
 
-  const scenes = Array.from({ length: sceneCount }, (_, i) =>
-    Math.floor((total * (i + 0.5)) / sceneCount),
-  );
+  const scenes = interval
+    ? Array.from({ length: Math.ceil(total / interval) }, (_, i) => {
+        const start = i * interval;
+        return Math.floor((start + Math.min(total, start + interval)) / 2);
+      })
+    : Array.from({ length: sceneCount }, (_, i) =>
+        Math.floor((total * (i + 0.5)) / sceneCount),
+      );
   // Leave room for the trailing "+N" label so it never wraps or clips.
   const fit = Math.max(1, Math.floor((width - 40) / (TILE_W + TILE_GAP)));
-  const visible = scenes.slice(0, Math.min(fit, sceneCount));
+  const visible = interval
+    ? scenes
+    : scenes.slice(0, Math.min(fit, sceneCount));
   const hidden = scenes.length - visible.length;
 
   return (
-    <div className={cn("min-w-0", className)}>
+    <div className="min-w-0">
       <div
-        ref={setRailEl}
-        className="flex items-end gap-1.5 overflow-hidden pt-2"
+        key={interval}
+        ref={interval ? undefined : setRailEl}
+        className={cn(
+          "flex items-end gap-1.5",
+          interval ? "overflow-x-auto pb-1 pt-1" : "overflow-hidden pt-2",
+        )}
       >
         {visible.map((sec, i) => (
           <button
@@ -62,8 +74,16 @@ export function SceneRail({
             aria-label={t("scene.seekTo", {
               time: formatDuration(sec, { hours: true, fallback: "0:00" }),
             })}
+            aria-current={interval && selected === sec ? "true" : undefined}
             onClick={() => onSeek(sec)}
-            className="group/scene relative block w-[104px] shrink-0 overflow-hidden rounded-md border border-border/60 bg-black shadow-md transition-all duration-150 hover:z-10 hover:w-[132px] hover:-translate-y-1 hover:border-primary hover:shadow-lg"
+            className={cn(
+              "group/scene relative block w-[104px] shrink-0 overflow-hidden rounded-md border bg-black shadow-md transition-colors hover:border-primary",
+              interval && selected === sec
+                ? "border-primary"
+                : "border-border/60",
+              !interval &&
+                "transition-all duration-150 hover:z-10 hover:w-[132px] hover:-translate-y-1 hover:shadow-lg",
+            )}
           >
             <img
               src={`${mediaBase}/ws/${wsId}/frame/${id}?t=${sec}&q=${frameQuality}`}
@@ -82,9 +102,11 @@ export function SceneRail({
           </span>
         )}
       </div>
-      <p className="mt-1.5 font-mono text-[10px] text-muted">
-        {t("discover.sceneHint")}
-      </p>
+      {!interval && (
+        <p className="mt-1.5 font-mono text-[10px] text-muted">
+          {t("discover.sceneHint")}
+        </p>
+      )}
     </div>
   );
-}
+});

@@ -182,6 +182,8 @@ export const VideoPlayer = forwardRef<
     onEnded?: () => void;
     /** Mirrors the play/pause state out to an external control bar. */
     onPlayingChange?: (playing: boolean) => void;
+    /** Reports the position in the original file, including a stream's start offset. */
+    onPositionChange?: (seconds: number) => void;
     /**
      * Draw the video only. The playlist player supplies its own control bar, so
      * this suppresses both of this player's own surfaces — the paused-state
@@ -237,6 +239,7 @@ export const VideoPlayer = forwardRef<
     onPlaybackStart,
     onEnded,
     onPlayingChange,
+    onPositionChange,
     onFatalError,
     onOpenExternal,
     chromeless = false,
@@ -1195,7 +1198,9 @@ export const VideoPlayer = forwardRef<
         onTimeUpdate={() => {
           const v = ref.current;
           if (!v) return;
-          setPosition(streamOffsetOf(v.getAttribute("src")) + v.currentTime);
+          const at = streamOffsetOf(v.getAttribute("src")) + v.currentTime;
+          setPosition(at);
+          onPositionChange?.(at);
           const sample = v.paused ? null : sampleOf(v);
           if (sample) playbackPosition.tick(sample);
         }}

@@ -85,9 +85,10 @@ test("keeps Discovery scene seeks local and opens the selected scene without rep
     const scenes = dialog.getByRole("button", { name: /^Seek to / });
     const video = dialog.locator("video");
     const at = async () =>
-      video.evaluate(
-        (el: HTMLVideoElement) =>
-          el.currentTime + Number(new URL(el.src).searchParams.get("t")),
+      video.evaluate((el: HTMLVideoElement) =>
+        el.src && el.readyState > 0
+          ? el.currentTime + Number(new URL(el.src).searchParams.get("t"))
+          : -1,
       );
     const paused = () => video.evaluate((el: HTMLVideoElement) => el.paused);
 
@@ -119,8 +120,109 @@ test("keeps Discovery scene seeks local and opens the selected scene without rep
     expect(
       new URLSearchParams(new URL(page.url()).hash.split("?")[1]).get("t"),
     ).toBe(sceneParam);
-    await expect.poll(at).toBeGreaterThanOrEqual(scene - 0.2);
-    expect(await at()).toBeLessThan(scene + 3);
+    await expect
+      .poll(async () => {
+        const position = await at();
+        return position >= scene - 0.2 && position < scene + 3;
+      })
+      .toBe(true);
+  } finally {
+    await app.close();
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
+});
+
+test("browses the entire film in Discovery and commits only an explicit timeline seek", async () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "meguri-film-scrub-"));
+  const root = path.join(temp, "media");
+  fs.mkdirSync(root);
+  const name = "Timeline Film (2026) (1080p WEB-DL).mp4";
+  execFileSync(ffmpeg!, [
+    "-v",
+    "error",
+    "-nostdin",
+    "-f",
+    "lavfi",
+    "-i",
+    "testsrc2=duration=8700:size=96x54:rate=1",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "ultrafast",
+    "-g",
+    "12",
+    path.join(root, name),
+  ]);
+  const options = electronLaunchOptions({
+    args: [`--user-data-dir=${path.join(temp, "profile")}`],
+    env: { MEGURI_DISABLE_TRAY: "1", MEGURI_ROOT: root },
+  });
+  const packaged = process.env.MEGURI_TEST_APP;
+  const app = await _electron.launch(
+    packaged
+      ? { ...options, executablePath: packaged, args: options.args.slice(1) }
+      : options,
+  );
+  try {
+    const page = await app.firstWindow();
+    await skipFirstLaunchTour(page);
+    await waitForIdle(page);
+    await expect(page.getByTitle(name, { exact: true }).first()).toBeVisible();
+    let dialog = await openDiscover(page);
+    const open = dialog.getByRole("link", { name: "Open", exact: true });
+    const timeline = dialog.getByRole("slider", { name: "Film timeline" });
+    const thumbs = dialog.getByRole("button", { name: /^Seek to / });
+    const density = dialog.getByLabel("Film thumbnails");
+    await expect(thumbs).toHaveCount(29);
+    await expect(thumbs.last()).toHaveAccessibleName("Seek to 2:22:30");
+    await density.selectOption("60");
+    await expect(thumbs).toHaveCount(145);
+    await expect(thumbs.last()).toHaveAccessibleName("Seek to 2:24:30");
+
+    const track = (await timeline.boundingBox())!;
+    const y = track.y + track.height / 2;
+    await page.mouse.move(track.x + track.width * 0.75, y);
+    const hoverFrame = dialog.locator(
+      '[data-slot="discovery-timeline-preview"] img',
+    );
+    await expect(hoverFrame).toBeVisible();
+    await expect
+      .poll(() =>
+        hoverFrame.evaluate((img: HTMLImageElement) => img.naturalWidth),
+      )
+      .toBeGreaterThan(0);
+    const selectedTime = async () => {
+      const href = (await open.getAttribute("href")) ?? "";
+      return new URLSearchParams(href.split("?")[1]).get("t");
+    };
+    expect(await selectedTime()).toBeNull();
+    await expect(dialog.locator("video")).toHaveCount(0);
+
+    await page.mouse.down();
+    await page.mouse.move(track.x + track.width * 0.9, y, { steps: 8 });
+    expect(await selectedTime()).toBeNull();
+    await page.mouse.up();
+    const target = Number(await selectedTime());
+    expect(target).toBeGreaterThan(7800);
+    expect(target).toBeLessThan(7860);
+    await timeline.press("ArrowRight");
+    await expect
+      .poll(async () => Number(await selectedTime()))
+      .toBe(target + 1);
+    await expect(page).toHaveURL(/#\/discover/);
+
+    // The last thumbnail can be brought into view and used, even in the
+    // densest mode. It hands off its time without leaving Discovery yet.
+    await density.selectOption("30");
+    await expect(thumbs).toHaveCount(290);
+    await thumbs.last().scrollIntoViewIfNeeded();
+    await thumbs.last().click();
+    await expect.poll(selectedTime).toBe("8685");
+
+    await dialog.getByTitle("Close (Esc)").click();
+    dialog = await openDiscover(page);
+    await expect(dialog.getByLabel("Film thumbnails")).toHaveValue("30");
+    await expect.poll(selectedTime).toBeNull();
   } finally {
     await app.close();
     fs.rmSync(temp, { recursive: true, force: true });

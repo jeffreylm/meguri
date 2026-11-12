@@ -24,10 +24,11 @@ const MIN_SCRUB_DURATION_SEC = 2;
 export function computeScrubTime(
   duration: number,
   fraction: number,
+  points = SCRUB_POINTS,
 ): number | null {
   if (!Number.isFinite(duration) || duration <= 0) return null;
   const f = Math.min(1, Math.max(0, fraction));
-  const step = Math.max(1, Math.round(duration / SCRUB_POINTS));
+  const step = Math.max(1, Math.round(duration / points));
   const t = Math.round((f * duration) / step) * step;
   // Stay strictly inside the video — seeking to the exact end yields no frame.
   return Math.min(Math.max(0, Math.floor(duration - 1)), t);
@@ -41,6 +42,8 @@ interface Options {
   /** Reset key — virtualized rows reuse mounted cards for different files. */
   fileId: number | string;
   startDelayMs?: number;
+  /** Set a finer sampling density for a dedicated seek bar. */
+  points?: number;
 }
 
 /** Shared by React handlers and the thumbnail surface's native mouse listeners. */
@@ -65,6 +68,7 @@ export function useHoverFramePreview({
   duration,
   fileId,
   startDelayMs = DEFAULT_START_DELAY_MS,
+  points = SCRUB_POINTS,
 }: Options): HoverFramePreview {
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
   const [scrubFraction, setScrubFraction] = useState<number | null>(null);
@@ -78,9 +82,9 @@ export function useHoverFramePreview({
   const activeRef = useRef(false);
   const failuresRef = useRef(0);
   // Latest values readable from timer/onload callbacks without re-subscribing.
-  const optsRef = useRef({ enabled, frameUrl, duration });
+  const optsRef = useRef({ enabled, frameUrl, duration, points });
   useLayoutEffect(() => {
-    optsRef.current = { enabled, frameUrl, duration };
+    optsRef.current = { enabled, frameUrl, duration, points };
   });
 
   const stop = () => {
@@ -161,7 +165,7 @@ export function useHoverFramePreview({
       1,
       Math.max(0, (e.clientX - rect.left) / rect.width),
     );
-    const t = computeScrubTime(dur, fraction);
+    const t = computeScrubTime(dur, fraction, optsRef.current.points);
     if (t == null) return;
     desiredRef.current = t;
     setScrubFraction(fraction);

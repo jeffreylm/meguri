@@ -58,6 +58,14 @@ playback state. Previewing in Discovery leaves the file's saved resume point
 intact. Select a scene and click **Open** to start the full player at that scene.
 Opening a file without a scene selected uses its usual resume behavior.
 
+When Discovery recognizes a film, hover over its timeline for a timestamp and
+thumbnail. Click or drag the timeline to move the preview, or use the arrow keys
+when the timeline is focused. Click **Open** to take the selected time into the
+full player. The **Film thumbnails** strip scrolls through the whole film, with
+one frame per five minutes, minute, or 30 seconds. Meguri remembers the spacing
+you choose. The thumbnails are sampled from time intervals and are generated
+locally as you browse.
+
 ![Discovery demo — immersive random picks with a scene-preview rail and reshuffle](./docs/assets/discover.gif)
 
 ## 📺 Playlist — press play and let it run

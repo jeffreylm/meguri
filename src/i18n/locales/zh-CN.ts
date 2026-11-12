@@ -759,6 +759,11 @@ export const zhCN: Record<TranslationKey, string> = {
   "discover.emptyHint": "执行“扫描”导入视频和图片后，这里会随机推荐。",
   "discover.sceneHint": "点击场景即可跳转",
   "discover.moreScenes": "+{count}",
+  "discover.filmTimeline": "影片时间轴",
+  "discover.filmThumbnails": "影片缩略图",
+  "discover.filmOverview": "概览 · 每 5 分钟",
+  "discover.filmMinute": "每分钟",
+  "discover.filmHalfMinute": "每 30 秒",
 
   // 播放历史
   "history.title": "播放历史",

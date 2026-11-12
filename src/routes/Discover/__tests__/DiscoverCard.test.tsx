@@ -64,6 +64,8 @@ function Harness({ included }: { included: boolean }) {
       onRate={() => {}}
       watchLater={membership(included)}
       isActive={false}
+      filmInterval={300}
+      onFilmIntervalChange={() => {}}
       t={t}
     />
   );
@@ -139,6 +141,8 @@ describe("DiscoverCard non-audio", () => {
           onRate={() => {}}
           watchLater={membership(false)}
           isActive={false}
+          filmInterval={300}
+          onFilmIntervalChange={() => {}}
           t={t}
         />
       );
@@ -161,6 +165,8 @@ describe("DiscoverCard thumbnail fallback", () => {
           onRate={() => {}}
           watchLater={membership(false)}
           isActive={false}
+          filmInterval={300}
+          onFilmIntervalChange={() => {}}
           t={t}
         />
       );
@@ -202,6 +208,8 @@ describe("DiscoverCard thumbnail fallback", () => {
           onRate={() => {}}
           watchLater={membership(false)}
           isActive={false}
+          filmInterval={300}
+          onFilmIntervalChange={() => {}}
           t={t}
         />
       );
@@ -223,6 +231,8 @@ describe("DiscoverCard audio", () => {
           onRate={() => {}}
           watchLater={membership(false)}
           isActive={false}
+          filmInterval={300}
+          onFilmIntervalChange={() => {}}
           t={t}
         />
       );
