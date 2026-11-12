@@ -37,13 +37,11 @@ export interface DetailActions {
   removeBookmark: (bookmarkId: number) => void;
   /** `null` reverts to the auto-extracted frame. */
   setMainThumb: (sec: number | null) => void;
-  exportFrame: (sec: number) => void;
   /** Asks first; resolves once the file is gone and the view has been told. */
   deleteFromIndex: () => Promise<void>;
   openExternal: () => void;
   pending: {
     bookmark: boolean;
-    export: boolean;
     mainThumb: boolean;
   };
   /**
@@ -276,15 +274,6 @@ export function useDetailMutations({
     },
   });
 
-  const exportFrame = useMutation({
-    mutationFn: (sec: number) => api.frameExport(fileId, wsId, sec),
-    onSuccess: (res) => {
-      // A canceled save dialog resolves with saved=false — stay silent.
-      if (res.saved) toast.success(t("player.frameExported"));
-    },
-    onError: () => toast.error(t("player.frameExportFailed")),
-  });
-
   // Single-argument wrappers, not the mutate functions themselves: mutate
   // takes options as a second argument, and a DOM handler wired straight to
   // it would pass the event there.
@@ -297,12 +286,10 @@ export function useDetailMutations({
     addBookmark: (sec) => addBookmark.mutate(sec),
     removeBookmark: (bookmarkId) => removeBookmark.mutate(bookmarkId),
     setMainThumb: (sec) => setMainThumb.mutate(sec),
-    exportFrame: (sec) => exportFrame.mutate(sec),
     deleteFromIndex,
     openExternal,
     pending: {
       bookmark: addBookmark.isPending || removeBookmark.isPending,
-      export: exportFrame.isPending,
       mainThumb: setMainThumb.isPending,
     },
     pendingThumbSec: setMainThumb.isPending

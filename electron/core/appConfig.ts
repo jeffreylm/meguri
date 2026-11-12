@@ -60,6 +60,8 @@ export interface UpdateConfig {
   ignoredVersion: string | null;
   /** Unix ms of the last successful network check; used to throttle. */
   lastCheckAt: number | null;
+  /** GitHub repository checked, so another release channel can check immediately. */
+  lastCheckSource?: string;
 }
 
 const DEFAULT_UPDATE_CONFIG: UpdateConfig = {
@@ -209,6 +211,9 @@ function parseUpdateConfig(value: unknown): UpdateConfig {
     ignoredVersion:
       typeof c.ignoredVersion === "string" ? c.ignoredVersion : null,
     lastCheckAt: typeof c.lastCheckAt === "number" ? c.lastCheckAt : null,
+    ...(typeof c.lastCheckSource === "string"
+      ? { lastCheckSource: c.lastCheckSource }
+      : {}),
   };
 }
 

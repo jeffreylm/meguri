@@ -1,13 +1,13 @@
 <div align="center">
 
-<img src="./logo/app-512.png" width="160" alt="Meguri logo">
+<img src="./logo/app-512.png" width="160" alt="Footage Deck logo">
 
-# Meguri
+# Footage Deck
 
-**Redefining what a media manager is supposed to be.**
+**Media catalogue for post-production**
 
-A local-first media library for your videos and photos — scan, browse,
-search, and play, all offline.
+Find and tag local footage, review films, and save reference stills for grading
+and mood boards.
 
 [![Test](https://github.com/zabuton-app/meguri/actions/workflows/test.yml/badge.svg)](https://github.com/zabuton-app/meguri/actions/workflows/test.yml)
 [![Build](https://github.com/zabuton-app/meguri/actions/workflows/build.yml/badge.svg)](https://github.com/zabuton-app/meguri/actions/workflows/build.yml)
@@ -18,10 +18,10 @@ search, and play, all offline.
 
 </div>
 
-Meguri is a personal desktop app for browsing, searching, and playing local
-videos and images with thumbnails. It recursively scans any folder you point it at,
-generates thumbnails, tags, and metadata, and lets you browse the collection in
-a native window.
+Footage Deck is a personal fork of [Meguri](https://github.com/zabuton-app/meguri).
+It indexes folders you choose, generates thumbnails, and lets you search, tag,
+and review video, images, and audio. Drag selected footage into Resolve or
+use the player to watch a film and capture frames for reference.
 
 The name **Meguri** comes from the Japanese word _巡り_ — "going around,
 coming back around" — with the sentiment of wandering back through your
@@ -84,17 +84,24 @@ music folder of albums plays through album by album.
 
 ![Playlist demo — a full-screen player running a list hands-off, with shuffle and auto-advance](./docs/assets/playlist.gif)
 
-The personal build also offers [manual film lookup and catalogue search](./docs/library-guide.md#film-information).
+The personal build also offers [manual film lookup and catalogue search](./docs/library-guide.md#film-information)
+and [reference still export](./docs/library-guide.md#reference-stills).
 
 ## Download
 
-Windows users can install Meguri from the
+Windows users can install the original Meguri from the
 [Microsoft Store](https://apps.microsoft.com/detail/9NRSM11RRH8Z).
 
 [![Get it from Microsoft](https://get.microsoft.com/images/en-us%20dark.svg)](https://apps.microsoft.com/detail/9NRSM11RRH8Z)
 
-Prebuilt packages for all platforms are also available on
-[GitHub Releases](https://github.com/zabuton-app/meguri/releases).
+The original Meguri packages are available on
+[its GitHub Releases page](https://github.com/zabuton-app/meguri/releases).
+
+Personal builds check the [fork's releases](https://github.com/jeffreylm/meguri/releases)
+from **Settings → App → Updates**. The check compares build numbers and opens
+GitHub for downloads. Tag a stable release from the personal branch as
+`v<version>+build.<build>` and attach the corresponding installer. Increase
+the build number for each personal release.
 
 | Platform | Packages                                      |
 | -------- | --------------------------------------------- |

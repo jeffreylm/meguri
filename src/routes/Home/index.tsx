@@ -500,9 +500,9 @@ export default function Home() {
 
   useEffect(() => {
     document.title = status.data?.root
-      ? `Meguri — ${status.data.root}`
-      : "Meguri";
-  }, [status.data?.root]);
+      ? `${t("app.name")} — ${status.data.root}`
+      : t("app.name");
+  }, [status.data?.root, t]);
 
   // On thumb:done, bump the version for that id to force the thumbnail to reload.
   // Events arrive dozens of times per second during bulk thumbnail generation and

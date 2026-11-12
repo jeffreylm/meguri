@@ -14,7 +14,9 @@ export function useUpdateNotifier(): void {
     let active = true;
 
     const show = (info: UpdateInfo) => {
-      toast.info(t("update.available", { version: info.latest }), {
+      const latest = info.latest;
+      if (latest === null) return;
+      toast.info(t("update.available", { version: latest }), {
         id: "update-available",
         description: t("update.availableDesc", { current: info.current }),
         duration: Infinity,
@@ -24,7 +26,7 @@ export function useUpdateNotifier(): void {
         },
         cancel: {
           label: t("update.skip"),
-          onClick: () => void api.updateIgnore(info.latest),
+          onClick: () => void api.updateIgnore(latest),
         },
       });
     };

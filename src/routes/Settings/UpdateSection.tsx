@@ -91,7 +91,7 @@ export function UpdateSection() {
       {check.status === "error" && (
         <p className="text-xs text-muted">{t("update.checkFailed")}</p>
       )}
-      {info && info.available && (
+      {info && info.latest !== null && info.available && (
         <div className="flex items-center justify-between gap-3 rounded-md border border-primary/40 bg-primary/5 px-3 py-2">
           <span className="text-xs text-fg">
             {t("update.available", { version: info.latest })}
@@ -107,7 +107,19 @@ export function UpdateSection() {
           </Button>
         </div>
       )}
-      {info && !info.available && (
+      {info && info.latest === null && (
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-muted">{t("update.noPersonalRelease")}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void api.openUrl(info.url)}
+          >
+            {t("update.viewReleases")}
+          </Button>
+        </div>
+      )}
+      {info && info.latest !== null && !info.available && (
         <p className="text-xs text-muted">
           {t("update.upToDate", { version: info.current })}
         </p>

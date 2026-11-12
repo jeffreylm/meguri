@@ -82,7 +82,15 @@ let mediaServer: http.Server | null = null;
 let controlServer: http.Server | null = null;
 let relaunchAfterQuit = false;
 
+const APP_TITLE = "Footage Deck";
+// Retain the existing catalogue, settings and OS credential identity.
 app.setName("Meguri");
+if (!app.commandLine.hasSwitch("user-data-dir")) {
+  const profile = path.join(app.getPath("appData"), "Meguri");
+  fs.mkdirSync(profile, { recursive: true });
+  app.setPath("userData", profile);
+  app.setPath("sessionData", profile);
+}
 
 // Only one running instance. Multiple processes would race on the same
 // SQLite WAL under userData/roots/<hash>/db.sqlite and confuse the user
@@ -267,7 +275,7 @@ async function offerRendererRecovery(reason: string): Promise<void> {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   const { response } = await dialog.showMessageBox(mainWindow, {
     type: "error",
-    title: "Meguri",
+    title: APP_TITLE,
     message: "The window stopped responding and could not be recovered.",
     detail: `Reason: ${reason}. You can try reloading it, or quit Meguri.`,
     buttons: ["Reload", "Quit"],
@@ -416,7 +424,7 @@ function createWindow(): void {
     height: 800,
     minWidth: 640,
     minHeight: 480,
-    title: "Meguri",
+    title: APP_TITLE,
     // Window/taskbar icon (Linux/Windows; macOS uses the dock icon instead).
     // Only overridden for non-default logos: the packaged multi-size icon
     // (exe-embedded .ico / .desktop entry) stays in charge for the default,
@@ -481,7 +489,7 @@ async function openMediaWindow(input: {
       height: 800,
       minWidth: 480,
       minHeight: 420,
-      title: "Meguri — Preview",
+      title: `${APP_TITLE} — Preview`,
       show: false,
       autoHideMenuBar: true,
       webPreferences: {
@@ -531,7 +539,7 @@ async function openNoteWindow(input: {
     height: 720,
     minWidth: 400,
     minHeight: 340,
-    title: "Meguri",
+    title: APP_TITLE,
     resizable: true,
     show: false,
     autoHideMenuBar: true,
@@ -574,9 +582,9 @@ function showWindow(): void {
 function createTray(): void {
   if (!isTrayEnabled()) return;
   tray = new Tray(trayImage(loadConfig().logo));
-  tray.setToolTip("Meguri");
+  tray.setToolTip(APP_TITLE);
   const menu = Menu.buildFromTemplate([
-    { label: "Show Meguri", click: () => showWindow() },
+    { label: `Show ${APP_TITLE}`, click: () => showWindow() },
     {
       label: "Check for Updates…",
       click: () => {
@@ -586,15 +594,14 @@ function createTray(): void {
               showWindow();
               emit("update:available", info);
             } else if (info) {
-              // Reached GitHub and we're current: take the user to the releases
-              // page (or the Store product page on Store installs).
+              // Reached GitHub: let the user browse releases on the fork.
               void shell.openExternal(updateDownloadUrl(null));
             } else {
               // Couldn't reach GitHub (offline / rate-limited): don't silently
               // open a browser; tell the user the check failed.
               void dialog.showMessageBox({
                 type: "warning",
-                title: "Meguri",
+                title: APP_TITLE,
                 message: "Could not check for updates.",
                 detail: "Please check your internet connection and try again.",
               });

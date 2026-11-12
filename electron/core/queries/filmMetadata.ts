@@ -104,6 +104,7 @@ export function writeFilm(
     const search = filmSearchKey(
       [
         film.imdbId,
+        film.wikidataId,
         film.title,
         film.year,
         film.genres,
@@ -121,9 +122,9 @@ export function writeFilm(
       VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(meta_key) DO UPDATE SET imdb_id = excluded.imdb_id,
         details = excluded.details, search_text = excluded.search_text,
-        poster = CASE WHEN excluded.poster IS NULL AND film_metadata.imdb_id = excluded.imdb_id THEN film_metadata.poster ELSE excluded.poster END,
-        poster_type = CASE WHEN excluded.poster IS NULL AND film_metadata.imdb_id = excluded.imdb_id THEN film_metadata.poster_type ELSE excluded.poster_type END,
-        poster_version = CASE WHEN excluded.poster IS NULL AND film_metadata.imdb_id = excluded.imdb_id THEN film_metadata.poster_version ELSE excluded.poster_version END
+        poster = CASE WHEN excluded.poster IS NULL AND excluded.imdb_id <> '' AND film_metadata.imdb_id = excluded.imdb_id THEN film_metadata.poster ELSE excluded.poster END,
+        poster_type = CASE WHEN excluded.poster IS NULL AND excluded.imdb_id <> '' AND film_metadata.imdb_id = excluded.imdb_id THEN film_metadata.poster_type ELSE excluded.poster_type END,
+        poster_version = CASE WHEN excluded.poster IS NULL AND excluded.imdb_id <> '' AND film_metadata.imdb_id = excluded.imdb_id THEN film_metadata.poster_version ELSE excluded.poster_version END
     `,
     ).run(
       target.metaKey,

@@ -1,8 +1,8 @@
 {
   "name": "meguri",
   "private": true,
-  "version": "0.9.0",
-  "description": "Meguri is a local video and image browser with thumbnails, search, and playback",
+  "version": "0.1.0",
+  "description": "Footage Deck is a local media catalogue for post-production",
   "license": "MIT",
   "author": {
     "name": "amgsk",
@@ -55,6 +55,7 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@dusrel/image-heic": "1.0.1",
     "@emoji-mart/data": "^1.2.1",
     "@emoji-mart/react": "^1.1.1",
     "@radix-ui/react-context-menu": "^2.3.1",
@@ -129,9 +130,9 @@
     "vitest": "^4.1.12"
   },
   "build": {
-    "buildVersion": "19.2",
+    "buildVersion": "20",
     "appId": "dev.amgsk.meguri",
-    "productName": "Meguri",
+    "productName": "Footage Deck",
     "directories": {
       "buildResources": "build",
       "output": "release"
@@ -148,9 +149,12 @@
     ],
     "files": [
       "out/**/*",
+      "electron/core/heifWorker.cjs",
       "package.json"
     ],
     "asarUnpack": [
+      "electron/core/heifWorker.cjs",
+      "**/node_modules/@dusrel/image-heic/**",
       "**/node_modules/better-sqlite3/**",
       "**/node_modules/ffmpeg-static/**",
       "**/node_modules/@derhuerst/ffprobe-static/**"

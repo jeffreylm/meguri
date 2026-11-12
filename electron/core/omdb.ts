@@ -48,7 +48,10 @@ function parseMatch(value: unknown): FilmMatch | null {
     : null;
 }
 
-async function readBounded(response: Response, limit: number): Promise<Buffer> {
+export async function readBounded(
+  response: Response,
+  limit: number,
+): Promise<Buffer> {
   if (!response.body || Number(response.headers.get("content-length")) > limit)
     throw new Error("Response is too large");
   const reader = response.body.getReader();

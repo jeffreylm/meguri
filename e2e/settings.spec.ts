@@ -11,13 +11,29 @@ test.describe("Settings", () => {
   }) => {
     const readout = ready.locator('[data-slot="build-readout"]');
     await expect(readout).toBeVisible();
-    await expect(readout).toHaveAttribute("title", /^v\S+ · Build [a-z0-9]+$/);
+    await expect(readout).toHaveAttribute(
+      "title",
+      /^v\S+ · Build \d+(?:\.\d+)*$/,
+    );
     const title = (await readout.getAttribute("title"))!;
     const [version, build] = title.slice(1).split(" · ");
+    const buildLine = readout.getByText(build, { exact: true });
+    await expect(buildLine).toBeVisible();
+    expect(
+      await buildLine.evaluate((line) => {
+        const rail = line.closest("nav")!.getBoundingClientRect();
+        const bounds = line.getBoundingClientRect();
+        return (
+          line.scrollWidth <= line.clientWidth &&
+          bounds.left >= rail.left &&
+          bounds.right <= rail.right
+        );
+      }),
+    ).toBe(true);
     const dialog = await openSettingsTab(ready, "App");
     await expect(dialog.getByText(build, { exact: true })).toBeVisible();
     await expect(
-      dialog.getByText(`巡 version ${version}`, { exact: true }),
+      dialog.getByText(`Footage Deck version ${version}`, { exact: true }),
     ).toBeVisible();
     await closeTopDialog(ready);
     await expect(ready).toHaveURL(/#\/$/);

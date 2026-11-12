@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useI18n } from "@/i18n/I18nProvider";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { api } from "@/ipc/client";
 import { fileNameOf } from "@/lib/relPath";
 import {
@@ -22,6 +23,7 @@ import {
 import { refreshFilm } from "@/lib/filmLookup";
 
 const rowKey = (row: FilmReviewRow) => `${row.workspaceId}:${row.id}`;
+const matchKey = (match: FilmMatch) => match.wikidataId ?? match.imdbId;
 type Stage = {
   text: string;
   year: string;
@@ -46,9 +48,15 @@ export function FilmInfoDialog({
 }) {
   const { t } = useI18n();
   const qc = useQueryClient();
+  const [provider, setProvider] = useLocalStorage<"wikimedia" | "omdb">(
+    "meguri.filmProvider",
+    "wikimedia",
+    (raw) => (raw === "omdb" ? "omdb" : "wikimedia"),
+  );
   const { data: keyStatus } = useQuery({
     queryKey: ["film_key_status"],
     queryFn: api.filmKeyStatus,
+    enabled: provider === "omdb",
   });
   const [credential, setCredential] = useState<{
     field: "key" | "url";
@@ -61,9 +69,11 @@ export function FilmInfoDialog({
       : parsedKey.success
         ? parsedKey.data
         : null;
-  const hasCredential = credential.value
-    ? key !== null
-    : keyStatus === "saved" || keyStatus === "session";
+  const canLookup =
+    provider === "wikimedia" ||
+    (credential.value
+      ? key !== null
+      : keyStatus === "saved" || keyStatus === "session");
   const [busy, setBusy] = useState<"lookup" | "save" | null>(null);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [error, setError] = useState("");
@@ -104,7 +114,7 @@ export function FilmInfoDialog({
   const confirmed = eligible.filter((row) => staged[rowKey(row)].choice);
 
   async function run(action: "lookup" | "save", work: FilmReviewRow[]) {
-    if (!hasCredential) return;
+    if (!canLookup) return;
     setError("");
     setBusy(action);
     setProgress({ done: 0, total: work.length });
@@ -118,7 +128,8 @@ export function FilmInfoDialog({
         if (action === "lookup") {
           setRow(id, { results: undefined, choice: undefined });
           const results = await api.lookupFilm({
-            key: key ?? undefined,
+            provider,
+            key: provider === "omdb" ? (key ?? undefined) : undefined,
             text: stage.text.trim(),
             year: stage.year ? Number(stage.year) : undefined,
           });
@@ -126,13 +137,16 @@ export function FilmInfoDialog({
           if (!cancelled.current) setRow(id, { results });
         } else if (stage.choice) {
           const { workspaceId, metaKey } = row;
-          const film = await api.saveFilm({
-            key: key ?? undefined,
-            imdbId: stage.choice,
-            id: row.id,
-            workspaceId,
-            metaKey,
-          });
+          const target = { id: row.id, workspaceId, metaKey };
+          const chosen = stage.results?.find(
+            (match) => matchKey(match) === stage.choice,
+          );
+          if (!chosen) continue;
+          const film = await api.saveFilm(
+            chosen.wikidataId
+              ? { ...target, wikidataId: chosen.wikidataId, year: chosen.year }
+              : { ...target, imdbId: chosen.imdbId, key: key ?? undefined },
+          );
           validated = true;
           refreshFilm(qc, row, film.posterVersion);
           if (!cancelled.current) setRow(id, { saved: true });
@@ -143,7 +157,7 @@ export function FilmInfoDialog({
       if (!cancelled.current)
         setError(String(cause).replace(/^.*?Error: /, ""));
     } finally {
-      if (key && validated) {
+      if (provider === "omdb" && key && validated) {
         await qc.invalidateQueries({ queryKey: ["film_key_status"] });
         if (!cancelled.current) setCredential({ field: "key", value: "" });
       }
@@ -164,56 +178,102 @@ export function FilmInfoDialog({
       >
         <DialogHeader>
           <DialogTitle>{t(batch ? "film.batch" : "film.get")}</DialogTitle>
-          <DialogDescription>{t("film.reviewHelp")}</DialogDescription>
+          <DialogDescription>
+            {t(
+              provider === "wikimedia"
+                ? "film.wikimediaHelp"
+                : "film.reviewHelp",
+            )}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
-          <label className="block space-y-1 text-sm">
-            <span>{t("film.key")}</span>
-            <Input
-              type="password"
-              autoComplete="off"
-              spellCheck={false}
-              value={credential.field === "key" ? credential.value : ""}
-              maxLength={128}
+          <label className="flex flex-wrap items-center gap-2 text-sm">
+            {t("film.provider")}
+            <select
+              aria-label={t("film.provider")}
+              className="rounded border border-border bg-bg px-2 py-1.5 text-fg"
+              value={provider}
               disabled={!!busy}
-              onChange={(e) =>
-                setCredential({ field: "key", value: e.currentTarget.value })
-              }
-            />
+              onChange={(event) => {
+                setProvider(
+                  event.currentTarget.value === "omdb" ? "omdb" : "wikimedia",
+                );
+                setError("");
+                setStaged((current) =>
+                  Object.fromEntries(
+                    Object.entries(current).map(([id, row]) => [
+                      id,
+                      { ...row, results: undefined, choice: undefined },
+                    ]),
+                  ),
+                );
+              }}
+            >
+              <option value="wikimedia">Wikipedia + Wikidata</option>
+              <option value="omdb">OMDb</option>
+            </select>
           </label>
-          <label className="block space-y-1 text-sm">
-            <span>{t("film.keyUrl")}</span>
-            <Input
-              type="password"
-              autoComplete="off"
-              spellCheck={false}
-              placeholder="https://www.omdbapi.com/?apikey=…"
-              value={credential.field === "url" ? credential.value : ""}
-              maxLength={2048}
-              disabled={!!busy}
-              aria-invalid={
-                credential.field === "url" && !!credential.value && !key
-              }
-              onChange={(e) =>
-                setCredential({ field: "url", value: e.currentTarget.value })
-              }
-            />
-          </label>
-          <p className="text-xs text-muted">{t("film.keyHelp")}</p>
-          {!credential.value &&
-            (keyStatus === "saved" || keyStatus === "session") && (
-              <p className="text-xs text-muted">
-                {t(keyStatus === "saved" ? "film.keySaved" : "film.keySession")}
-              </p>
-            )}
-          {credential.field === "url" && credential.value && !key && (
-            <p role="alert" className="text-sm text-destructive">
-              {t("film.keyUrlInvalid")}
-            </p>
+          {provider === "omdb" && (
+            <>
+              <label className="block space-y-1 text-sm">
+                <span>{t("film.key")}</span>
+                <Input
+                  type="password"
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={credential.field === "key" ? credential.value : ""}
+                  maxLength={128}
+                  disabled={!!busy}
+                  onChange={(e) =>
+                    setCredential({
+                      field: "key",
+                      value: e.currentTarget.value,
+                    })
+                  }
+                />
+              </label>
+              <label className="block space-y-1 text-sm">
+                <span>{t("film.keyUrl")}</span>
+                <Input
+                  type="password"
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder="https://www.omdbapi.com/?apikey=…"
+                  value={credential.field === "url" ? credential.value : ""}
+                  maxLength={2048}
+                  disabled={!!busy}
+                  aria-invalid={
+                    credential.field === "url" && !!credential.value && !key
+                  }
+                  onChange={(e) =>
+                    setCredential({
+                      field: "url",
+                      value: e.currentTarget.value,
+                    })
+                  }
+                />
+              </label>
+              <p className="text-xs text-muted">{t("film.keyHelp")}</p>
+              {!credential.value &&
+                (keyStatus === "saved" || keyStatus === "session") && (
+                  <p className="text-xs text-muted">
+                    {t(
+                      keyStatus === "saved"
+                        ? "film.keySaved"
+                        : "film.keySession",
+                    )}
+                  </p>
+                )}
+              {credential.field === "url" && credential.value && !key && (
+                <p role="alert" className="text-sm text-destructive">
+                  {t("film.keyUrlInvalid")}
+                </p>
+              )}
+            </>
           )}
           <Button
             variant="outline"
-            disabled={!hasCredential || !!busy || !eligible.length}
+            disabled={!canLookup || !!busy || !eligible.length}
             onClick={() => void run("lookup", eligible)}
           >
             {t(batch ? "film.lookupBatch" : "film.lookup")}
@@ -295,8 +355,11 @@ export function FilmInfoDialog({
                           >
                             <option value="">{t("film.choose")}</option>
                             {stage.results.map((match) => (
-                              <option key={match.imdbId} value={match.imdbId}>
-                                {match.title} ({match.year}) · {match.imdbId}
+                              <option
+                                key={matchKey(match)}
+                                value={matchKey(match)}
+                              >
+                                {match.title} ({match.year}) · {matchKey(match)}
                               </option>
                             ))}
                           </select>
@@ -342,7 +405,7 @@ export function FilmInfoDialog({
             </Button>
           )}
           <Button
-            disabled={!hasCredential || !!busy || !confirmed.length}
+            disabled={!canLookup || !!busy || !confirmed.length}
             onClick={() => void run("save", confirmed)}
           >
             {t("film.saveMatches", { count: confirmed.length })}

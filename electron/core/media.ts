@@ -3,6 +3,7 @@ import { execFile } from "node:child_process";
 import { promises as fsPromises } from "node:fs";
 import { promisify } from "node:util";
 import { FFMPEG, FFPROBE } from "./ffmpeg-paths.js";
+import { isHeif, readHeifDimensions, renderHeif } from "./heif.js";
 import { DECODE_FFMPEG_THREADS } from "./mediaConcurrency.js";
 import log from "./logger.js";
 import type { Kind } from "./types.js";
@@ -91,6 +92,10 @@ export async function extractMeta(
     capturedAt: null,
     raw: null,
   };
+  const heifSize = () =>
+    kind === "image" && isHeif(file) && !signal?.aborted
+      ? readHeifDimensions(file, signal).catch(() => null)
+      : null;
   try {
     const { stdout } = await execFileAsync(
       FFPROBE,
@@ -121,10 +126,11 @@ export async function extractMeta(
     // cover art, whose size describes the artwork and not the track. A tiled
     // image's streams each describe one tile (see isTiledImage).
     const sized = !wantAudio && !tiled;
+    const dimensions = sized && v?.width && v.height ? null : await heifSize();
     return {
       // `|| null`: ffprobe 6.1 reports a tiled AVIF as one 0x0 stream.
-      width: sized ? v?.width || null : null,
-      height: sized ? v?.height || null : null,
+      width: dimensions?.width ?? (sized ? v?.width || null : null),
+      height: dimensions?.height ?? (sized ? v?.height || null : null),
       duration: fmt.duration
         ? Number(fmt.duration)
         : v?.duration
@@ -142,7 +148,14 @@ export async function extractMeta(
     };
   } catch (err) {
     warnIfProbeUnavailable(err);
-    return empty;
+    const dimensions = await heifSize();
+    return dimensions
+      ? {
+          ...empty,
+          ...dimensions,
+          codec: file.toLowerCase().endsWith(".heic") ? "hevc" : null,
+        }
+      : empty;
   }
 }
 
@@ -235,6 +248,20 @@ export async function generateThumb(
       false,
       coverStreamIndex,
     );
+  }
+  if (kind === "image" && isHeif(src)) {
+    try {
+      const image = await renderHeif(
+        src,
+        { thumbnailWidth: THUMB_MAX },
+        signal,
+      );
+      await fsPromises.writeFile(dest, image, { signal });
+      return true;
+    } catch {
+      if (signal?.aborted) return false;
+      // FFmpeg can still handle some HEIF variants, such as image sequences.
+    }
   }
   const useOffset =
     kind === "video" &&

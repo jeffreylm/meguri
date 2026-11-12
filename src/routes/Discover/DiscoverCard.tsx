@@ -8,7 +8,8 @@ import {
 } from "react";
 import { Link } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AudioLines, ExternalLink, Pause, Play } from "lucide-react";
+import { AudioLines, Camera, ExternalLink, Pause, Play } from "lucide-react";
+import { ReferenceStillDialog } from "@/components/ReferenceStillDialog";
 import { kindIcon } from "@/lib/mediaKind";
 import { fileHref } from "@/lib/fileHref";
 import { hasThumbFile, thumbUrl } from "@/lib/thumbUrl";
@@ -105,6 +106,7 @@ export function DiscoverCard({
   } | null>(null);
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [selectedTime, setSelectedTime] = useState<number | null>(null);
+  const [referenceAt, setReferenceAt] = useState<number | null>(null);
   const [videoPosition, setVideoPosition] = useState(0);
   const activePreview = isActive ? preview : null;
   const [wasActive, setWasActive] = useState(isActive);
@@ -114,6 +116,7 @@ export function DiscoverCard({
     setPreview(null);
     setVideoPlaying(false);
     setSelectedTime(null);
+    setReferenceAt(null);
     setVideoPosition(0);
   }
   const seekVideo = useCallback((at: number) => {
@@ -443,6 +446,22 @@ export function DiscoverCard({
         </div>
 
         <div className="pointer-events-auto flex shrink-0 items-center gap-2.5">
+          {isVideo && activePreview && (
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label={t("reference.save")}
+              title={t("reference.save")}
+              onClick={() => {
+                const sec = videoRef.current?.currentTime() ?? selectedTime;
+                if (sec === null) return;
+                videoRef.current?.pause();
+                setReferenceAt(sec);
+              }}
+            >
+              <Camera aria-hidden />
+            </Button>
+          )}
           {isAudio ? (
             <Button
               size="lg"
@@ -521,6 +540,14 @@ export function DiscoverCard({
           </Button>
         </div>
       </div>
+      {isActive && referenceAt !== null && (
+        <ReferenceStillDialog
+          id={file.id}
+          workspaceId={wsId}
+          sec={referenceAt}
+          onClose={() => setReferenceAt(null)}
+        />
+      )}
 
       {/* Seekbar-style indicator while hover-scrubbing. */}
       {previewSrc && scrubFraction != null && (

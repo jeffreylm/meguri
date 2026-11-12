@@ -1,73 +1,48 @@
 // Update check against GitHub Releases. Notification-only: this module never
-// downloads or installs anything — it just compares the running version against
+// downloads or installs anything — it just compares the running build against
 // the latest published *stable* release and reports whether a newer one exists.
 //
 // We hit /releases/latest, which GitHub defines as the most recent non-draft,
 // non-prerelease release — so prereleases are excluded server-side and we don't
 // have to filter a full list.
 import { app, net } from "electron";
-import { loadConfig, updateConfig, type UpdateConfig } from "./appConfig.js";
+import { loadConfig, updateConfig } from "./appConfig.js";
 import { UpdateInfoSchema, type UpdateInfo } from "../../shared/ipc/schema.js";
 import type { UpdateSettings } from "../../shared/ipc/channels.js";
 import { scopedLog } from "./logger.js";
 
 const log = scopedLog("updater");
 
-// GitHub repo to check releases against. Mirrors package.json `repository`, but
-// hard-coded here so a missing/odd repo field can't break the check silently.
-const REPO_OWNER = "zabuton-app";
-const REPO_NAME = "meguri";
+declare const __MEGURI_BUILD_ID__: string;
+
+// The personal builds have their own release channel on the fork.
+const PERSONAL_RELEASE_REPO = "jeffreylm/meguri";
 
 /**
  * Resolve the target repo as `owner/name`. In development only, the
- * MEGURI_UPDATE_REPO env var (e.g. "amgsk/meguri-update-test") overrides it so
+ * MEGURI_UPDATE_REPO env var (e.g. "jeffreylm/meguri-update-test") overrides it so
  * the update flow can be exercised against a throwaway public repo before this
  * one is published. Ignored in packaged builds so a stray env var can't point
  * release users at someone else's repo.
  */
-function resolveRepo(): { owner: string; name: string } {
+function resolveRepo(): string {
   // Only honor the override when we can positively confirm a dev build
   // (isPackaged === false). If it's undefined (e.g. a partial app stub) we fall
   // through to the real repo — fail safe so release users can't be redirected.
   if (app?.isPackaged === false) {
     const override = process.env.MEGURI_UPDATE_REPO?.trim();
-    const match = override?.match(/^([\w.-]+)\/([\w.-]+)$/);
-    if (match) {
-      log.info(`using update repo override: ${match[1]}/${match[2]}`);
-      return { owner: match[1], name: match[2] };
+    if (override && /^[\w.-]+\/[\w.-]+$/.test(override)) {
+      log.info(`using update repo override: ${override}`);
+      return override;
     }
   }
-  return { owner: REPO_OWNER, name: REPO_NAME };
+  return PERSONAL_RELEASE_REPO;
 }
 
-function latestReleaseApi(): string {
-  const { owner, name } = resolveRepo();
-  return `https://api.github.com/repos/${owner}/${name}/releases/latest`;
-}
-
-function releasesPage(): string {
-  const { owner, name } = resolveRepo();
-  return `https://github.com/${owner}/${name}/releases`;
-}
-
-// Microsoft Store product ID (Partner Center → Product identity). Store installs
-// are updated by the Store itself, so "view this update" should land on the
-// product page instead of the GitHub release.
-const MS_STORE_PRODUCT_ID = "9NRSM11RRH8Z";
-
-/**
- * Where the "View" action for an update should send the user. Store-installed
- * builds (appx, `process.windowsStore`) go to the Store product page; everything
- * else goes to the GitHub release page (or the releases list as a fallback).
- */
-export function updateDownloadUrl(
-  releaseHtmlUrl?: string | null,
-  isWindowsStore: boolean = process.windowsStore === true,
-): string {
-  if (isWindowsStore) {
-    return `ms-windows-store://pdp/?ProductId=${MS_STORE_PRODUCT_ID}`;
-  }
-  return releaseHtmlUrl || releasesPage();
+/** Build the link from the configured repository and validated release tag. */
+export function updateDownloadUrl(tag?: string | null): string {
+  const releases = `https://github.com/${resolveRepo()}/releases`;
+  return tag ? `${releases}/tag/${encodeURIComponent(tag)}` : releases;
 }
 
 // Don't hammer the API on every startup. Background/startup checks are skipped
@@ -110,16 +85,16 @@ export function compareVersions(a: string, b: string): number {
 interface GithubRelease {
   tag_name?: string;
   name?: string;
-  html_url?: string;
   published_at?: string;
-  draft?: boolean;
-  prerelease?: boolean;
 }
 
 /** Fetch the latest stable release via Electron's net (honors system proxy). */
-function fetchLatestRelease(): Promise<GithubRelease> {
+function fetchLatestRelease(source: string): Promise<GithubRelease | null> {
   return new Promise((resolve, reject) => {
-    const request = net.request({ method: "GET", url: latestReleaseApi() });
+    const request = net.request({
+      method: "GET",
+      url: `https://api.github.com/repos/${source}/releases/latest`,
+    });
     request.setHeader("Accept", "application/vnd.github+json");
     request.setHeader("User-Agent", `Meguri/${app.getVersion()}`);
 
@@ -133,9 +108,11 @@ function fetchLatestRelease(): Promise<GithubRelease> {
         clearTimeout(timer);
         // Drain so the socket can close.
         response.on("data", () => {});
-        response.on("end", () =>
-          reject(new Error(`GitHub API returned ${response.statusCode}`)),
-        );
+        response.on("end", () => {
+          // A public fork with no published release returns 404 here.
+          if (response.statusCode === 404) resolve(null);
+          else reject(new Error(`GitHub API returned ${response.statusCode}`));
+        });
         return;
       }
       const chunks: Buffer[] = [];
@@ -170,9 +147,15 @@ export async function checkForUpdates(
   opts: { force?: boolean } = {},
 ): Promise<UpdateInfo | null> {
   const config = loadConfig();
-  const current = app.getVersion();
+  const source = resolveRepo();
+  const currentBuild = __MEGURI_BUILD_ID__;
+  const current = `${app.getVersion()} · Build ${currentBuild}`;
 
-  if (!opts.force && config.update.lastCheckAt != null) {
+  if (
+    !opts.force &&
+    config.update.lastCheckSource === source &&
+    config.update.lastCheckAt != null
+  ) {
     const elapsed = Date.now() - config.update.lastCheckAt;
     if (elapsed >= 0 && elapsed < CHECK_THROTTLE_MS) {
       log.info("update check throttled; skipping");
@@ -180,9 +163,9 @@ export async function checkForUpdates(
     }
   }
 
-  let release: GithubRelease;
+  let release: GithubRelease | null;
   try {
-    release = await fetchLatestRelease();
+    release = await fetchLatestRelease(source);
   } catch (e) {
     log.warn("update check failed:", e);
     return null;
@@ -193,16 +176,18 @@ export async function checkForUpdates(
   // and must not be spread back wholesale (would clobber concurrent edits).
   updateConfig((c) => ({
     ...c,
-    update: { ...c.update, lastCheckAt: Date.now() },
+    update: { ...c.update, lastCheckAt: Date.now(), lastCheckSource: source },
   }));
 
-  const tag = typeof release.tag_name === "string" ? release.tag_name : null;
-  if (!tag) {
-    log.warn("latest release has no usable tag_name");
-    return null;
+  const tag = typeof release?.tag_name === "string" ? release.tag_name : null;
+  const match = tag && /^v(\d+\.\d+\.\d+)\+build\.(\d+(?:\.\d+)*)$/.exec(tag);
+  if (release && !match) {
+    log.warn("latest release has no personal build tag");
   }
-  const latest = normalizeVersion(tag);
-  const isNewer = compareVersions(latest, current) > 0;
+  const latest = match ? `${match[1]} · Build ${match[2]}` : null;
+  // Build numbers are continuous across the fork's releases, including the
+  // transition from the inherited app version to independent versioning.
+  const isNewer = match ? compareVersions(match[2], currentBuild) > 0 : false;
   // Re-read the ignored version too (it may have changed during the fetch).
   const ignored = loadConfig().update.ignoredVersion === latest;
 
@@ -212,12 +197,10 @@ export async function checkForUpdates(
     current,
     latest,
     available: isNewer && !ignored,
-    url: updateDownloadUrl(
-      typeof release.html_url === "string" ? release.html_url : null,
-    ),
-    name: typeof release.name === "string" ? release.name : null,
+    url: updateDownloadUrl(match ? tag : null),
+    name: typeof release?.name === "string" ? release.name : null,
     publishedAt:
-      typeof release.published_at === "string" ? release.published_at : null,
+      typeof release?.published_at === "string" ? release.published_at : null,
   });
   if (!parsed.success) {
     log.warn("update info failed validation:", parsed.error.issues);
@@ -248,6 +231,3 @@ export function ignoreVersion(version: string): void {
 export function isAutoCheckEnabled(): boolean {
   return loadConfig().update.autoCheck;
 }
-
-export { releasesPage };
-export type { UpdateConfig };

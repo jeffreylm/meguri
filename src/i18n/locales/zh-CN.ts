@@ -178,7 +178,20 @@ export const zhCN: Record<TranslationKey, string> = {
   "smartBin.live": "扫描文件或更改评分和标签后，匹配结果会随之更新。",
   "smartBin.empty": "保存搜索，即可在整个媒体目录中查找符合条件的媒体。",
 
-  "app.name": "巡",
+  "app.name": "Footage Deck",
+  "reference.save": "保存参考静帧",
+  "reference.help": "{time} 附近的画面。图像包含来源、制作与色彩元数据。",
+  "reference.project": "项目",
+  "reference.note": "参考备注",
+  "reference.keywords": "关键词（逗号分隔）",
+  "reference.scene": "场景",
+  "reference.shot": "镜头",
+  "reference.take": "条次",
+  "reference.reel": "卷名",
+  "reference.highPrecision": "16 位 PNG",
+  "film.provider": "查询来源",
+  "film.wikimediaHelp":
+    "通过维基百科和维基数据查询片名、年份或 IMDb ID，无需密钥。保存前请确认匹配。",
 
   // common
   "common.close": "关闭",
@@ -264,6 +277,8 @@ export const zhCN: Record<TranslationKey, string> = {
   "update.checking": "正在检查…",
   "update.checkFailed": "无法检查（可能处于离线状态）。",
   "update.upToDate": "已是最新版本（{version}）。",
+  "update.noPersonalRelease": "GitHub 上尚未发布个人构建。",
+  "update.viewReleases": "打开发行列表",
   "settings.about": "关于",
   "about.version": "{name} 版本 {version}",
   "about.build": "构建 {build}",

@@ -4,6 +4,7 @@ export const FILM_BATCH_SIZE = 20;
 export const FILM_CANDIDATE_TOKEN = "has:film-candidate";
 export const FILM_SAVED_TOKEN = "has:film";
 export const IMDbId = z.string().regex(/^tt\d{7,12}$/);
+export const WikidataId = z.string().regex(/^Q[1-9]\d{0,14}$/);
 export const FilmTitle = z.string().trim().min(1).max(300);
 export const FilmYear = z.number().int().min(1870).max(2199);
 export const OmdbKey = z
@@ -38,6 +39,7 @@ export interface FilmGuess {
 
 export interface FilmMatch {
   imdbId: string;
+  wikidataId?: string;
   title: string;
   year: number;
 }

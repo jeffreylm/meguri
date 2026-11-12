@@ -1,5 +1,6 @@
 // Per-file thumbnail status (path on disk + status flag).
 import type { DB } from "../db.js";
+import { getSetting, setSetting } from "./settings.js";
 
 export const FILE_HAS_THUMB = `(f.thumb_path IS NOT NULL OR
   (f.kind = 'audio' AND EXISTS (
@@ -32,4 +33,18 @@ export function filesNeedingThumb(
     abs_path: string;
     kind: string;
   }[];
+}
+
+/** Refresh older HEIF files once, including thumbnails that show only one tile. */
+export function retryLegacyHeifThumbnails(db: DB, rootId: number): void {
+  const key = `heif_thumbnail_retry_v1:${rootId}`;
+  db.transaction(() => {
+    if (getSetting(db, key) !== null) return;
+    db.prepare(
+      `UPDATE files SET thumb_status = 'pending'
+       WHERE root_id = ? AND deleted_at IS NULL AND kind = 'image'
+         AND ext IN ('heic', 'heif') AND thumb_status IN ('error', 'done')`,
+    ).run(rootId);
+    setSetting(db, key, "1");
+  })();
 }

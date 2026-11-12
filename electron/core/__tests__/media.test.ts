@@ -6,7 +6,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { FFMPEG } from "../ffmpeg-paths.js";
+import { FFMPEG, FFPROBE } from "../ffmpeg-paths.js";
+import { exportReferenceStill } from "../referenceStill.js";
 import {
   coverArtStreamIndex,
   exportFrame,
@@ -297,7 +298,7 @@ describe("extractMeta", () => {
     expect(meta.fps).toBe(5);
   });
 
-  it("leaves the size of a tiled HEIF unknown instead of reporting one tile", async () => {
+  it("reads the full dimensions and thumbnail of a tiled HEIF", async () => {
     // 1024x512 cut into two 512x512 tiles (heif-enc --cut-tiles 512); ffmpeg
     // cannot write a grid itself, so the file is committed.
     const heic = fileURLToPath(
@@ -305,9 +306,24 @@ describe("extractMeta", () => {
     );
     const meta = await extractMeta(heic, "image");
     expect(meta.codec).toBe("hevc");
-    expect(meta.width).toBeNull();
-    expect(meta.height).toBeNull();
-    expect((meta.raw as { streams: unknown[] }).streams).toHaveLength(1);
+    expect([meta.width, meta.height]).toEqual([1024, 512]);
+    const thumb = path.join(dir, "grid.webp");
+    await expect(generateThumb(heic, "image", thumb)).resolves.toBe(true);
+    expect(
+      execFileSync(
+        FFPROBE,
+        [
+          "-v",
+          "error",
+          "-show_entries",
+          "stream=width,height",
+          "-of",
+          "csv=p=0",
+          thumb,
+        ],
+        { encoding: "utf8" },
+      ).trim(),
+    ).toBe("480,240");
   });
 
   it("returns empty meta for a broken file instead of throwing", async () => {
@@ -395,5 +411,92 @@ describe("generateThumb (audio cover art)", () => {
     const dest = path.join(dir, "no-cover.webp");
     await expect(generateThumb(audio, "audio", dest)).resolves.toBe(false);
     expect(fs.existsSync(dest)).toBe(false);
+  });
+});
+
+describe("reference stills", () => {
+  const source = {
+    title: "Color & light",
+    fileName: "source.mov",
+    url: "https://www.pexels.com/video/123456/",
+    keywords: ["cool shadows", "lighting"],
+  };
+
+  it("embeds a precise source time, production fields and SDR color in PNG and JPEG", async () => {
+    const clip = path.join(dir, "reference-sdr.mov");
+    execFileSync(FFMPEG, [
+      "-v",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc2=size=80x48:rate=25:duration=2",
+      "-c:v",
+      "libx264",
+      "-timecode",
+      "01:00:00:00",
+      "-color_primaries",
+      "bt709",
+      "-color_trc",
+      "bt709",
+      "-colorspace",
+      "bt709",
+      clip,
+    ]);
+    const png = path.join(dir, "ref-sdr.png");
+    await exportReferenceStill(clip, png, 0.41, "png", source, {
+      project: "Short film",
+      scene: "5",
+      shot: "5A",
+      take: "2",
+      note: "Keep the <contrast>",
+      highPrecision: true,
+    });
+    const bytes = fs.readFileSync(png);
+    expect(bytes[24]).toBe(16);
+    const image = bytes.toString("utf8");
+    expect(image).toContain("XML:com.adobe.xmp");
+    expect(image).toContain("Color &amp; light");
+    expect(image).toContain("Keep the &lt;contrast&gt;");
+    expect(image).toContain("<xmpDM:scene>5</xmpDM:scene>");
+    expect(image).toContain("01:00:00:11");
+    expect(image).toContain("&quot;sourceOffsetSeconds&quot;:0.44");
+    expect(image).toContain("No tone mapping");
+    const jpg = path.join(dir, "ref-sdr.jpg");
+    await exportReferenceStill(clip, jpg, 0.4, "jpeg", source, {});
+    const jpeg = fs.readFileSync(jpg);
+    expect(jpeg.subarray(0, 4).toString("hex")).toBe("ffd8ffe1");
+    expect(jpeg.toString("utf8")).toContain("http://ns.adobe.com/xap/1.0/");
+  });
+
+  it("labels PQ source and the converted SDR reference separately", async () => {
+    const clip = path.join(dir, "reference-pq.mkv");
+    execFileSync(FFMPEG, [
+      "-v",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc2=size=80x48:rate=25:duration=1,format=yuv420p10le",
+      "-c:v",
+      "ffv1",
+      "-color_primaries",
+      "bt2020",
+      "-color_trc",
+      "smpte2084",
+      "-colorspace",
+      "bt2020nc",
+      "-color_range",
+      "tv",
+      clip,
+    ]);
+    const png = path.join(dir, "ref-pq.png");
+    await exportReferenceStill(clip, png, 0.2, "png", source, {
+      highPrecision: true,
+    });
+    const image = fs.readFileSync(png).toString("utf8");
+    expect(image).toContain("smpte2084");
+    expect(image).toContain("iec61966-2-1");
+    expect(image).toContain("Mobius HDR to SDR (sRGB)");
   });
 });

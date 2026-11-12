@@ -192,7 +192,21 @@ export const ja = {
   "smartBin.empty":
     "検索を保存して、カタログ全体から条件に合うメディアを見つけられます。",
 
-  "app.name": "巡",
+  "app.name": "Footage Deck",
+  "reference.save": "参照スチルを保存",
+  "reference.help":
+    "{time} 付近のフレーム。画像にソース、制作、色のメタデータが含まれます。",
+  "reference.project": "プロジェクト",
+  "reference.note": "参照メモ",
+  "reference.keywords": "キーワード（カンマ区切り）",
+  "reference.scene": "シーン",
+  "reference.shot": "ショット",
+  "reference.take": "テイク",
+  "reference.reel": "リール名",
+  "reference.highPrecision": "16 ビット PNG",
+  "film.provider": "検索元",
+  "film.wikimediaHelp":
+    "Wikipedia と Wikidata で題名、年、IMDb ID を検索できます。キーは不要です。保存前に候補を確認してください。",
 
   // 共通
   "common.close": "閉じる",
@@ -283,6 +297,8 @@ export const ja = {
   "update.checkFailed":
     "確認できませんでした（オフラインの可能性があります）。",
   "update.upToDate": "最新です（{version}）。",
+  "update.noPersonalRelease": "個人ビルドはまだ GitHub に公開されていません。",
+  "update.viewReleases": "リリース一覧を開く",
   "settings.about": "このアプリについて",
   "about.version": "{name} バージョン {version}",
   "about.build": "ビルド {build}",

@@ -317,11 +317,11 @@ export function WorkspaceRail() {
     <>
       <nav
         aria-label={t("workspace.navigation")}
-        className="flex h-full w-16 shrink-0 flex-col items-center gap-2 border-r border-border bg-bg py-3"
+        className="flex h-full w-max min-w-16 shrink-0 flex-col items-center gap-2 border-r border-border bg-bg py-3"
       >
         <img
           src={LOGO_SRC[logo]}
-          alt="Meguri"
+          alt={t("app.name")}
           className="size-[50px] shrink-0"
         />
 
@@ -495,10 +495,10 @@ export function WorkspaceRail() {
           <div
             data-slot="build-readout"
             title={`v${info.version} · ${t("about.build", { build: info.buildId })}`}
-            className="-mt-1.5 flex w-full shrink-0 select-text flex-col px-1 text-center font-mono text-[10px] leading-3 text-fg"
+            className="-mt-1.5 flex shrink-0 select-text flex-col whitespace-nowrap px-1 text-center font-mono text-[10px] leading-3 text-fg"
           >
-            <span className="truncate">v{info.version}</span>
-            <span className="truncate text-muted">
+            <span>v{info.version}</span>
+            <span className="text-muted">
               {t("about.build", { build: info.buildId })}
             </span>
           </div>

@@ -8,7 +8,8 @@ import { api } from "@/ipc/client";
 import { useAboutInfo } from "@/hooks/useAboutInfo";
 import { useI18n } from "@/i18n/I18nProvider";
 
-const GITHUB_URL = "https://github.com/zabuton-app/meguri";
+const GITHUB_URL = "https://github.com/jeffreylm/meguri";
+const PERSONAL_BRANCH = "personal/meguri";
 
 interface ThirdPartyEntry {
   name: string;
@@ -44,6 +45,12 @@ const THIRD_PARTY: ThirdPartyEntry[] = [
       "https://github.com/eugeneware/ffmpeg-static/blob/master/LICENSE",
     sourceUrl:
       "https://github.com/eugeneware/ffmpeg-static/tree/master/packages/ffprobe-static",
+  },
+  {
+    name: "@dusrel/image-heic (libheif and libde265)",
+    license: "MIT / LGPL-3.0-or-later",
+    licenseUrl: "https://www.gnu.org/licenses/lgpl-3.0.html",
+    sourceUrl: "https://github.com/dusmamud/dusrel-image/tree/main/native/heic",
   },
   {
     name: "Electron (Chromium / Node.js)",
@@ -126,7 +133,9 @@ export function AboutSection() {
           variant="outline"
           size="sm"
           className="gap-1.5"
-          onClick={() => void api.openUrl(GITHUB_URL)}
+          onClick={() =>
+            void api.openUrl(`${GITHUB_URL}/tree/${PERSONAL_BRANCH}`)
+          }
         >
           <ExternalLink className="size-4" />
           GitHub
@@ -139,7 +148,9 @@ export function AboutSection() {
         <button
           type="button"
           className="cursor-pointer underline hover:text-fg"
-          onClick={() => void api.openUrl(`${GITHUB_URL}/blob/main/LICENSE`)}
+          onClick={() =>
+            void api.openUrl(`${GITHUB_URL}/blob/${PERSONAL_BRANCH}/LICENSE`)
+          }
         >
           MIT License
         </button>
@@ -191,7 +202,9 @@ export function AboutSection() {
           type="button"
           className="cursor-pointer self-start text-xs text-muted underline hover:text-fg"
           onClick={() =>
-            void api.openUrl(`${GITHUB_URL}/blob/main/package.json`)
+            void api.openUrl(
+              `${GITHUB_URL}/blob/${PERSONAL_BRANCH}/package.json`,
+            )
           }
         >
           {t("about.fullDependencies")}

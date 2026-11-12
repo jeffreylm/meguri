@@ -83,6 +83,9 @@ test("saves safe film metadata and reuses a protected key after restart", async 
       .getByRole("button", { name: "Get film info", exact: true })
       .click();
     await page
+      .getByRole("combobox", { name: /Lookup source/ })
+      .selectOption("omdb");
+    await page
       .getByLabel("OMDb API URL from your email", { exact: true })
       .fill("http://www.omdbapi.com/?i=tt12345678&apikey=test123");
     await page

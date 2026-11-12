@@ -361,7 +361,13 @@ corrected before lookup.
   the current filtered view otherwise. Use **Next batch** to continue through
   a longer view. Check which suggestions to look up, choose the correct match
   in each row, and save the matches you confirmed.
-- Online lookup uses your own [OMDb key](https://www.omdbapi.com/apikey.aspx).
+- **Wikipedia + Wikidata** looks up English film titles and credits without a
+  key. Footage Deck sends the title and year or the supplied IMDb identifier
+  only after you choose **Look up film**. It saves the selected record locally.
+  This source provides the available title, release year, cast, directors,
+  genres, runtime and short description. A film can keep its existing poster
+  when you change sources and confirm the same IMDb match.
+- Select **OMDb** to use your own [OMDb key](https://www.omdbapi.com/apikey.aspx).
   Paste either the short key or the full API URL from the OMDb email. The
   **Look up film** button sits directly below these fields. Meguri extracts
   the key from the URL. After a successful lookup, Meguri remembers the key
@@ -372,6 +378,7 @@ corrected before lookup.
   request its poster separately from an approved IMDb or Amazon image host.
   Local paths and video contents stay on your computer. Film details appear
   as plain text. New posters are converted to a small JPEG before saving.
+  Footage Deck remembers the lookup source you chose.
 
 Confirmed details and artwork are available offline. The Film details section
 shows the title, cast, director, genres, synopsis, runtime, certificate and
@@ -387,6 +394,41 @@ search saved fields. Combine those with the library's other filters.
 When Finder removes a file, the next completed scan of that folder removes
 film details and poster data if the workspace has no remaining copy. Watch
 folders can reconcile the removal automatically.
+
+## Reference stills
+
+Pause on the frame you want and click the camera in the player. In Discovery,
+start a preview or select a time to reveal the camera beside **Open**. Fill in
+the optional project, reference note, keywords, scene, shot, take, and reel
+name, then choose a location for the full-resolution still. Footage Deck
+remembers the project and the 16-bit PNG choice for the next export.
+
+- **Source** includes the original filename, confirmed source link when
+  available, the requested position, and the timestamp of the decoded frame.
+  When the source provides a timecode and a usable constant frame rate, the
+  still includes the calculated source timecode. The catalogue content hash
+  helps identify the clip after a rename.
+- **Production** includes the project and reference note plus keywords from
+  your clip tags and any still-specific keywords you enter. Scene, Shot, Take,
+  Reel Number, Description, Comments and Keywords have explicit fields for
+  mapping to Resolve metadata later.
+- **Color** records the source primaries, transfer, matrix, and range where
+  present, along with the output color and bit depth. Tagged PQ and HLG are
+  tone-mapped to an SDR reference. SDR frames skip HDR tone mapping. Use
+  **16-bit PNG** for extra precision when reviewing gradients or HDR sources.
+
+PNG and JPEG contain embedded XMP. Common title, description and keyword
+fields use standard XMP, and a Footage Deck record carries the source timing,
+color and Resolve field mapping. The export is a standalone image. Choose
+**Import** in Resolve's Color Gallery to use it as a visual reference, or
+place the image in your mood board. Resolve may expose different metadata
+when the same image is imported through its Media Pool.
+
+For a later integration, Resolve's **File → Import Metadata to → Media Pool**
+can read a CSV and match clips by filename and timecode. A Resolve script can
+also import files and set supported Media Pool metadata. Both routes can read
+the embedded record or a future batch manifest. OFX is intended for image
+effects and is unnecessary for this handoff.
 
 ## Player and button controls
 

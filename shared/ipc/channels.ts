@@ -9,6 +9,7 @@ import {
   FilmTitle,
   FilmYear,
   IMDbId,
+  WikidataId,
   type FilmMatch,
   type FilmMetadata,
   type FilmReviewRow,
@@ -458,10 +459,17 @@ export const ChannelInputs = {
   ]),
   film_lookup: z.object({
     key: OmdbKey.optional(),
+    provider: z.enum(["wikimedia", "omdb"]).optional(),
     text: FilmTitle,
     year: FilmYear.optional(),
   }),
-  film_save: FilmEditTarget.extend({ key: OmdbKey.optional(), imdbId: IMDbId }),
+  film_save: z.union([
+    FilmEditTarget.extend({
+      wikidataId: WikidataId,
+      year: FilmYear.optional(),
+    }),
+    FilmEditTarget.extend({ key: OmdbKey.optional(), imdbId: IMDbId }),
+  ]),
   film_remove: FilmEditTarget,
   pexels_sources_preview: z.union([
     z.object({ targets: BulkTargets }),
@@ -595,7 +603,21 @@ export const ChannelInputs = {
     workspaceId: z.string().min(1).max(MAX_WORKSPACE_ID),
   }),
   artlist_artwork_cancel: z.void(),
-  frame_export: FileTarget.extend({ sec: z.number().finite().min(0) }),
+  frame_export: FileTarget.extend({
+    sec: z.number().finite().min(0),
+    reference: z
+      .object({
+        project: z.string().trim().max(200).optional(),
+        note: z.string().trim().max(3000).optional(),
+        keywords: z.string().trim().max(800).optional(),
+        scene: z.string().trim().max(80).optional(),
+        shot: z.string().trim().max(80).optional(),
+        take: z.string().trim().max(80).optional(),
+        reel: z.string().trim().max(80).optional(),
+        highPrecision: z.boolean().optional(),
+      })
+      .optional(),
+  }),
   open_external: FileTarget,
   open_folder: FileTarget,
   drag_files: BulkTargets,

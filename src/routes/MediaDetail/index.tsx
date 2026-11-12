@@ -10,6 +10,7 @@
 // rating/tags card and play history as components.
 import { Clapperboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ReferenceStillDialog } from "@/components/ReferenceStillDialog";
 import { toast } from "sonner";
 import {
   Suspense,
@@ -150,6 +151,10 @@ export default function MediaDetail({
   });
   const kind = detail.data?.kind;
   const [filmReview, setFilmReview] = useState<string | null>(null);
+  const [reference, setReference] = useState<{
+    target: string;
+    sec: number;
+  } | null>(null);
   const filmTarget = `${wsId}:${fileId}`;
   const film = useQuery({
     queryKey: ["film_get", wsId, fileId],
@@ -480,8 +485,7 @@ export default function MediaDetail({
               bookmarkPending={actions.pending.bookmark}
               onAddBookmark={actions.addBookmark}
               onRemoveBookmark={actions.removeBookmark}
-              exportPending={actions.pending.export}
-              onExportFrame={actions.exportFrame}
+              onExportFrame={(sec) => setReference({ target: filmTarget, sec })}
               onNativeDuration={setNativeDur}
               onPlayed={() => {
                 invalidatePlayedSearches(qc);
@@ -679,6 +683,14 @@ export default function MediaDetail({
           <PlayHistory history={d.playHistory} t={t} />
         </div>
       </ScrollArea>
+      {reference?.target === filmTarget && (
+        <ReferenceStillDialog
+          id={fileId}
+          workspaceId={wsId}
+          sec={reference.sec}
+          onClose={() => setReference(null)}
+        />
+      )}
     </MediaModal>
   );
 }

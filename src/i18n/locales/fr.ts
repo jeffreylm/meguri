@@ -197,7 +197,21 @@ export const fr: Record<TranslationKey, string> = {
   "smartBin.empty":
     "Enregistrez une recherche pour retrouver les médias correspondants dans tout votre catalogue.",
 
-  "app.name": "巡",
+  "app.name": "Footage Deck",
+  "reference.save": "Enregistrer une image de référence",
+  "reference.help":
+    "Image vers {time}. Les métadonnées de source, de production et de couleur accompagnent l’image.",
+  "reference.project": "Projet",
+  "reference.note": "Note de référence",
+  "reference.keywords": "Mots-clés (séparés par des virgules)",
+  "reference.scene": "Scène",
+  "reference.shot": "Plan",
+  "reference.take": "Prise",
+  "reference.reel": "Nom de bobine",
+  "reference.highPrecision": "PNG 16 bits",
+  "film.provider": "Source de recherche",
+  "film.wikimediaHelp":
+    "Recherchez un titre, une année ou un identifiant IMDb dans Wikipédia et Wikidata sans clé. Vérifiez les résultats avant de les enregistrer.",
 
   // common
   "common.close": "Fermer",
@@ -290,6 +304,9 @@ export const fr: Record<TranslationKey, string> = {
   "update.checkFailed":
     "Impossible de vérifier (vous êtes peut-être hors ligne).",
   "update.upToDate": "Vous êtes à jour ({version}).",
+  "update.noPersonalRelease":
+    "Aucun build personnel n’a encore été publié sur GitHub.",
+  "update.viewReleases": "Ouvrir les versions",
   "settings.about": "À propos",
   "about.version": "{name} version {version}",
   "about.build": "Build {build}",

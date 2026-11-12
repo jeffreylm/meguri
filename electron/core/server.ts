@@ -25,6 +25,7 @@ import { thumbPathIfDone } from "./tags.js";
 import { audioArtworkFor } from "./audioArtwork.js";
 import { isInsideRoot } from "./paths.js";
 import { FFMPEG } from "./ffmpeg-paths.js";
+import { isHeif, renderHeif } from "./heif.js";
 import { QueueFullError, Semaphore } from "./concurrency.js";
 import { DECODE_FFMPEG_THREADS, videoDecodeSlots } from "./mediaConcurrency.js";
 import { scopedLog } from "./logger.js";
@@ -457,7 +458,7 @@ async function handle(
     }
     // Chromium-unsupported image formats (heic/heif/tiff) are transcoded to JPEG.
     if (TRANSCODE_IMAGES.has(ext(abs))) {
-      serveTranscodedImage(res, abs);
+      await serveTranscodedImage(res, abs);
       return;
     }
     // Everything else (mp4/mov/webm/images) is served via Range = full seeking.
@@ -919,7 +920,34 @@ function serveFrame(
 }
 
 // Decode a Chromium-unsupported still image (heic/heif/tiff) to JPEG and return it.
-function serveTranscodedImage(res: http.ServerResponse, file: string) {
+async function serveTranscodedImage(res: http.ServerResponse, file: string) {
+  if (isHeif(file)) {
+    const release = await acquireForResponse(videoDecodeSlots, res);
+    if (!release) return;
+    const controller = new AbortController();
+    const onClose = () => controller.abort();
+    res.once("close", onClose);
+    try {
+      if (res.destroyed) return;
+      const jpeg = await renderHeif(file, {}, controller.signal);
+      if (!res.destroyed && !res.writableEnded) {
+        res.writeHead(200, {
+          "Content-Type": "image/jpeg",
+          "Cache-Control": "max-age=3600",
+          "Content-Length": jpeg.length,
+        });
+        res.end(jpeg);
+      }
+      return;
+    } catch (error) {
+      if (res.destroyed || res.writableEnded) return;
+      if (error instanceof QueueFullError) throw error;
+      // Fall back to FFmpeg for variants it can decode directly.
+    } finally {
+      res.off("close", onClose);
+      release();
+    }
+  }
   const args = [
     "-v",
     "error",

@@ -192,7 +192,21 @@ export const ko: Record<TranslationKey, string> = {
   "smartBin.empty":
     "검색을 저장하여 전체 카탈로그에서 조건에 맞는 미디어를 찾으세요.",
 
-  "app.name": "巡",
+  "app.name": "Footage Deck",
+  "reference.save": "참조 스틸 저장",
+  "reference.help":
+    "{time} 부근의 프레임입니다. 소스, 제작, 색상 메타데이터가 이미지에 포함됩니다.",
+  "reference.project": "프로젝트",
+  "reference.note": "참조 메모",
+  "reference.keywords": "키워드(쉼표로 구분)",
+  "reference.scene": "장면",
+  "reference.shot": "샷",
+  "reference.take": "테이크",
+  "reference.reel": "릴 이름",
+  "reference.highPrecision": "16비트 PNG",
+  "film.provider": "검색 출처",
+  "film.wikimediaHelp":
+    "키 없이 위키백과와 위키데이터에서 제목, 연도 또는 IMDb ID를 검색합니다. 저장하기 전에 결과를 확인하세요.",
 
   // common
   "common.close": "닫기",
@@ -280,6 +294,8 @@ export const ko: Record<TranslationKey, string> = {
   "update.checking": "확인 중…",
   "update.checkFailed": "확인할 수 없습니다(오프라인일 수 있습니다).",
   "update.upToDate": "최신 버전입니다 ({version}).",
+  "update.noPersonalRelease": "GitHub에 게시된 개인 빌드가 아직 없습니다.",
+  "update.viewReleases": "릴리스 열기",
   "settings.about": "정보",
   "about.version": "{name} 버전 {version}",
   "about.build": "빌드 {build}",

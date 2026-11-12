@@ -6,6 +6,10 @@ import {
 import { handle } from "../core/ipcHandler.js";
 import { Semaphore } from "../core/concurrency.js";
 import { loadFilm, lookupFilms } from "../core/omdb.js";
+import {
+  loadWikimediaFilm,
+  lookupWikimediaFilms,
+} from "../core/wikimediaFilms.js";
 import { normalizeFilmPoster } from "./filmPoster.js";
 import {
   currentFilmKey,
@@ -68,9 +72,10 @@ export function registerFilmHandlers({ ws, queryClient }: IpcContext): void {
     }
     return { rows, more: result.nextCursor !== null, next: result.nextCursor };
   });
-  handle("film_lookup", async ({ key, ...input }) => {
+  handle("film_lookup", async ({ key, provider, ...input }) => {
     const release = await slots.acquire({ maxWaiting: 4 });
     try {
+      if (provider === "wikimedia") return await lookupWikimediaFilms(input);
       const credential = key ?? (await currentFilmKey());
       if (!credential) throw new Error("Enter an OMDb API key.");
       const results = await lookupFilms(credential, input);
@@ -80,7 +85,7 @@ export function registerFilmHandlers({ ws, queryClient }: IpcContext): void {
       release();
     }
   });
-  handle("film_save", async ({ key, imdbId, workspaceId, ...target }) => {
+  handle("film_save", async ({ workspaceId, ...target }) => {
     const release = await slots.acquire({ maxWaiting: 4 });
     try {
       if (
@@ -88,6 +93,20 @@ export function registerFilmHandlers({ ws, queryClient }: IpcContext): void {
           ?.metaKey !== target.metaKey
       )
         throw new Error("This file changed. Reopen film info and try again.");
+      const { db } = coreById(ws, workspaceId);
+      if ("wikidataId" in target) {
+        const film = await loadWikimediaFilm(target.wikidataId, target.year);
+        const previous = getFilm(db, target.id);
+        if (film.imdbId && previous?.imdbId === film.imdbId) {
+          film.plot = previous.plot || film.plot;
+          film.certificate = previous.certificate;
+          film.imdbRating = previous.imdbRating;
+        }
+        if (!writeFilm(db, target, film))
+          throw new Error("This file changed. Reopen film info and try again.");
+        return getFilm(db, target.id) ?? film;
+      }
+      const { key, imdbId } = target;
       const credential = key ?? (await currentFilmKey());
       if (!credential) throw new Error("Enter an OMDb API key.");
       const { film, poster } = await loadFilm(

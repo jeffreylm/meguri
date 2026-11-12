@@ -266,6 +266,7 @@ export async function runScan(
   }
 
   // --- thumbnail/meta (parallel) ---
+  if (!changes) q.retryLegacyHeifThumbnails(db, core.rootId);
   const pending = q.filesNeedingThumb(
     db,
     core.rootId,

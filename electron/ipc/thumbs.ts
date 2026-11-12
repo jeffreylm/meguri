@@ -4,6 +4,9 @@ import path from "node:path";
 import { handle } from "../core/ipcHandler.js";
 import { importAudioArtwork } from "../core/audioArtwork.js";
 import { exportFrame, generateThumb } from "../core/media.js";
+import { exportReferenceStill } from "../core/referenceStill.js";
+import { getFilm } from "../core/queries/filmMetadata.js";
+import { previewPexelsSources } from "../core/queries/pexelsSources.js";
 import { withVideoDecodeSlot } from "../core/mediaConcurrency.js";
 import { isInsideRoot } from "../core/paths.js";
 import * as q from "../core/queries.js";
@@ -84,7 +87,7 @@ export function registerThumbHandlers(ctx: IpcContext): void {
   // pending state disables the button, and stacking two modal save dialogs
   // would be confusing — treat re-entry like a cancel.
   let frameExportInFlight = false;
-  handle("frame_export", async ({ id, workspaceId, sec }) => {
+  handle("frame_export", async ({ id, workspaceId, sec, reference }) => {
     if (frameExportInFlight) return { saved: false, path: null };
     frameExportInFlight = true;
     try {
@@ -111,16 +114,21 @@ export function registerThumbHandlers(ctx: IpcContext): void {
         picturesDir = app.getPath("home");
       }
       const res = await dialog.showSaveDialog(ctx.mainWindow() ?? undefined!, {
-        title: "Export frame",
+        title: reference ? "Save reference still" : "Export frame",
         defaultPath: path.join(picturesDir, `${base}_${stamp}.png`),
-        filters: [
-          { name: "PNG", extensions: ["png"] },
-          { name: "JPEG", extensions: ["jpg", "jpeg"] },
-        ],
+        filters: reference?.highPrecision
+          ? [{ name: "PNG", extensions: ["png"] }]
+          : [
+              { name: "PNG", extensions: ["png"] },
+              { name: "JPEG", extensions: ["jpg", "jpeg"] },
+            ],
       });
       if (res.canceled || !res.filePath) return { saved: false, path: null };
       const ext = path.extname(res.filePath).toLowerCase();
-      const format = ext === ".jpg" || ext === ".jpeg" ? "jpeg" : "png";
+      const format =
+        !reference?.highPrecision && (ext === ".jpg" || ext === ".jpeg")
+          ? "jpeg"
+          : "png";
       // ffmpeg infers the output muxer from the extension; replace an unknown
       // (or missing) extension with .png so extraction can't fail on that.
       let dest = res.filePath;
@@ -130,6 +138,54 @@ export function registerThumbHandlers(ctx: IpcContext): void {
         // The dialog's overwrite prompt only covered the name as typed; never
         // silently clobber a different existing file after rewriting it.
         for (let n = 1; fs.existsSync(dest); n++) dest = `${stem} (${n}).png`;
+      }
+      if (reference) {
+        const file = q.fileDetail(c.db, id);
+        if (
+          !file ||
+          file.kind !== "video" ||
+          (file.duration && sec >= file.duration)
+        )
+          throw new Error("Choose a frame inside the source video");
+        const film = getFilm(c.db, id);
+        const pexels = previewPexelsSources(c.db, workspaceId, {
+          fileIds: [id],
+        })[0]?.saved;
+        const keywords = [
+          ...new Set([
+            ...file.tags
+              .filter((tag) => tag.source === "manual")
+              .map((tag) => tag.name),
+            ...(reference.keywords
+              ?.split(",")
+              .map((word) => word.trim())
+              .filter(Boolean) ?? []),
+          ]),
+        ].slice(0, 40);
+        await withVideoDecodeSlot(() =>
+          exportReferenceStill(
+            abs,
+            dest,
+            sec,
+            format,
+            {
+              title: film?.title ?? base,
+              fileName: path.basename(abs),
+              contentHash: file.contentHash ?? undefined,
+              credit: film?.directors || undefined,
+              url:
+                pexels?.url ??
+                (film?.wikidataId
+                  ? `https://www.wikidata.org/wiki/${film.wikidataId}`
+                  : film?.imdbId
+                    ? `https://www.imdb.com/title/${film.imdbId}/`
+                    : undefined),
+              keywords,
+            },
+            reference,
+          ),
+        );
+        return { saved: true, path: dest };
       }
       const ok = await withVideoDecodeSlot(() =>
         exportFrame(abs, dest, sec, format),

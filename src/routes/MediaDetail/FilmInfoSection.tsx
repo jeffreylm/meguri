@@ -45,17 +45,22 @@ export function FilmInfoSection({
           {t("film.title")}
         </h2>
         <div className="flex flex-wrap gap-2">
-          {film && (
+          {(film?.wikidataId || film?.imdbId) && (
             <Button
               size="sm"
               variant="outline"
               onClick={() => {
                 void api
-                  .openUrl(`https://www.imdb.com/title/${film.imdbId}/`)
+                  .openUrl(
+                    film.wikidataId
+                      ? `https://www.wikidata.org/wiki/${film.wikidataId}`
+                      : `https://www.imdb.com/title/${film.imdbId}/`,
+                  )
                   .catch(() => {});
               }}
             >
-              <ExternalLink aria-hidden /> IMDb
+              <ExternalLink aria-hidden />{" "}
+              {film.wikidataId ? "Wikidata" : "IMDb"}
             </Button>
           )}
           <Button
@@ -106,7 +111,9 @@ export function FilmInfoSection({
             )}
             {film.cast && <p>{t("film.cast", { names: film.cast })}</p>}
             {film.plot && <p className="text-muted">{film.plot}</p>}
-            <p className="text-xs text-muted">{t("film.attribution")}</p>
+            <p className="text-xs text-muted">
+              {film.wikidataId ? "Wikidata" : t("film.attribution")}
+            </p>
           </div>
         </div>
       ) : (
@@ -126,7 +133,11 @@ export function FilmInfoSection({
       )}
       {open && (
         <FilmInfoDialog
-          rows={[film ? { ...row, guess: { title: film.imdbId } } : row]}
+          rows={[
+            film
+              ? { ...row, guess: { title: film.title, year: film.year } }
+              : row,
+          ]}
           onClose={() => onOpen(false)}
         />
       )}

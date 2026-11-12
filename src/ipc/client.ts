@@ -238,8 +238,12 @@ export const api = {
     invoke("artlist_artwork_find", { workspaceId }),
   artlistArtworkCancel: () => invoke("artlist_artwork_cancel"),
   /** Export the frame at `sec` as a still image via a native save dialog. */
-  frameExport: (id: number, workspaceId: string, sec: number) =>
-    invoke("frame_export", { id, workspaceId, sec }),
+  frameExport: (
+    id: number,
+    workspaceId: string,
+    sec: number,
+    reference?: ChannelInput<"frame_export">["reference"],
+  ) => invoke("frame_export", { id, workspaceId, sec, reference }),
   openExternal: (id: number, workspaceId: string) =>
     invoke("open_external", { id, workspaceId }),
   openFolder: (id: number, workspaceId: string) =>
