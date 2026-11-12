@@ -139,6 +139,10 @@ export const VideoPlayer = forwardRef<
     startAt: number;
     /** Whether the video should start playing automatically (default true). */
     autoplay?: boolean;
+    /** Whether playback updates the saved resume point. Discovery samples privately. */
+    recordPosition?: boolean;
+    /** Whether the player handles window-level playback shortcuts. */
+    shortcuts?: boolean;
     audioTracks?: Pick<PlaybackTrack, "title" | "language">[];
     subtitleTracks?: PlaybackTrack[];
     preferenceKey?: string;
@@ -214,6 +218,8 @@ export const VideoPlayer = forwardRef<
     wsId,
     startAt,
     autoplay = true,
+    recordPosition = true,
+    shortcuts = true,
     audioTracks,
     subtitleTracks,
     preferenceKey,
@@ -380,7 +386,7 @@ export const VideoPlayer = forwardRef<
   // Fire onPlayed only on the first play of each loaded file (not on every pause/resume).
   const playedRef = useRef(false);
   // Where playback stands, for the resume point (see usePlaybackPosition).
-  const playbackPosition = usePlaybackPosition(wsId, id);
+  const playbackPosition = usePlaybackPosition(wsId, id, recordPosition);
   /**
    * The element's position in the file, or null while it has none to give
    * (nothing loaded, or a stream being re-served from a new second). The
@@ -680,7 +686,7 @@ export const VideoPlayer = forwardRef<
    *   seek asked for outright, and supersedes the run: leaving its target in
    *   place would have `onSeeked` chase it and undo the seek just made.
    */
-  const seek = (t: number, fromRun = false, resumeOnLoad?: boolean) => {
+  const seek = (t: number, fromRun = false) => {
     const v = ref.current;
     if (!v) return;
     if (fromRun) {
@@ -715,11 +721,9 @@ export const VideoPlayer = forwardRef<
     if (isFinite(v.duration) && inSeekable) {
       v.currentTime = relative;
     } else {
-      // Loading a remuxed stream must carry over play/pause. The previous
-      // load can still be pending if the user selects another scene quickly.
-      const resume =
-        resumeOnLoad ??
-        (!v.paused || (v.readyState < v.HAVE_METADATA && v.autoplay));
+      // Before the first play event, the element may still be waiting for
+      // autoplay. A deliberate pause withdraws autoplay even during loading.
+      const resume = !v.paused || (v.autoplay && v.played.length === 0);
       v.autoplay = resume;
       lastStreamSeekRef.current = Date.now();
       const next = withStreamSeek(source, t);
@@ -745,9 +749,9 @@ export const VideoPlayer = forwardRef<
   useEffect(() => {
     if (startAt > 0 && haveMetadataRef.current && !appliedStartRef.current) {
       appliedStartRef.current = true;
-      seekRef.current(startAt, false, autoplay);
+      seekRef.current(startAt);
     }
-  }, [startAt, autoplay]);
+  }, [startAt]);
   // Stable, so the imperative handle below can just close over it.
   const togglePlay = useCallback(() => {
     const v = ref.current;
@@ -889,8 +893,9 @@ export const VideoPlayer = forwardRef<
     navKeysRef.current = navKeys;
   });
 
-  // Keyboard shortcuts. Disabled while a tag input or similar is focused.
+  // The host can retain its own navigation keys, as in Discovery.
   useEffect(() => {
+    if (!shortcuts) return;
     const onKey = (e: KeyboardEvent) => {
       const el = document.activeElement as HTMLElement | null;
       if (
@@ -954,9 +959,8 @@ export const VideoPlayer = forwardRef<
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // All handlers go through refs / stable references, so registering once is
-    // enough; `chromeless` is a prop the handler reads directly, so it re-binds
-    // on the rare occasion that changes.
-  }, [togglePlay, chromeless]);
+    // enough; `chromeless` and `shortcuts` can change the keyboard behavior.
+  }, [togglePlay, chromeless, shortcuts]);
 
   // Event coordinates on the seek bar → {ratio, t}.
   // ratio is computed from getBoundingClientRect+clientX (consistent even under CSS zoom). Positioning
@@ -1137,6 +1141,7 @@ export const VideoPlayer = forwardRef<
         onPause={() => {
           setPlaying(false);
           const v = ref.current;
+          if (v) v.autoplay = false;
           const sample = v && sampleOf(v);
           if (sample) playbackPosition.flush(sample);
         }}
@@ -1177,7 +1182,7 @@ export const VideoPlayer = forwardRef<
           // Apply the initial seek (e.g. from a Discovery scene click) once.
           if (startAt > 0 && !appliedStartRef.current) {
             appliedStartRef.current = true;
-            seekRef.current(startAt, false, autoplay);
+            seekRef.current(startAt);
           }
           // A seek asked for while there was nothing loaded yet. It comes after
           // the initial seek because it is the newer intent of the two.

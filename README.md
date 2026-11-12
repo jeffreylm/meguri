@@ -54,7 +54,9 @@ and shows each pick full-screen — the video front and center over a blurred
 backdrop, with a rail of scene previews to jump from — so every visit surfaces
 something worth rediscovering. Play or pause the clip in Discovery, or click a
 scene thumbnail to jump to that moment while keeping the current view and
-playback state. **Open** takes you to the file details.
+playback state. Previewing in Discovery leaves the file's saved resume point
+intact. Select a scene and click **Open** to start the full player at that scene.
+Opening a file without a scene selected uses its usual resume behavior.
 
 ![Discovery demo — immersive random picks with a scene-preview rail and reshuffle](./docs/assets/discover.gif)
 
