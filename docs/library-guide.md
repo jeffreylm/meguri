@@ -365,8 +365,9 @@ corrected before lookup.
   key. Footage Deck sends the title and year or the supplied IMDb identifier
   only after you choose **Look up film**. It saves the selected record locally.
   This source provides the available title, release year, cast, directors,
-  genres, runtime and short description. A film can keep its existing poster
-  when you change sources and confirm the same IMDb match.
+  genres, runtime and short description. Use OMDb to fetch a poster when one
+  is available. A film can keep its existing poster when you change sources
+  and confirm the same IMDb match.
 - Select **OMDb** to use your own [OMDb key](https://www.omdbapi.com/apikey.aspx).
   Paste either the short key or the full API URL from the OMDb email. The
   **Look up film** button sits directly below these fields. Meguri extracts

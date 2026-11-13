@@ -191,7 +191,7 @@ export const zhCN: Record<TranslationKey, string> = {
   "reference.highPrecision": "16 位 PNG",
   "film.provider": "查询来源",
   "film.wikimediaHelp":
-    "通过维基百科和维基数据查询片名、年份或 IMDb ID，无需密钥。保存前请确认匹配。",
+    "通过维基百科和维基数据查询片名、年份或 IMDb ID，无需密钥。保存前请确认匹配。此来源仅保存影片信息。如果有海报，可通过 OMDb 获取。",
 
   // common
   "common.close": "关闭",

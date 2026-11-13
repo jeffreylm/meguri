@@ -206,7 +206,7 @@ export const ko: Record<TranslationKey, string> = {
   "reference.highPrecision": "16비트 PNG",
   "film.provider": "검색 출처",
   "film.wikimediaHelp":
-    "키 없이 위키백과와 위키데이터에서 제목, 연도 또는 IMDb ID를 검색합니다. 저장하기 전에 결과를 확인하세요.",
+    "키 없이 위키백과와 위키데이터에서 제목, 연도 또는 IMDb ID를 검색합니다. 저장하기 전에 결과를 확인하세요. 이 출처는 영화 정보만 저장합니다. 포스터가 있는 경우 OMDb에서 가져올 수 있습니다.",
 
   // common
   "common.close": "닫기",

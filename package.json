@@ -130,7 +130,7 @@
     "vitest": "^4.1.12"
   },
   "build": {
-    "buildVersion": "20.1",
+    "buildVersion": "21",
     "appId": "dev.amgsk.meguri",
     "productName": "Footage Deck",
     "directories": {

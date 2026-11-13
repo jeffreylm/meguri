@@ -206,7 +206,7 @@ export const ja = {
   "reference.highPrecision": "16 ビット PNG",
   "film.provider": "検索元",
   "film.wikimediaHelp":
-    "Wikipedia と Wikidata で題名、年、IMDb ID を検索できます。キーは不要です。保存前に候補を確認してください。",
+    "Wikipedia と Wikidata で題名、年、IMDb ID を検索できます。キーは不要です。保存前に候補を確認してください。このソースでは作品情報のみ保存されます。ポスターが提供されている場合は、OMDb から取得できます。",
 
   // 共通
   "common.close": "閉じる",

@@ -210,7 +210,7 @@ export const en: Record<TranslationKey, string> = {
   "reference.highPrecision": "16-bit PNG",
   "film.provider": "Lookup source",
   "film.wikimediaHelp":
-    "Look up a title, year or IMDb ID through Wikipedia and Wikidata. No key is needed. Review the matches before saving.",
+    "Look up a title, year or IMDb ID through Wikipedia and Wikidata. No key is needed. Review the matches before saving. This source saves film details only. Use OMDb for a poster when one is available.",
 
   // common
   "common.close": "Close",

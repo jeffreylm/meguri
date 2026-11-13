@@ -211,7 +211,7 @@ export const fr: Record<TranslationKey, string> = {
   "reference.highPrecision": "PNG 16 bits",
   "film.provider": "Source de recherche",
   "film.wikimediaHelp":
-    "Recherchez un titre, une année ou un identifiant IMDb dans Wikipédia et Wikidata sans clé. Vérifiez les résultats avant de les enregistrer.",
+    "Recherchez un titre, une année ou un identifiant IMDb dans Wikipédia et Wikidata sans clé. Vérifiez les résultats avant de les enregistrer. Cette source enregistre uniquement les informations du film. Utilisez OMDb pour obtenir une affiche si elle est disponible.",
 
   // common
   "common.close": "Fermer",

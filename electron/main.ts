@@ -86,8 +86,13 @@ const APP_TITLE = "Footage Deck";
 // Retain the existing catalogue, settings and OS credential identity.
 app.setName("Meguri");
 if (!app.commandLine.hasSwitch("user-data-dir")) {
-  const profile = path.join(app.getPath("appData"), "Meguri");
+  let profile = path.join(app.getPath("appData"), "Meguri");
+  if (process.platform === "darwin" && !fs.existsSync(profile)) {
+    const legacy = path.join(app.getPath("appData"), "meguri");
+    if (fs.existsSync(legacy)) profile = legacy;
+  }
   fs.mkdirSync(profile, { recursive: true });
+  if (process.platform === "darwin") profile = fs.realpathSync.native(profile);
   app.setPath("userData", profile);
   app.setPath("sessionData", profile);
 }
