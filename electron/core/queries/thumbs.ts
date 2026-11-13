@@ -35,15 +35,15 @@ export function filesNeedingThumb(
   }[];
 }
 
-/** Refresh older HEIF files once, including thumbnails that show only one tile. */
+/** Retry failed HEIF thumbnails once after the bundled FFmpeg upgrade. */
 export function retryLegacyHeifThumbnails(db: DB, rootId: number): void {
-  const key = `heif_thumbnail_retry_v1:${rootId}`;
+  const key = `heif_thumbnail_retry_v2:${rootId}`;
   db.transaction(() => {
     if (getSetting(db, key) !== null) return;
     db.prepare(
       `UPDATE files SET thumb_status = 'pending'
        WHERE root_id = ? AND deleted_at IS NULL AND kind = 'image'
-         AND ext IN ('heic', 'heif') AND thumb_status IN ('error', 'done')`,
+         AND ext IN ('heic', 'heif') AND thumb_status = 'error'`,
     ).run(rootId);
     setSetting(db, key, "1");
   })();

@@ -32,25 +32,11 @@ const THIRD_PARTY: ThirdPartyEntry[] = [
     sourceUrl: "https://ffmpeg.org/download.html",
   },
   {
-    name: "ffmpeg-static (npm)",
-    license: "GPL-3.0-or-later",
+    name: "ffmpeg-binaries (download scripts)",
+    license: "MIT",
     licenseUrl:
-      "https://github.com/eugeneware/ffmpeg-static/blob/master/LICENSE",
-    sourceUrl: "https://github.com/eugeneware/ffmpeg-static",
-  },
-  {
-    name: "@derhuerst/ffprobe-static (npm)",
-    license: "GPL-3.0-or-later",
-    licenseUrl:
-      "https://github.com/eugeneware/ffmpeg-static/blob/master/LICENSE",
-    sourceUrl:
-      "https://github.com/eugeneware/ffmpeg-static/tree/master/packages/ffprobe-static",
-  },
-  {
-    name: "@dusrel/image-heic (libheif and libde265)",
-    license: "MIT / LGPL-3.0-or-later",
-    licenseUrl: "https://www.gnu.org/licenses/lgpl-3.0.html",
-    sourceUrl: "https://github.com/dusmamud/dusrel-image/tree/main/native/heic",
+      "https://github.com/zabuton-app/ffmpeg-binaries/blob/main/LICENSE",
+    sourceUrl: "https://github.com/zabuton-app/ffmpeg-binaries",
   },
   {
     name: "Electron (Chromium / Node.js)",

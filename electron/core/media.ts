@@ -3,7 +3,6 @@ import { execFile } from "node:child_process";
 import { promises as fsPromises } from "node:fs";
 import { promisify } from "node:util";
 import { FFMPEG, FFPROBE } from "./ffmpeg-paths.js";
-import { isHeif, readHeifDimensions, renderHeif } from "./heif.js";
 import { DECODE_FFMPEG_THREADS } from "./mediaConcurrency.js";
 import log from "./logger.js";
 import type { Kind } from "./types.js";
@@ -20,6 +19,7 @@ export interface ExtractedMeta {
   fps: number | null;
   capturedAt: number | null;
   raw: unknown;
+  tiledImage?: true;
 }
 
 interface FfprobeStream {
@@ -43,6 +43,15 @@ interface FfprobeFormat {
 interface FfprobeOutput {
   streams?: FfprobeStream[];
   format?: FfprobeFormat;
+  stream_groups?: {
+    type?: string;
+    disposition?: { default?: number };
+    components?: {
+      width?: number;
+      height?: number;
+      side_data_list?: { rotation?: number }[];
+    }[];
+  }[];
 }
 
 function parseRational(s: string | undefined): number | null {
@@ -92,10 +101,6 @@ export async function extractMeta(
     capturedAt: null,
     raw: null,
   };
-  const heifSize = () =>
-    kind === "image" && isHeif(file) && !signal?.aborted
-      ? readHeifDimensions(file, signal).catch(() => null)
-      : null;
   try {
     const { stdout } = await execFileAsync(
       FFPROBE,
@@ -106,6 +111,12 @@ export async function extractMeta(
         "json",
         "-show_format",
         "-show_streams",
+        ...(kind === "image"
+          ? [
+              "-show_entries",
+              "stream_group=type:stream_group_disposition=default:stream_group_component=width,height:stream_group_side_data=rotation",
+            ]
+          : []),
         file,
       ],
       // timeout guards against a corrupt/huge/network-FS file hanging ffprobe and
@@ -114,23 +125,37 @@ export async function extractMeta(
       // other probe failure, so the file is left as-is and retried on the next scan.
       { maxBuffer: 8 * 1024 * 1024, timeout: 60_000, signal },
     );
-    const json = JSON.parse(stdout) as FfprobeOutput;
+    const { stream_groups: groups, ...json } = JSON.parse(
+      stdout,
+    ) as FfprobeOutput;
     const streams = json.streams ?? [];
     const wantAudio = kind === "audio";
     const v = streams.find((s) =>
       wantAudio ? s.codec_type === "audio" : s.codec_type === "video",
     );
     const fmt = json.format ?? {};
-    const tiled = kind === "image" && isTiledImage(streams);
+    const grids = groups?.filter((group) => group.type === "Tile Grid") ?? [];
+    const grid =
+      grids.find((group) => group.disposition?.default === 1) ??
+      (grids.length === 1 ? grids[0] : undefined);
+    const dimensions = grid?.components?.[0];
+    const rotation = dimensions?.side_data_list?.find(
+      (sideData) => sideData.rotation != null,
+    )?.rotation;
+    const quarterTurn = rotation != null && Math.abs(rotation % 180) === 90;
+    const tiled =
+      kind === "image" && (grids.length > 0 || isTiledImage(streams));
     // Audio has no intrinsic dimensions. Left null even when the file embeds
     // cover art, whose size describes the artwork and not the track. A tiled
     // image's streams each describe one tile (see isTiledImage).
     const sized = !wantAudio && !tiled;
-    const dimensions = sized && v?.width && v.height ? null : await heifSize();
     return {
-      // `|| null`: ffprobe 6.1 reports a tiled AVIF as one 0x0 stream.
-      width: dimensions?.width ?? (sized ? v?.width || null : null),
-      height: dimensions?.height ?? (sized ? v?.height || null : null),
+      width:
+        (quarterTurn ? dimensions?.height : dimensions?.width) ??
+        (sized ? v?.width || null : null),
+      height:
+        (quarterTurn ? dimensions?.width : dimensions?.height) ??
+        (sized ? v?.height || null : null),
       duration: fmt.duration
         ? Number(fmt.duration)
         : v?.duration
@@ -145,25 +170,16 @@ export async function extractMeta(
       // A 48MP phone photo has 192 tiles, ~175KB of near-identical stream
       // entries in files.meta; one stands for them all.
       raw: tiled ? { ...json, streams: [v] } : json,
+      ...(tiled ? { tiledImage: true as const } : {}),
     };
   } catch (err) {
     warnIfProbeUnavailable(err);
-    const dimensions = await heifSize();
-    return dimensions
-      ? {
-          ...empty,
-          ...dimensions,
-          codec: file.toLowerCase().endsWith(".heic") ? "hevc" : null,
-        }
-      : empty;
+    return empty;
   }
 }
 
-/** A HEIF/AVIF grid image (what phone cameras write): ffprobe 7 lists each tile
- *  (512x512 on an iPhone) as its own video stream, none marked default, and the
- *  full size only in a stream group, which 6.1 has no option to print. Its size
- *  is left unknown so the thumbnail pass treats it as a large image. A plain
- *  HEIF, and each stream of an animated AVIF, is marked default. */
+/** Fallback for HEIF/AVIF with tile streams but no reported grid dimensions.
+ *  A plain HEIF, and each stream of an animated AVIF, is marked default. */
 function isTiledImage(streams: FfprobeStream[]): boolean {
   const video = streams.filter((s) => s.codec_type === "video");
   return video.length > 1 && !video.some((s) => s.disposition?.default === 1);
@@ -248,20 +264,6 @@ export async function generateThumb(
       false,
       coverStreamIndex,
     );
-  }
-  if (kind === "image" && isHeif(src)) {
-    try {
-      const image = await renderHeif(
-        src,
-        { thumbnailWidth: THUMB_MAX },
-        signal,
-      );
-      await fsPromises.writeFile(dest, image, { signal });
-      return true;
-    } catch {
-      if (signal?.aborted) return false;
-      // FFmpeg can still handle some HEIF variants, such as image sequences.
-    }
   }
   const useOffset =
     kind === "video" &&
@@ -377,6 +379,7 @@ async function runFfmpegThumb(
   offsetSec: number | undefined,
   keyframeOnly: boolean,
   coverStreamIndex?: number,
+  complexFilter = false,
 ): Promise<boolean> {
   const useOffset = typeof offsetSec === "number";
   // scale BEFORE thumbnail: the thumbnail filter keeps its whole scoring
@@ -392,7 +395,9 @@ async function runFfmpegThumb(
     "error",
     "-y",
     "-threads",
-    String(DECODE_FFMPEG_THREADS),
+    // A tiled HEIF/AVIF gets one decoder per tile (192 for a 48MP phone
+    // photo), each with this many threads. A still decodes as fast with one.
+    kind === "image" ? "1" : String(DECODE_FFMPEG_THREADS),
   ];
   if (useOffset) {
     if (keyframeOnly) {
@@ -416,7 +421,7 @@ async function runFfmpegThumb(
     args.push("-map", `0:${coverStreamIndex}`);
   }
   args.push(
-    "-vf",
+    complexFilter ? "-filter_complex" : "-vf",
     vf,
     "-frames:v",
     "1",
@@ -450,6 +455,27 @@ async function runFfmpegThumb(
         (err as { stderr?: string }).stderr ??
         (err as Error).message ??
         String(err);
+      // ffmpeg assembles a tiled HEIF/AVIF with a complex filtergraph of its
+      // own and refuses a simple one (-vf) on that output, so the scale goes
+      // into a complex one instead. Only then: with no input label it takes
+      // the assembled image, but for any other file it would take the first
+      // stream, where -vf takes the primary image.
+      if (
+        kind === "image" &&
+        !complexFilter &&
+        stderr.includes("complex filtergraph")
+      ) {
+        return runFfmpegThumb(
+          src,
+          kind,
+          dest,
+          signal,
+          offsetSec,
+          keyframeOnly,
+          coverStreamIndex,
+          true,
+        );
+      }
       log.warn(
         `ffmpeg thumb failed (offset=${offsetSec ?? "auto"}, mode=${keyframeOnly ? "keyframe" : "hybrid"}): ${stderr}`,
       );

@@ -9,6 +9,7 @@ import fs from "node:fs";
 import http from "node:http";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Server } from "node:http";
 import { openDb, nowUnix, type DB } from "../db.js";
 import { upsertScanRoot } from "../queries.js";
@@ -402,6 +403,35 @@ describe("frame serving (ffmpeg path)", () => {
   });
 });
 
+describe("still image transcoding (ffmpeg path)", () => {
+  it("serves the whole grid of a tiled HEIF as a JPEG", async () => {
+    const heic = path.join(root, "grid.heic");
+    fs.copyFileSync(
+      fileURLToPath(new URL("./fixtures/grid-1024x512.heic", import.meta.url)),
+      heic,
+    );
+    const id = insert("grid.heic", heic, null, "done", "image", "heic");
+    const res = await fetch(`${base}/ws/${WS}/media/${id}`, authHeaders());
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("image/jpeg");
+    const size = execFileSync(
+      FFPROBE,
+      [
+        "-v",
+        "error",
+        "-show_entries",
+        "stream=width,height",
+        "-of",
+        "csv=p=0",
+        "pipe:0",
+      ],
+      { input: Buffer.from(await res.arrayBuffer()), encoding: "utf8" },
+    );
+    // One 512x512 tile would come out square.
+    expect(size.trim()).toBe("1024,512");
+  });
+});
+
 describe("ProRes previews", () => {
   it.each([
     ["PQ", "smpte2084", "bt2020", "bt2020nc"],
@@ -421,18 +451,14 @@ describe("ProRes previews", () => {
         "lavfi",
         "-i",
         "testsrc2=size=96x64:rate=12:duration=1",
+        "-vf",
+        `setparams=color_trc=${transfer}:color_primaries=${primaries}:colorspace=${matrix}`,
         "-c:v",
         "prores_ks",
         "-profile:v",
         "standard",
         "-pix_fmt",
         "yuv422p10le",
-        "-color_trc",
-        transfer,
-        "-color_primaries",
-        primaries,
-        "-colorspace",
-        matrix,
         "-movflags",
         "+write_colr",
         clip,
@@ -933,9 +959,7 @@ describe("media remux (ffmpeg path)", () => {
       "-preset",
       "ultrafast",
       "-x265-params",
-      "pools=none:frame-threads=1:log-level=error",
-      "-color_trc",
-      "bt709",
+      "pools=none:frame-threads=1:log-level=error:transfer=bt709",
       "-c:a",
       "eac3",
       clip,

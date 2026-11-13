@@ -63,8 +63,8 @@ the jsdom worker does not start under Electron's experimental loader.
 ## Packaging
 
 `npm run dist` runs `electron-vite build` then `electron-builder`. The builder's
-`asarUnpack` includes better-sqlite3, ffmpeg-static, and
-@derhuerst/ffprobe-static; code that uses ffmpeg paths must apply the
+`asarUnpack` includes better-sqlite3 and @zabuton-app/ffmpeg-binaries.
+Code that uses ffmpeg paths must apply the
 `app.asar` → `app.asar.unpacked` substitution (see
 [ffmpeg/ffprobe path resolution](media-pipeline.md#ffmpegffprobe-path-resolution)).
 
@@ -73,6 +73,7 @@ macOS (dmg / zip).
 
 Electron 45 packages require macOS 13 (Ventura) or later. The existing
 Windows x64 and Linux x64 release targets are supported by Electron 45.
+On Linux the bundled FFmpeg 9 binaries require glibc 2.35 or later.
 The Node.js version used to run npm and the build scripts is separate from
 the Node.js version bundled with Electron.
 
@@ -97,9 +98,13 @@ GitHub Actions workflows live in `.github/workflows/`:
 - `build.yml` triggers on `v*` tag pushes and builds a three-way matrix (linux
   x64, win x64, mac arm64), then creates a draft release.
 
-ffmpeg-static and @derhuerst/ffprobe-static each fetch a single-architecture
-binary at install time (`npm_config_arch || os.arch()`), so CI pins
-`npm_config_arch` to the target arch to keep the bundled binaries consistent.
+[@zabuton-app/ffmpeg-binaries](https://github.com/zabuton-app/ffmpeg-binaries)
+downloads FFmpeg and FFprobe for one architecture and checks each binary
+against a pinned SHA-256 checksum. CI pins `npm_config_arch` to the target
+architecture. To update the binaries, change the tarball URL in
+`dependencies` and `allowScripts`, then refresh the lockfile with npm.
+The project's `.npmrc` allows npm 12 to use tarball URLs listed directly
+in `package.json`.
 
 ## Docker development
 

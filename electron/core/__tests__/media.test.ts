@@ -477,17 +477,9 @@ describe("reference stills", () => {
       "-f",
       "lavfi",
       "-i",
-      "testsrc2=size=80x48:rate=25:duration=1,format=yuv420p10le",
+      "testsrc2=size=80x48:rate=25:duration=1,format=yuv420p10le,setparams=color_primaries=bt2020:color_trc=smpte2084:colorspace=bt2020nc:range=tv",
       "-c:v",
       "ffv1",
-      "-color_primaries",
-      "bt2020",
-      "-color_trc",
-      "smpte2084",
-      "-colorspace",
-      "bt2020nc",
-      "-color_range",
-      "tv",
       clip,
     ]);
     const png = path.join(dir, "ref-pq.png");

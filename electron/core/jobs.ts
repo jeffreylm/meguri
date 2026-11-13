@@ -438,15 +438,14 @@ export async function runScan(
         kind === "video" ? (q.thumbOffsetOf(db, f.id) ?? undefined) : undefined;
       const thumb = () =>
         generateThumb(f.abs_path, kind, dest, signal, offsetSec);
-      // Only the expensive decodes take a slot: every video, and images big
-      // enough to cost hundreds of MB — or of unknown size (ffprobe failed, or
-      // a tiled HEIF/AVIF that extractMeta leaves unsized), which are treated
-      // as big. Everything else runs at pool width.
+      // Bound video, tiled images (one decoder per tile), and large or
+      // unmeasured images. Everything else runs at pool width.
       const pixels =
         meta.width != null && meta.height != null
           ? meta.width * meta.height
           : Infinity;
-      const expensive = kind === "video" || pixels >= LARGE_IMAGE_PIXELS;
+      const expensive =
+        kind === "video" || meta.tiledImage || pixels >= LARGE_IMAGE_PIXELS;
       const ok = expensive
         ? await withScanDecodeSlot(thumb, signal)
         : await thumb();

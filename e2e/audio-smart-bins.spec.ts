@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import ffmpeg from "ffmpeg-static";
+import { ffmpegPath as ffmpeg } from "@zabuton-app/ffmpeg-binaries";
 import { electronLaunchOptions } from "../scripts/electron-launch.cjs";
 import {
   fileCard,

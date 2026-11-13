@@ -50,12 +50,10 @@
     "minimatch@^9.0.0 || ^10.0.0": "^11.0.1"
   },
   "dependencies": {
-    "@derhuerst/ffprobe-static": "^5.3.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "@dusrel/image-heic": "1.0.1",
     "@emoji-mart/data": "^1.2.1",
     "@emoji-mart/react": "^1.1.1",
     "@radix-ui/react-context-menu": "^2.3.1",
@@ -76,6 +74,7 @@
     "@tiptap/pm": "^3.33.1",
     "@tiptap/react": "^3.33.1",
     "@tiptap/starter-kit": "^3.33.1",
+    "@zabuton-app/ffmpeg-binaries": "https://github.com/zabuton-app/ffmpeg-binaries/releases/download/v1.0.2/zabuton-app-ffmpeg-binaries-1.0.2.tgz",
     "better-sqlite3": "^13.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -85,7 +84,6 @@
     "electron-log": "^5.4.4",
     "embla-carousel-react": "^8.6.0",
     "emoji-mart": "^5.6.0",
-    "ffmpeg-static": "^5.2.0",
     "graphology": "^0.26.0",
     "lucide-react": "^0.469.0",
     "react": "^19.2.8",
@@ -130,7 +128,7 @@
     "vitest": "^4.1.12"
   },
   "build": {
-    "buildVersion": "21",
+    "buildVersion": "22",
     "appId": "dev.amgsk.meguri",
     "productName": "Footage Deck",
     "directories": {
@@ -149,15 +147,11 @@
     ],
     "files": [
       "out/**/*",
-      "electron/core/heifWorker.cjs",
       "package.json"
     ],
     "asarUnpack": [
-      "electron/core/heifWorker.cjs",
-      "**/node_modules/@dusrel/image-heic/**",
       "**/node_modules/better-sqlite3/**",
-      "**/node_modules/ffmpeg-static/**",
-      "**/node_modules/@derhuerst/ffprobe-static/**"
+      "**/node_modules/@zabuton-app/ffmpeg-binaries/**"
     ],
     "linux": {
       "target": [
@@ -208,8 +202,7 @@
   "allowScripts": {
     "electron-winstaller@5.4.0": true,
     "esbuild@0.25.12": true,
-    "ffmpeg-static@5.3.0": true,
-    "@derhuerst/ffprobe-static@5.3.0": true,
-    "better-sqlite3": false
+    "better-sqlite3": false,
+    "https://github.com/zabuton-app/ffmpeg-binaries/releases/download/v1.0.2/zabuton-app-ffmpeg-binaries-1.0.2.tgz": true
   }
 }
