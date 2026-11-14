@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { SlidersHorizontal } from "lucide-react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { Power, SlidersHorizontal } from "lucide-react";
 import type { TFunc } from "@/i18n/I18nProvider";
 import { Button } from "@/components/ui/button";
 import log from "@/lib/logger";
@@ -11,6 +11,7 @@ import {
   neutralGrade,
   readGrade,
   saveGrade,
+  type GradeControl,
   type VideoGrade,
 } from "./colorGrade";
 import { createGradeRenderer } from "./colorGradeRenderer";
@@ -40,23 +41,47 @@ export function VideoGradeOverlay({
   loaded,
   t,
 }: Props) {
-  const [grade, setGrade] = useState(() => readGrade(clipKey));
+  const [{ grade, enabled }, setPreferences] = useState(() =>
+    readGrade(clipKey),
+  );
   const [open, setOpen] = useState(false);
-  const [bypass, setBypass] = useState(false);
+  const [held, setHeld] = useState<GradeControl | null>(null);
   const [failed, setFailed] = useState(false);
-  const changed = gradeChangesPicture(grade);
-  const active = changed && !bypass && !failed && !nativeHdr && loaded;
+  const [previewStarted, setPreviewStarted] = useState(() =>
+    gradeChangesPicture(grade),
+  );
+  const hintId = useId();
+  const previewGrade = held ? { ...grade, [held]: neutralGrade[held] } : grade;
+  const active =
+    enabled &&
+    !failed &&
+    !nativeHdr &&
+    loaded &&
+    gradeChangesPicture(previewGrade);
   const trigger = useRef<HTMLButtonElement>(null);
 
-  function update(value: VideoGrade) {
-    setGrade(value);
-    saveGrade(clipKey, value);
+  useEffect(() => {
+    const release = () => setHeld(null);
+    window.addEventListener("blur", release);
+    return () => window.removeEventListener("blur", release);
+  }, []);
+
+  function update(value: VideoGrade, nextEnabled = enabled) {
+    const next = { grade: value, enabled: nextEnabled };
+    setPreferences(next);
+    if (gradeChangesPicture(value)) setPreviewStarted(true);
+    saveGrade(clipKey, next);
   }
 
   return (
     <>
-      {active && (
-        <GradedFrame videoRef={videoRef} grade={grade} onError={setFailed} />
+      {previewStarted && !failed && !nativeHdr && loaded && (
+        <GradedFrame
+          videoRef={videoRef}
+          grade={previewGrade}
+          active={active}
+          onError={setFailed}
+        />
       )}
       {(loaded || open) && (
         <button
@@ -70,7 +95,10 @@ export function VideoGradeOverlay({
               ? "border-primary bg-bg text-primary"
               : "border-white/30 bg-black/70 text-white hover:bg-black/90"
           }`}
-          onClick={() => setOpen(!open)}
+          onClick={() => {
+            setHeld(null);
+            setOpen(!open);
+          }}
           onKeyDown={(event) => {
             if (event.code === "Space") event.stopPropagation();
           }}
@@ -85,6 +113,7 @@ export function VideoGradeOverlay({
           onKeyDown={(event) => {
             event.stopPropagation();
             if (event.key === "Escape") {
+              setHeld(null);
               setOpen(false);
               trigger.current?.focus();
             }
@@ -96,12 +125,18 @@ export function VideoGradeOverlay({
               <Button
                 type="button"
                 size="sm"
-                variant={bypass ? "default" : "outline"}
-                aria-pressed={bypass}
-                disabled={!changed || failed || nativeHdr}
-                onClick={() => setBypass(!bypass)}
+                variant={enabled ? "default" : "outline"}
+                aria-label={t("grade.toggle")}
+                aria-pressed={enabled}
+                disabled={failed || nativeHdr}
+                title={t("grade.toggle")}
+                onClick={() => {
+                  setHeld(null);
+                  update(grade, !enabled);
+                }}
               >
-                {t("grade.original")}
+                <Power aria-hidden="true" />
+                {t(enabled ? "grade.on" : "grade.off")}
               </Button>
               <Button
                 type="button"
@@ -110,11 +145,11 @@ export function VideoGradeOverlay({
                 disabled={nativeHdr}
                 onClick={() => {
                   update(neutralGrade);
-                  setBypass(false);
+                  setHeld(null);
                   setFailed(false);
                 }}
               >
-                {t("grade.reset")}
+                {t("grade.resetAll")}
               </Button>
             </div>
           </div>
@@ -139,7 +174,14 @@ export function VideoGradeOverlay({
               {t("grade.rangeUnavailable")}
             </p>
           )}
-          {!nativeHdr && <ContrastCurve grade={grade} />}
+          {!nativeHdr && (
+            <>
+              <ContrastCurve grade={enabled ? previewGrade : neutralGrade} />
+              <p id={hintId} className="text-xs text-muted">
+                {t("grade.holdHint")}
+              </p>
+            </>
+          )}
           {!nativeHdr &&
             gradeKeys.map((key) => {
               const { min, max, step, neutral } = gradeControls[key];
@@ -167,13 +209,41 @@ export function VideoGradeOverlay({
                       ? `${value.toFixed(2)}×`
                       : String(value);
               return (
-                <label key={key} className="block text-xs">
-                  <span className="flex justify-between gap-2">
-                    {t(`grade.${key}`)}
+                <div key={key} className="text-xs">
+                  <div className="flex justify-between gap-2">
+                    <button
+                      type="button"
+                      aria-pressed={held === key}
+                      aria-describedby={hintId}
+                      title={t("grade.holdHint")}
+                      disabled={!enabled || failed || value === neutral}
+                      className="touch-none select-none rounded text-left enabled:cursor-pointer enabled:hover:text-primary focus-visible:outline-2 focus-visible:outline-primary aria-pressed:text-primary"
+                      onPointerDown={(event) => {
+                        if (!event.isPrimary || event.button !== 0) return;
+                        event.currentTarget.setPointerCapture(event.pointerId);
+                        setHeld(key);
+                      }}
+                      onPointerUp={() => setHeld(null)}
+                      onPointerCancel={() => setHeld(null)}
+                      onLostPointerCapture={() => setHeld(null)}
+                      onBlur={() => setHeld(null)}
+                      onKeyDown={(event) => {
+                        if (event.key !== " " && event.key !== "Enter") return;
+                        event.preventDefault();
+                        if (!event.repeat) setHeld(key);
+                      }}
+                      onKeyUp={(event) => {
+                        if (event.key !== " " && event.key !== "Enter") return;
+                        event.preventDefault();
+                        setHeld(null);
+                      }}
+                    >
+                      {t(`grade.${key}`)}
+                    </button>
                     <span className="tabular-nums" aria-hidden="true">
                       {display}
                     </span>
-                  </span>
+                  </div>
                   <input
                     type="range"
                     className="w-full accent-primary"
@@ -208,7 +278,7 @@ export function VideoGradeOverlay({
                       </span>
                     </span>
                   )}
-                </label>
+                </div>
               );
             })}
           <p className="text-xs text-muted">
@@ -268,14 +338,16 @@ function ContrastCurve({ grade }: { grade: VideoGrade }) {
 function GradedFrame({
   videoRef,
   grade,
+  active,
   onError,
 }: {
   videoRef: Props["videoRef"];
   grade: VideoGrade;
+  active: boolean;
   onError: (failed: boolean) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const gradeRef = useRef(grade);
+  const settings = useRef({ grade, active });
   const redraw = useRef<(() => void) | null>(null);
 
   useEffect(() => {
@@ -300,22 +372,27 @@ function GradedFrame({
     const draw = () => {
       if (
         stopped ||
+        !settings.current.active ||
         video.readyState < 2 ||
         !video.videoWidth ||
         !video.videoHeight
       )
         return;
       try {
-        renderer.draw(video, gradeRef.current);
+        renderer.draw(video, settings.current.grade);
         canvas.style.visibility = "visible";
       } catch (error) {
         log.warn("Video adjustments could not draw", error);
         failed();
       }
     };
-    const nextFrame = () => {
-      draw();
-      if (!stopped) frame = video.requestVideoFrameCallback(nextFrame);
+    const queueFrame = () => {
+      if (frame !== undefined || stopped || !settings.current.active) return;
+      frame = video.requestVideoFrameCallback(() => {
+        frame = undefined;
+        draw();
+        queueFrame();
+      });
     };
     // Paused videos repaint on control changes, a resize, or seeking.
     const resize = new ResizeObserver(draw);
@@ -323,9 +400,15 @@ function GradedFrame({
     canvas.addEventListener("webglcontextlost", failed);
     video.addEventListener("loadeddata", draw);
     video.addEventListener("seeked", draw);
-    redraw.current = draw;
-    frame = video.requestVideoFrameCallback(nextFrame);
-    draw();
+    redraw.current = () => {
+      if (!settings.current.active && frame !== undefined) {
+        video.cancelVideoFrameCallback(frame);
+        frame = undefined;
+      }
+      draw();
+      queueFrame();
+    };
+    redraw.current();
     return () => {
       stopped = true;
       redraw.current = null;
@@ -338,10 +421,12 @@ function GradedFrame({
     };
   }, [videoRef, onError]);
 
-  useEffect(() => {
-    gradeRef.current = grade;
+  useLayoutEffect(() => {
+    settings.current = { grade, active };
+    if (!active && canvasRef.current)
+      canvasRef.current.style.visibility = "hidden";
     redraw.current?.();
-  }, [grade]);
+  }, [grade, active]);
 
   return (
     <canvas

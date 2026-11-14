@@ -26,12 +26,16 @@ export function gradeChangesPicture(grade: VideoGrade): boolean {
   );
 }
 
-export function readGrade(key: string): VideoGrade {
+interface GradePreferences {
+  grade: VideoGrade;
+  enabled: boolean;
+}
+
+export function readGrade(key: string): GradePreferences {
   try {
-    const saved = JSON.parse(
-      localStorage.getItem(key) ?? "null",
-    ) as Partial<VideoGrade> | null;
-    if (!saved) return neutralGrade;
+    const saved = JSON.parse(localStorage.getItem(key) ?? "null") as
+      (Partial<VideoGrade> & { enabled?: boolean }) | null;
+    if (!saved) return { grade: neutralGrade, enabled: true };
     const grade = { ...neutralGrade };
     for (const key of gradeKeys) {
       const value = saved[key];
@@ -39,17 +43,20 @@ export function readGrade(key: string): VideoGrade {
       if (typeof value === "number" && Number.isFinite(value))
         grade[key] = Math.min(max, Math.max(min, value));
     }
-    return grade;
+    return { grade, enabled: saved.enabled !== false };
   } catch {
-    return neutralGrade;
+    return { grade: neutralGrade, enabled: true };
   }
 }
 
-export function saveGrade(key: string, grade: VideoGrade): void {
+export function saveGrade(
+  key: string,
+  { grade, enabled }: GradePreferences,
+): void {
   try {
-    if (gradeKeys.every((key) => grade[key] === neutralGrade[key]))
+    if (enabled && gradeKeys.every((key) => grade[key] === neutralGrade[key]))
       localStorage.removeItem(key);
-    else localStorage.setItem(key, JSON.stringify(grade));
+    else localStorage.setItem(key, JSON.stringify({ ...grade, enabled }));
   } catch {
     // The controls still work if storage is unavailable.
   }

@@ -436,9 +436,15 @@ They work while the video is playing or paused.
 - **Temperature** moves between cool and warm. **Tint** moves between green
   and magenta. Both are relative corrections to the decoded image.
 
-**Original** temporarily bypasses the current grade. **Reset** clears the
-clip's adjustments. Each clip's settings are remembered locally across restarts
-by its workspace and path. Double-click a slider to reset that control.
+Use the **On / Off** switch to bypass or reapply all adjustments for the clip.
+Hold a control name, such as **Contrast**, to preview that control at its
+neutral value. Release to restore the saved value. With the name focused,
+hold Space or Enter for the same comparison. Holding **Pivot** previews
+contrast at the default 18% pivot.
+
+**Reset all** clears the adjustments. Double-click a slider to reset that
+control. Each clip's settings and on/off state are remembered locally across
+restarts by its workspace and path.
 
 The controls work in linear light after the browser converts the decoded frame
 to sRGB. For supported PQ or HLG files, **Viewer range** switches between **HDR

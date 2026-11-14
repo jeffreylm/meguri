@@ -19,8 +19,11 @@ export const es: Record<TranslationKey, string> = {
   "grade.saturation": "Saturación sustractiva",
   "grade.temperature": "Temperatura",
   "grade.tint": "Matiz",
-  "grade.original": "Original",
-  "grade.reset": "Restablecer",
+  "grade.toggle": "Activar ajustes de vídeo",
+  "grade.on": "Sí",
+  "grade.off": "No",
+  "grade.resetAll": "Restablecer todo",
+  "grade.holdHint": "Mantén pulsado un control para ver su valor neutro.",
   "grade.preview": "Vista previa sRGB lineal",
   "grade.hdr": "Fuente HDR · los ajustes usan una vista previa SDR",
   "grade.unavailable":
