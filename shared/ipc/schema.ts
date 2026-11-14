@@ -91,6 +91,8 @@ export const FileRowSchema = z.object({
    *  Distinct from thumbStatus: audio is marked 'done' whether or not it embeds cover
    *  art, so status alone can't tell a real thumbnail from a deliberate absence. */
   hasThumb: z.number(),
+  /** A chosen frame takes precedence over a film poster. */
+  thumbOffsetSec: z.number().nullable().optional(),
   /** Sampled content hash (see scan.ts). Null until the scan computes it; used by the "hash" sort. */
   contentHash: z.string().nullable().optional(),
   filmPosterVersion: z.string().nullable().optional(),

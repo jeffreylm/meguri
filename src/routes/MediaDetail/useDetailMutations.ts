@@ -268,11 +268,17 @@ export function useDetailMutations({
       }
     },
     onSuccess: (res) => {
-      // Reconcile to the server-confirmed value (in case clamping happened).
-      // List/grid thumbnails refresh via the `thumb:done` event from the main process —
-      // no manual cache surgery needed for ["files_search"]/["files_random"].
+      // The event refreshes the image URL. The rows also need the selection
+      // so a manually chosen frame can take precedence over a film poster.
+      const patch = {
+        thumbOffsetSec: res.thumbOffsetSec,
+        hasThumb: 1,
+        thumbStatus: "done",
+      };
+      patchFileRowInCaches(qc, wsId, fileId, patch);
+      void qc.invalidateQueries({ queryKey: ["folders_list", wsId] });
       qc.setQueryData<FileDetail | null>(detailKey, (old) =>
-        old ? { ...old, thumbOffsetSec: res.thumbOffsetSec } : old,
+        old ? { ...old, ...patch } : old,
       );
     },
   });

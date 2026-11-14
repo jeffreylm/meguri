@@ -10,7 +10,7 @@ import { RESOLUTIONS } from "../../../shared/resolutions.js";
 import { recentFilesRange } from "../../../shared/recentFiles.js";
 import { fileTags } from "../tags.js";
 import { listBookmarksByMetaKey } from "./bookmarks.js";
-import { noteByKey, thumbOffsetByKey } from "./meta.js";
+import { noteByKey } from "./meta.js";
 import { FILE_HAS_THUMB } from "./thumbs.js";
 import { resolveSortDir } from "../../../shared/sortDir.js";
 import {
@@ -48,7 +48,7 @@ const MAX_LIMIT = 500;
 // Metadata (rating/favorite/last_accessed) lives in file_meta, keyed by meta_key, so it
 // is reached through a LEFT JOIN. COALESCE supplies defaults for files with no meta row.
 // Exported for queries that join files under the same `f`/`m` aliases (see history.ts).
-export const FILE_COLS = `f.id, f.rel_path AS relPath, f.kind, f.ext, f.size, f.width, f.height, f.duration, COALESCE(m.rating, 0) AS rating, COALESCE(m.favorite, 0) AS favorite, f.thumb_status AS thumbStatus, ${FILE_HAS_THUMB} AS hasThumb, f.content_hash AS contentHash, (SELECT poster_version FROM film_metadata WHERE meta_key = f.meta_key AND f.kind = 'video') AS filmPosterVersion, f.captured_at AS capturedAt, f.btime, f.created_at AS addedAt, m.last_accessed_at AS lastAccessedAt, m.resume_position AS resumePosition, CASE WHEN m.resume_position IS NOT NULL AND f.duration > 0 THEN MIN(1.0, m.resume_position / f.duration) END AS progress`;
+export const FILE_COLS = `f.id, f.rel_path AS relPath, f.kind, f.ext, f.size, f.width, f.height, f.duration, COALESCE(m.rating, 0) AS rating, COALESCE(m.favorite, 0) AS favorite, f.thumb_status AS thumbStatus, ${FILE_HAS_THUMB} AS hasThumb, m.thumb_offset_sec AS thumbOffsetSec, f.content_hash AS contentHash, (SELECT poster_version FROM film_metadata WHERE meta_key = f.meta_key AND f.kind = 'video') AS filmPosterVersion, f.captured_at AS capturedAt, f.btime, f.created_at AS addedAt, m.last_accessed_at AS lastAccessedAt, m.resume_position AS resumePosition, CASE WHEN m.resume_position IS NOT NULL AND f.duration > 0 THEN MIN(1.0, m.resume_position / f.duration) END AS progress`;
 
 export const FILE_FROM =
   "FROM files f LEFT JOIN file_meta m ON m.meta_key = f.meta_key";
@@ -821,7 +821,7 @@ export function fileDetail(db: DB, fileId: number): FileDetail | null {
     tags: fileTags(db, fileId),
     playHistory,
     bookmarks,
-    thumbOffsetSec: thumbOffsetByKey(db, r.metaKey),
+    thumbOffsetSec: r.thumbOffsetSec ?? null,
     note: noteByKey(db, r.metaKey),
   };
 }

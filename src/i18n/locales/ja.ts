@@ -615,6 +615,8 @@ export const ja = {
   "player.bookmarkAdd": "現在位置にブックマークを追加",
   "player.bookmarkRemove": "{time} のブックマークを削除",
   "player.exportFrame": "現在のフレームを画像として保存",
+  "player.setThumbnailFrame": "現在のフレームをサムネイルに設定",
+  "player.resetThumbnailFrame": "メインサムネイルをリセット",
   "player.frameExported": "フレームを画像として保存しました",
   "player.frameExportFailed": "フレームの保存に失敗しました",
 

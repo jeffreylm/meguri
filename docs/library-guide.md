@@ -300,6 +300,12 @@ Click a video thumbnail to open the compact player. The **Scenes** strip stays
 below the video when you resize or scroll through file details. Click a scene to
 seek to it, or click its star to make that frame the main thumbnail. Scroll the
 strip horizontally for more scenes. You can change the scene count in Settings.
+To use a frame between the scenes, seek to it and click **Set thumbnail from
+current frame** beside the camera button. The app uses the original video frame
+for the main thumbnail. The camera button still saves a separate reference
+still. The chosen frame takes precedence on the library card. Click **Reset
+main thumbnail** beside the current thumbnail to return to the film poster,
+when available, or the auto-generated frame.
 
 - **Move:** drag the player's title bar inside the Meguri window.
 - **Resize the player.** Grab an inner edge or corner. Meguri grows its window
@@ -428,8 +434,9 @@ They work while the video is playing or paused.
   display range is applied. A soft shoulder rolls bright tones toward white.
 - **Contrast** sets the slope of a smooth S-curve. **Pivot** is the point the
   curve holds steady, and starts at 18% linear middle gray. At higher contrast,
-  the toe and shoulder ease into black and white. The graph shows
-  the curve and its pivot. A value of 1× leaves contrast neutral.
+  the toe and shoulder ease into black and white. A value of 1× leaves contrast
+  neutral. The graph shows the combined exposure and contrast response for
+  neutral tones. The dot marks where the source tone reaches the contrast pivot.
 - **Subtractive saturation** deepens color by reducing the weaker channels
   as you go above 1×. Moving toward zero blends toward a luminance-matched
   gray.

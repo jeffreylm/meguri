@@ -68,9 +68,8 @@ export function exposureShoulder(gain: number): number {
   return gain > 1 ? 1 / (1 - exposureKnee) - 1 / (gain - exposureKnee) : 0;
 }
 
-// The graph and the shader plot the same curve. In log-odds space the pivot
-// is fixed and the multiplier sets the slope there. In linear light the
-// curve eases into a toe and shoulder and holds black and white.
+// In log-odds space the pivot is fixed and the multiplier sets the slope
+// there. In linear light the toe and shoulder hold black and white.
 export function filmicContrast(
   light: number,
   contrast: number,
@@ -80,4 +79,31 @@ export function filmicContrast(
   const origin = Math.log(pivot / (1 - pivot));
   const value = Math.log(light / (1 - light));
   return 1 / (1 + Math.exp(-(origin + contrast * (value - origin))));
+}
+
+type ToneGrade = Pick<VideoGrade, "exposure" | "contrast" | "pivot">;
+
+// Neutral-color response of the shader: linear exposure with a soft shoulder,
+// followed by contrast. Temperature, tint and saturation affect color.
+export function videoToneCurve(light: number, grade: ToneGrade): number {
+  const gain = 2 ** grade.exposure;
+  const boosted = light * gain;
+  const overKnee = Math.max(0, boosted - exposureKnee);
+  const exposed =
+    Math.min(boosted, exposureKnee) +
+    overKnee / (1 + exposureShoulder(gain) * overKnee);
+  return Math.min(
+    1,
+    Math.max(0, filmicContrast(exposed, grade.contrast, grade.pivot)),
+  );
+}
+
+export function toneCurvePivotInput(grade: ToneGrade): number {
+  const gain = 2 ** grade.exposure;
+  if (grade.pivot <= exposureKnee) return grade.pivot / gain;
+  // Invert the exposure shoulder to find the input that reaches the pivot.
+  const overKnee = grade.pivot - exposureKnee;
+  return (
+    (exposureKnee + overKnee / (1 - exposureShoulder(gain) * overKnee)) / gain
+  );
 }

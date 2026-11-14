@@ -615,6 +615,8 @@ export const en: Record<TranslationKey, string> = {
   "player.bookmarkAdd": "Bookmark the current position",
   "player.bookmarkRemove": "Remove the bookmark at {time}",
   "player.exportFrame": "Save the current frame as an image",
+  "player.setThumbnailFrame": "Set thumbnail from current frame",
+  "player.resetThumbnailFrame": "Reset main thumbnail",
   "player.frameExported": "Frame saved as an image",
   "player.frameExportFailed": "Failed to save the frame",
 

@@ -628,6 +628,8 @@ export const es: Record<TranslationKey, string> = {
   "player.bookmarkAdd": "Marcar la posición actual",
   "player.bookmarkRemove": "Eliminar el marcador en {time}",
   "player.exportFrame": "Guardar el fotograma actual como imagen",
+  "player.setThumbnailFrame": "Usar el fotograma actual como miniatura",
+  "player.resetThumbnailFrame": "Restablecer la miniatura principal",
   "player.frameExported": "Fotograma guardado como imagen",
   "player.frameExportFailed": "No se pudo guardar el fotograma",
 

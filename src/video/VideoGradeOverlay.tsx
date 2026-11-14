@@ -4,13 +4,14 @@ import type { TFunc } from "@/i18n/I18nProvider";
 import { Button } from "@/components/ui/button";
 import log from "@/lib/logger";
 import {
-  filmicContrast,
   gradeChangesPicture,
   gradeControls,
   gradeKeys,
   neutralGrade,
   readGrade,
   saveGrade,
+  toneCurvePivotInput,
+  videoToneCurve,
   type GradeControl,
   type VideoGrade,
 } from "./colorGrade";
@@ -176,7 +177,7 @@ export function VideoGradeOverlay({
           )}
           {!nativeHdr && (
             <>
-              <ContrastCurve grade={enabled ? previewGrade : neutralGrade} />
+              <ToneCurve grade={enabled ? previewGrade : neutralGrade} />
               <p id={hintId} className="text-xs text-muted">
                 {t("grade.holdHint")}
               </p>
@@ -298,13 +299,14 @@ export function VideoGradeOverlay({
   );
 }
 
-function ContrastCurve({ grade }: { grade: VideoGrade }) {
+function ToneCurve({ grade }: { grade: VideoGrade }) {
   // Higher visual resolution around middle gray, where small moves matter.
   const chart = (value: number) => Math.sqrt(value) * 100;
   const points = Array.from({ length: 65 }, (_, index) => {
     const x = index / 64;
-    return `${x * 100},${100 - chart(filmicContrast(x * x, grade.contrast, grade.pivot))}`;
+    return `${x * 100},${100 - chart(videoToneCurve(x * x, grade))}`;
   }).join(" ");
+  const pivotInput = toneCurvePivotInput(grade);
   return (
     <svg
       viewBox="0 0 100 100"
@@ -325,12 +327,14 @@ function ContrastCurve({ grade }: { grade: VideoGrade }) {
         strokeWidth={2}
         fill="none"
       />
-      <circle
-        cx={chart(grade.pivot)}
-        cy={100 - chart(grade.pivot)}
-        r={2}
-        className="fill-primary"
-      />
+      {pivotInput <= 1 && (
+        <circle
+          cx={chart(pivotInput)}
+          cy={100 - chart(grade.pivot)}
+          r={2}
+          className="fill-primary"
+        />
+      )}
     </svg>
   );
 }

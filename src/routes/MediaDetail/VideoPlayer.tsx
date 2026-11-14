@@ -13,6 +13,7 @@ import {
   BookmarkCheck,
   Camera,
   ExternalLink,
+  ImagePlus,
   Maximize,
   Pause,
   Play,
@@ -83,6 +84,7 @@ import {
 // readyState at which metadata is in (HTMLMediaElement.HAVE_METADATA), as a
 // plain number: the constant lives on a global jsdom does not provide.
 const HAVE_METADATA = 1;
+const HAVE_CURRENT_DATA = 2;
 
 // Delay before the one automatic reload after a network error: an immediate
 // retry in the same tick would likely hit the same connection-slot starvation
@@ -178,6 +180,9 @@ export const VideoPlayer = forwardRef<
      * Omitted by the playlist player; the export button is then not rendered.
      */
     onExportFrame?: (sec: number) => void;
+    onSetThumbnailFrame?: (sec: number) => void;
+    thumbnailPending?: boolean;
+    frameRate?: number | null;
     onNativeDuration: (d: number | null) => void;
     /** Fired once per loaded file when playback first starts (used to refresh the list order). */
     onPlayed: () => void;
@@ -243,6 +248,9 @@ export const VideoPlayer = forwardRef<
     onRemoveBookmark,
     exportPending,
     onExportFrame,
+    onSetThumbnailFrame,
+    thumbnailPending,
+    frameRate,
     onNativeDuration,
     onPlayed,
     onPlaybackStart,
@@ -258,6 +266,9 @@ export const VideoPlayer = forwardRef<
   handleRef,
 ) {
   const ref = useRef<HTMLVideoElement | null>(null);
+  const presentedFrame = useRef<{ source: string; mediaTime: number } | null>(
+    null,
+  );
   const wrapRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -789,6 +800,27 @@ export const VideoPlayer = forwardRef<
     [],
   );
 
+  const canSetThumbnail = Boolean(onSetThumbnailFrame);
+  useEffect(() => {
+    const video = ref.current;
+    if (!canSetThumbnail || !loaded || !video?.requestVideoFrameCallback)
+      return;
+    const source = video.getAttribute("src");
+    if (!source) return;
+    let callback: number;
+    const watch = () => {
+      callback = video.requestVideoFrameCallback((_now, { mediaTime }) => {
+        presentedFrame.current = { source, mediaTime };
+        watch();
+      });
+    };
+    watch();
+    return () => {
+      video.cancelVideoFrameCallback(callback);
+      presentedFrame.current = null;
+    };
+  }, [canSetThumbnail, loaded, src]);
+
   // Seek operation. Use currentTime if the target falls within a seekable range,
   // otherwise re-stream via ?t. Remuxed containers (mkv/avi/wmv/flv/ts) are piped
   // without Range support, so seekable only covers the buffered portion — checking
@@ -1198,6 +1230,20 @@ export const VideoPlayer = forwardRef<
     ref.current?.pause();
     onExportFrame?.(Math.max(0, displayPos));
   };
+  const onSetThumbnailClick = () => {
+    const video = ref.current;
+    if (!video || video.seeking || video.readyState < HAVE_CURRENT_DATA) return;
+    const source = video.getAttribute("src");
+    const frame = presentedFrame.current;
+    const at =
+      streamOffsetOf(source) +
+      (frame && frame.source === source ? frame.mediaTime : video.currentTime);
+    if (!Number.isFinite(at)) return;
+    // At EOF the playhead can sit past the start of the final visible frame.
+    const sec =
+      total && at >= total ? Math.min(at, total - 1 / (frameRate || 30)) : at;
+    onSetThumbnailFrame?.(Math.max(0, sec));
+  };
 
   // Detail reserves room for its scene rail before giving the player the rest.
   // object-contain fits landscape and portrait footage into that same space.
@@ -1514,6 +1560,15 @@ export const VideoPlayer = forwardRef<
                 title={t("player.exportFrame")}
               >
                 <Camera size={18} />
+              </CtrlButton>
+            )}
+            {onSetThumbnailFrame && (
+              <CtrlButton
+                onClick={onSetThumbnailClick}
+                disabled={!loaded || thumbnailPending}
+                title={t("player.setThumbnailFrame")}
+              >
+                <ImagePlus size={18} />
               </CtrlButton>
             )}
             <span className="ml-1 tabular-nums">{fmtTime(displayPos)}</span>

@@ -610,6 +610,34 @@ describe("VideoPlayer", () => {
     expect(onExportFrame).not.toHaveBeenCalled();
   });
 
+  it("sets the main thumbnail at the live source time of a remuxed stream", () => {
+    const onSetThumbnailFrame = vi.fn();
+    const { video } = renderPlayer({
+      src: "http://127.0.0.1:17345/ws/ws1/media/1?t=30",
+      onSetThumbnailFrame,
+    });
+    loadVideo(video);
+    const pause = vi.fn();
+    Object.defineProperty(video, "pause", { configurable: true, value: pause });
+    Object.defineProperty(video, "readyState", { value: 2 });
+    video.currentTime = 3.125;
+    // No timeupdate: the displayed time is stale.
+    fireEvent.click(screen.getByTitle("player.setThumbnailFrame"));
+
+    expect(onSetThumbnailFrame).toHaveBeenCalledWith(33.125);
+    expect(pause).not.toHaveBeenCalled();
+  });
+
+  it("uses the final frame timestamp when playback has reached the end", () => {
+    const onSetThumbnailFrame = vi.fn();
+    const { video } = renderPlayer({ onSetThumbnailFrame, frameRate: 25 });
+    loadVideo(video);
+    Object.defineProperty(video, "readyState", { value: 2 });
+    video.currentTime = 120;
+    fireEvent.click(screen.getByTitle("player.setThumbnailFrame"));
+    expect(onSetThumbnailFrame).toHaveBeenCalledWith(119.96);
+  });
+
   it("records play via IPC and fires onPlayed once", () => {
     const { video, onPlayed } = renderPlayer({ autoplay: false });
     loadVideo(video);

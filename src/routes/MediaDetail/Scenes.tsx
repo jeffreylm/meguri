@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, RotateCcw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePreferences } from "@/settings/PreferencesProvider";
 import type { TFunc } from "@/i18n/I18nProvider";
@@ -65,6 +65,18 @@ export function Scenes({
                 </div>
               )}
             </div>
+            {thumbOffsetSec != null && (
+              <button
+                type="button"
+                title={t("player.resetThumbnailFrame")}
+                aria-label={t("player.resetThumbnailFrame")}
+                className="rounded p-1.5 hover:bg-bg hover:text-fg disabled:opacity-50"
+                disabled={mainThumbPending}
+                onClick={() => onSetMainThumb(null)}
+              >
+                <RotateCcw size={14} aria-hidden="true" />
+              </button>
+            )}
           </div>
         )}
       </div>

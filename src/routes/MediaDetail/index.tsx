@@ -495,6 +495,9 @@ export default function MediaDetail({
               onAddBookmark={actions.addBookmark}
               onRemoveBookmark={actions.removeBookmark}
               onExportFrame={(sec) => setReference({ target: filmTarget, sec })}
+              onSetThumbnailFrame={actions.setMainThumb}
+              thumbnailPending={actions.pending.mainThumb}
+              frameRate={d.fps}
               onNativeDuration={setNativeDur}
               onPlayed={() => {
                 invalidatePlayedSearches(qc);

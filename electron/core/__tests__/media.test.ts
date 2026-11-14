@@ -372,6 +372,21 @@ describe("coverArtStreamIndex", () => {
   });
 });
 
+describe("generateThumb (selected video frame)", () => {
+  it("reports an empty seek and keeps the previous thumbnail intact", async () => {
+    const dest = path.join(dir, "selected.webp");
+    await expect(
+      generateThumb(video, "video", dest, undefined, 0.3),
+    ).resolves.toBe(true);
+    const original = fs.readFileSync(dest);
+
+    await expect(
+      generateThumb(video, "video", dest, undefined, 8),
+    ).resolves.toBe(false);
+    expect(fs.readFileSync(dest)).toEqual(original);
+  });
+});
+
 describe("generateThumb (audio cover art)", () => {
   it("extracts the embedded cover into a webp", async () => {
     const dest = path.join(dir, "cover.webp");

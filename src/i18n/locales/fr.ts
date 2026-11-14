@@ -631,6 +631,8 @@ export const fr: Record<TranslationKey, string> = {
   "player.bookmarkAdd": "Ajouter un marque-page à la position actuelle",
   "player.bookmarkRemove": "Supprimer le marque-page à {time}",
   "player.exportFrame": "Enregistrer l'image actuelle",
+  "player.setThumbnailFrame": "Utiliser l’image actuelle comme miniature",
+  "player.resetThumbnailFrame": "Réinitialiser la miniature principale",
   "player.frameExported": "Image enregistrée",
   "player.frameExportFailed": "Échec de l'enregistrement de l'image",
 

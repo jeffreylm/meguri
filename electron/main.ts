@@ -8,6 +8,7 @@ import {
   Menu,
   nativeImage,
   powerMonitor,
+  screen,
   session,
   shell,
   Tray,
@@ -25,6 +26,7 @@ import {
 } from "./core/appConfig.js";
 import { TRAY_ICON_BASE64, WINDOW_ICON_BASE64 } from "./core/logoAssets.js";
 import log, { setupLogger } from "./core/logger.js";
+import { mainWindowBounds } from "./core/mainWindowBounds.js";
 import { withTimeout } from "./core/concurrency.js";
 import {
   DISPOSE_TIMEOUT_MS,
@@ -423,10 +425,12 @@ function scheduleStartupUpdateCheck(): void {
 
 function createWindow(): void {
   const { logo } = loadConfig();
+  const { workArea } = screen.getDisplayNearestPoint(
+    screen.getCursorScreenPoint(),
+  );
   rendererReloadTimes = []; // a fresh window gets a fresh crash budget
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    ...mainWindowBounds(workArea),
     minWidth: 640,
     minHeight: 480,
     title: APP_TITLE,

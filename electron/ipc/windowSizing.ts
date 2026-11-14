@@ -1,5 +1,6 @@
 import { BrowserWindow, screen } from "electron";
 import { handle } from "../core/ipcHandler.js";
+import { mainWindowBounds } from "../core/mainWindowBounds.js";
 import type { IpcContext } from "./context.js";
 
 export function registerWindowSizingHandlers({ mainWindow }: IpcContext): void {
@@ -28,7 +29,7 @@ export function registerWindowSizingHandlers({ mainWindow }: IpcContext): void {
       // asks for just the content area it needs, in renderer CSS pixels.
       const target =
         input.mode === "player"
-          ? { width: 1280, height: 800 }
+          ? mainWindowBounds(workArea)
           : {
               width:
                 current.width - contentWidth + Math.ceil(input.width * zoom),

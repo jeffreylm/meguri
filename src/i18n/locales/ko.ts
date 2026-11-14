@@ -607,6 +607,8 @@ export const ko: Record<TranslationKey, string> = {
   "player.bookmarkAdd": "현재 위치에 북마크 추가",
   "player.bookmarkRemove": "{time}의 북마크 삭제",
   "player.exportFrame": "현재 프레임을 이미지로 저장",
+  "player.setThumbnailFrame": "현재 프레임을 썸네일로 설정",
+  "player.resetThumbnailFrame": "기본 썸네일 재설정",
   "player.frameExported": "프레임을 이미지로 저장했습니다",
   "player.frameExportFailed": "프레임 저장에 실패했습니다",
 

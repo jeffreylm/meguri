@@ -91,7 +91,10 @@ export function MediaThumbnail({
     file.filmPosterVersion,
   );
   const [failedPoster, setFailedPoster] = useState<string | null>(null);
-  const showPoster = !!poster && failedPoster !== poster;
+  const showPoster =
+    !!poster &&
+    failedPoster !== poster &&
+    (!frame || file.thumbOffsetSec == null);
   const src = showPoster ? poster : frame;
   // Also false until the media origin is known, so nothing tries to load early.
   const hasThumb = src !== undefined;

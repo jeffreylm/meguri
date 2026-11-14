@@ -586,6 +586,8 @@ export const zhCN: Record<TranslationKey, string> = {
   "player.bookmarkAdd": "为当前位置添加书签",
   "player.bookmarkRemove": "删除 {time} 的书签",
   "player.exportFrame": "将当前帧保存为图片",
+  "player.setThumbnailFrame": "将当前帧设为缩略图",
+  "player.resetThumbnailFrame": "重置主缩略图",
   "player.frameExported": "已将帧保存为图片",
   "player.frameExportFailed": "帧保存失败",
 
