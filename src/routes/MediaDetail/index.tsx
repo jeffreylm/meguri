@@ -7,11 +7,20 @@
 // every write to the file (useDetailMutations), audio in the bottom bar
 // (useAudioDetail), prev/next (usePrevNextNavigation), and the title row,
 // rating/tags card and play history as components.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { applyTagFilter, showFolderInLibrary } from "@/lib/ui-events";
 import { fileNameOf, folderPathOf } from "@/lib/relPath";
+import { subtitlePreferenceKey } from "@/lib/subtitlePreference";
+import { readEmbeddedTracks } from "@shared/embeddedSubtitles";
 import { isNormalizedFolderPath } from "@shared/folderPath";
 import { api, ALL_ID, COLLECTION_ID_PREFIX } from "@/ipc/client";
 import { useAppStatus } from "@/hooks/useAppStatus";
@@ -28,6 +37,7 @@ import { useResumeStart } from "@/hooks/useResumeStart";
 import { ResumeNotice } from "@/components/ResumeNotice";
 import { MediaModal, TopBar } from "./MediaModal";
 import { VideoPlayer, type PlayerHandle } from "./VideoPlayer";
+import { isRemuxedVideo } from "@shared/playbackTracks";
 import { useAudioActions } from "@/audio/useAudioPlayer";
 import { hasThumbFile, thumbUrl } from "@/lib/thumbUrl";
 import { AudioCompact, AudioStage } from "./AudioStage";
@@ -53,9 +63,10 @@ const IMAGE_BG_INVERTED_KEY = "meguri.image.backgroundInverted";
 
 export default function MediaDetail() {
   const { t, lang } = useI18n();
+  const titleId = useId();
   const { id } = useParams();
   const fileId = Number(id);
-  // Optional initial seek position (seconds), e.g. when arriving from a Discovery scene click.
+  // Optional initial seek position (seconds), e.g. when the playlist hands over.
   const [searchParams] = useSearchParams();
   // Null when absent: `?t=0` is a start asked for, not a missing one.
   const tParam = searchParams.get("t");
@@ -263,6 +274,7 @@ export default function MediaDetail() {
       fileId,
       wsId,
       kind,
+      viewRef: modalRef,
     });
   // The way into the playlist from here (see useCloseTarget). Offered only
   // while a list is mounted underneath, and only for a file that list has
@@ -286,6 +298,8 @@ export default function MediaDetail() {
         onClose={onClose}
         size={modalSize}
         presentation={presentation}
+        // The prev/next keys look for layers over this frame, here too.
+        containerRef={modalRef}
         t={t}
       >
         <TopBar
@@ -311,6 +325,8 @@ export default function MediaDetail() {
         onClose={onClose}
         size={modalSize}
         presentation={presentation}
+        // The prev/next keys look for layers over this frame, here too.
+        containerRef={modalRef}
         t={t}
       >
         <TopBar
@@ -326,6 +342,7 @@ export default function MediaDetail() {
     );
   }
 
+  const audioTracks = readEmbeddedTracks(d.meta, "audio");
   const total = d.duration && d.duration > 0 ? d.duration : (nativeDur ?? null);
   const slash = d.relPath.lastIndexOf("/");
   const basename = slash >= 0 ? d.relPath.slice(slash + 1) : d.relPath;
@@ -340,12 +357,14 @@ export default function MediaDetail() {
       presentation={presentation}
       fullscreen={isFullscreen}
       containerRef={modalRef}
+      titleId={titleId}
       t={t}
     >
       {!isFullscreen && (
         <TopBar
           onClose={onClose}
           title={basename}
+          titleId={titleId}
           onPrev={goPrev}
           onNext={goNext}
           canPrev={canPrev}
@@ -373,6 +392,16 @@ export default function MediaDetail() {
                 ref={playerRef}
                 id={fileId}
                 src={mediaSrc}
+                audioTracks={
+                  isRemuxedVideo(d.codec, d.ext) ? audioTracks : undefined
+                }
+                subtitleTracks={readEmbeddedTracks(d.meta, "subtitle")}
+                subtitleAudioLanguage={
+                  d.codec === "prores" || audioTracks.length === 1
+                    ? audioTracks[0]?.language
+                    : undefined
+                }
+                subtitleKey={subtitlePreferenceKey(wsId, d.relPath)}
                 duration={d.duration}
                 width={d.width}
                 height={d.height}

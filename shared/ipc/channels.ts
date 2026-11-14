@@ -4,6 +4,7 @@
 // Output is declared as TypeScript types rather than Zod schemas because the
 // renderer trusts data coming from main (no runtime check needed).
 import { z } from "zod";
+import type { SubtitleCue } from "../embeddedSubtitles.js";
 import type {
   AppStatus,
   DuplicatesResult,
@@ -389,6 +390,10 @@ export const ChannelInputs = {
     axis: TimelineAxisSchema,
   }),
   file_get: FileTarget,
+  file_subtitles: FileTarget.extend({
+    track: z.number().int().nonnegative(),
+    windowStart: z.number().int().nonnegative().max(31_536_000),
+  }),
   file_set_rating: FileTarget.extend({ rating: z.number() }),
   file_set_favorite: FileTarget.extend({ favorite: z.boolean() }),
   file_delete_from_index: FileTarget,
@@ -544,6 +549,7 @@ export const ChannelInputs = {
   auto_tag_reapply: z.void(),
   logo_get: z.void(),
   logo_set: z.object({ logo: LogoIdSchema }),
+  logo_images: z.void(),
   custom_css_get: z.void(),
   custom_css_set_enabled: z.object({ enabled: z.boolean() }),
   custom_css_open: z.void(),
@@ -641,6 +647,7 @@ export interface ChannelOutputs {
   activity_days: ActivityDays;
   timeline_counts: TimelineCounts;
   file_get: FileDetail | null;
+  file_subtitles: SubtitleCue[];
   file_set_rating: void;
   file_set_favorite: void;
   file_delete_from_index: { id: number; relPath: string };
@@ -722,6 +729,9 @@ export interface ChannelOutputs {
   logo_get: LogoId;
   // Echoes the applied variant so the renderer can settle on main's value.
   logo_set: LogoId;
+  // The in-app logo of each variant, as a data URL. The bitmaps come from
+  // startApp()'s options, so the renderer cannot bundle them.
+  logo_images: Record<LogoId, string>;
   custom_css_get: CustomCssState;
   // Returns the state after the switch, so the renderer applies (or drops)
   // the stylesheet without a second round trip.

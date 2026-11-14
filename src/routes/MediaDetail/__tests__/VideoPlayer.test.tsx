@@ -6,6 +6,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import { StrictMode, useState, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -17,12 +18,15 @@ import {
 } from "@/routes/MediaDetail/VideoPlayer";
 import { announceVideoHandOff, resetVideoHandOff } from "@/video/videoHandOff";
 
+const fileSubtitles = vi.fn<typeof import("@/ipc/client").api.fileSubtitles>();
 const fileRecordPlay = vi.fn().mockResolvedValue(undefined);
 const fileSavePosition = vi
   .fn<(...args: unknown[]) => Promise<void>>()
   .mockResolvedValue(undefined);
 vi.mock("@/ipc/client", () => ({
   api: {
+    fileSubtitles: (...args: Parameters<typeof fileSubtitles>) =>
+      fileSubtitles(...args),
     fileRecordPlay: (...args: unknown[]) => fileRecordPlay(...args),
     fileSavePosition: (...args: unknown[]) => fileSavePosition(...args),
     openExternal: vi.fn().mockResolvedValue(undefined),
@@ -116,12 +120,155 @@ function fireVideoError(video: HTMLVideoElement, code: number) {
   fireEvent.error(video);
 }
 
+describe("embedded subtitles", () => {
+  it("shows initial loading but keeps the banner hidden between cue windows", async () => {
+    fileSubtitles.mockReset();
+    let finishFirstWindow: () => void = () => {};
+    let finishNextWindow: () => void = () => {};
+    fileSubtitles
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishFirstWindow = () => resolve([]);
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishNextWindow = () => resolve([]);
+          }),
+      );
+    const { video } = renderPlayer({
+      duration: 300,
+      subtitleTracks: [{ title: "English", language: "eng", codec: "subrip" }],
+    });
+    loadVideo(video);
+    const select = screen.getByRole("combobox", { name: "player.subtitles" });
+    fireEvent.change(select, { target: { value: "0" } });
+    expect(await screen.findByText("player.subtitleLoading")).toBeTruthy();
+    finishFirstWindow();
+    await waitFor(() =>
+      expect(screen.queryByText("player.subtitleLoading")).toBeNull(),
+    );
+
+    video.currentTime = 125;
+    fireEvent.timeUpdate(video);
+    expect(fileSubtitles).toHaveBeenCalledWith(1, "ws1", 0, 120);
+    expect(screen.queryByText("player.subtitleLoading")).toBeNull();
+    await act(async () => finishNextWindow());
+  });
+
+  it("loads the chosen track in the regular player and requests new cues after seeking", async () => {
+    fileSubtitles.mockReset();
+    fileSubtitles.mockImplementation(
+      (_id: number, _ws: string, track: number, start: number) =>
+        Promise.resolve([
+          {
+            start: start + 2,
+            end: start + 10,
+            text: track === 0 ? "Hello" : "Bonjour",
+          },
+        ]),
+    );
+    const { video } = renderPlayer({
+      duration: 300,
+      subtitleTracks: [
+        { title: "English", language: "eng", codec: "subrip" },
+        { title: "French", language: "fra", codec: "subrip" },
+      ],
+    });
+    loadVideo(video);
+    video.currentTime = 5;
+    fireEvent.timeUpdate(video);
+    const select = screen.getByRole("combobox", { name: "player.subtitles" });
+    fireEvent.change(select, { target: { value: "0" } });
+    expect(await screen.findByText("Hello")).toBeTruthy();
+    expect(fileSubtitles).toHaveBeenCalledWith(1, "ws1", 0, 0);
+
+    fireEvent.change(select, { target: { value: "1" } });
+    expect(screen.queryByText("Hello")).toBeNull();
+    expect(await screen.findByText("Bonjour")).toBeTruthy();
+    video.currentTime = 125;
+    fireEvent.timeUpdate(video);
+    expect(await screen.findByText("Bonjour")).toBeTruthy();
+    expect(fileSubtitles).toHaveBeenCalledWith(1, "ws1", 1, 120);
+
+    fireEvent.change(select, { target: { value: "-1" } });
+    expect(screen.queryByText("Bonjour")).toBeNull();
+  });
+
+  it("matches the audio track chosen in the player on Auto", async () => {
+    fileSubtitles.mockReset();
+    fileSubtitles.mockImplementation(
+      (_id: number, _ws: string, track: number, start: number) =>
+        Promise.resolve([
+          {
+            start,
+            end: start + 10,
+            text: track === 0 ? "こんにちは" : "Hello",
+          },
+        ]),
+    );
+    const { video } = renderPlayer({
+      duration: 300,
+      audioTracks: [
+        { title: "", language: "jpn" },
+        { title: "", language: "eng" },
+      ],
+      subtitleAudioLanguage: "jpn",
+      subtitleTracks: [
+        { title: "", language: "jpn", codec: "subrip" },
+        { title: "", language: "eng", codec: "subrip" },
+      ],
+    });
+    loadVideo(video);
+    expect(await screen.findByText("こんにちは")).toBeTruthy();
+
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "player.audioTrack" }),
+      { target: { value: "1" } },
+    );
+    expect(await screen.findByText("Hello")).toBeTruthy();
+    expect(fileSubtitles).toHaveBeenLastCalledWith(1, "ws1", 1, 0);
+  });
+});
+
 describe("VideoPlayer", () => {
   beforeEach(() => {
     fileRecordPlay.mockClear();
   });
   afterEach(() => {
     resetVideoHandOff();
+  });
+
+  it("keeps position and pause when changing audio and opens each clip on Default", () => {
+    const audioTracks = [
+      { title: "English", language: "eng", codec: "aac" },
+      { title: "Japanese", language: "jpn", codec: "aac" },
+    ];
+    const first = renderPlayer({ audioTracks, autoplay: false });
+    loadVideo(first.video);
+    first.video.currentTime = 12.75;
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "player.audioTrack" }),
+      { target: { value: "1" } },
+    );
+    const search = new URL(first.video.src).searchParams;
+    expect(search.get("audioTrack")).toBe("1");
+    expect(search.get("t")).toBe("12.75");
+    expect(first.video.autoplay).toBe(false);
+    loadVideo(first.video);
+    first.view.unmount();
+
+    const reopened = renderPlayer({ audioTracks });
+    expect(
+      new URL(reopened.video.src).searchParams.get("audioTrack"),
+    ).toBeNull();
+    expect(
+      screen.getByRole<HTMLSelectElement>("combobox", {
+        name: "player.audioTrack",
+      }).value,
+    ).toBe("-1");
   });
 
   describe("adopting a handed-over element", () => {
@@ -311,6 +458,112 @@ describe("VideoPlayer", () => {
 
     ref.current?.seek(42);
     expect(video.currentTime).toBe(42);
+  });
+
+  describe("re-serving a stream on a seek", () => {
+    /** A stream: nothing is seekable, so every seek re-serves the file. */
+    function streamOf(video: HTMLVideoElement) {
+      const play = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(video, "load", {
+        configurable: true,
+        value: vi.fn(),
+      });
+      Object.defineProperty(video, "play", { configurable: true, value: play });
+      return play;
+    }
+
+    function playedRanges(video: HTMLVideoElement, length: number) {
+      Object.defineProperty(video, "played", {
+        configurable: true,
+        value: { length },
+      });
+    }
+
+    /** The metadata arriving, with the element's readyState saying so. */
+    function metadataIn(video: HTMLVideoElement) {
+      Object.defineProperty(video, "readyState", {
+        configurable: true,
+        value: 1,
+      });
+      fireEvent.loadedMetadata(video);
+    }
+
+    it("still starts a video whose autoplay was pending when the seek was asked for", () => {
+      // The seek arrives before the metadata (a scene picked right after
+      // Play), so it waits; by the time it lands the element is paused only
+      // because autoplay has not kicked in yet.
+      const { video, ref } = renderPlayer();
+      const play = streamOf(video);
+      playedRanges(video, 0);
+
+      ref.current?.seek(30);
+      metadataIn(video);
+
+      expect(video.getAttribute("src")).toContain("?t=30");
+      expect(video.autoplay).toBe(true);
+      expect(play).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps a video paused before it ever played paused", () => {
+      // Paused while still loading: nothing has played, but autoplay is no
+      // longer what is about to happen.
+      const { video, ref } = renderPlayer();
+      const play = streamOf(video);
+      playedRanges(video, 0);
+      metadataIn(video);
+
+      // Whoever paused it: the bar, a media key, the frame export.
+      fireEvent.pause(video);
+      ref.current?.seek(30);
+
+      expect(video.getAttribute("src")).toContain("?t=30");
+      expect(video.autoplay).toBe(false);
+      expect(play).not.toHaveBeenCalled();
+    });
+
+    it("starts at the opening position playing when Play came before the metadata", () => {
+      // Opened paused at a scene, then started while still loading: the
+      // opening seek must carry that over rather than the `autoplay` prop.
+      const { video } = renderPlayer({ autoplay: false, startAt: 30 });
+      const play = streamOf(video);
+      playedRanges(video, 0);
+      Object.defineProperty(video, "paused", {
+        configurable: true,
+        value: false,
+      });
+
+      metadataIn(video);
+
+      expect(video.getAttribute("src")).toContain("?t=30");
+      expect(play).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps a video the user paused paused", () => {
+      const { video, ref } = renderPlayer();
+      const play = streamOf(video);
+      metadataIn(video);
+      // It played and was paused: `paused` is the element's default here.
+      playedRanges(video, 1);
+
+      ref.current?.seek(30);
+
+      expect(video.getAttribute("src")).toContain("?t=30");
+      expect(video.autoplay).toBe(false);
+      expect(play).not.toHaveBeenCalled();
+    });
+  });
+
+  it("leaves the keyboard alone when its shortcuts are off", () => {
+    const { video } = renderPlayer({ shortcuts: false });
+    loadVideo(video);
+    const play = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(video, "play", { configurable: true, value: play });
+
+    // fireEvent returns false when a handler called preventDefault.
+    expect(fireEvent.keyDown(window, { code: "ArrowRight" })).toBe(true);
+    expect(fireEvent.keyDown(window, { code: "Space" })).toBe(true);
+    expect(video.currentTime).toBe(0);
+    expect(play).not.toHaveBeenCalled();
   });
 
   describe("holding a seek key", () => {
@@ -649,6 +902,20 @@ describe("VideoPlayer", () => {
         duration: 120,
         urgent: true,
       });
+    });
+
+    it("reports nothing when told not to record the position", () => {
+      const { video, view } = renderPlayer({
+        autoplay: false,
+        recordPosition: false,
+      });
+      loadVideo(video);
+      standAt(video, 0, false);
+      fireEvent.play(video);
+      standAt(video, 3, true);
+      fireEvent.pause(video);
+      view.unmount();
+      expect(fileSavePosition).not.toHaveBeenCalled();
     });
 
     it("reports nothing for a file that never played", () => {
