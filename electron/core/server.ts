@@ -24,6 +24,11 @@ import { isInsideRoot } from "./paths.js";
 import { FFMPEG } from "./ffmpeg-paths.js";
 import { QueueFullError, Semaphore } from "./concurrency.js";
 import { DECODE_FFMPEG_THREADS, videoDecodeSlots } from "./mediaConcurrency.js";
+import {
+  isTaggedHdr,
+  proResPreviewFilter,
+  supportsToneMapping,
+} from "./proResPreview.js";
 import { scopedLog } from "./logger.js";
 import {
   PREVIEW_AUDIO_TRACK_PARAM,
@@ -302,9 +307,7 @@ async function handle(
       DIRECT_DOLBY_CONTAINERS.has(extension);
     const requested = url.searchParams.get(PREVIEW_AUDIO_TRACK_PARAM);
     const needsStreams =
-      directDolby ||
-      (remux &&
-        (requested !== null || (!proResPreview && req.method !== "HEAD")));
+      directDolby || (remux && (requested !== null || req.method !== "HEAD"));
     if (needsStreams && metadata === undefined) {
       metadata = await probePlaybackMetadata(abs, storedMeta(core, id));
       if (res.destroyed || res.writableEnded) return;
@@ -346,7 +349,12 @@ async function handle(
         audioTrack !== undefined
           ? isDolbyDigital(tracks[audioTrack].codec)
           : tracks.some(({ codec }) => isDolbyDigital(codec));
-      const mode = proResPreview ? "prores" : dolby ? "aac" : "copy";
+      let mode: RemuxMode = proResPreview ? "prores" : dolby ? "aac" : "copy";
+      if (proResPreview && isTaggedHdr(metadata)) {
+        const toneMap = await supportsToneMapping();
+        if (res.destroyed || res.writableEnded) return;
+        if (toneMap) mode = "prores-hdr";
+      }
       serveRemux(res, abs, start, mode, audioTrack);
       return;
     }
@@ -481,7 +489,7 @@ type RemuxSession = {
 
 const remuxInflight = new Map<string, RemuxSession>();
 
-type RemuxMode = "copy" | "aac" | "prores";
+type RemuxMode = "copy" | "aac" | "prores" | "prores-hdr";
 
 function remuxKey(
   file: string,
@@ -619,14 +627,17 @@ function startRemuxSession(
   audioTrack?: number,
   videoTrack?: number,
 ) {
-  const proResPreview = mode === "prores";
+  const proResPreview = mode === "prores" || mode === "prores-hdr";
   const args = ["-v", "error"];
   if (proResPreview)
     args.push(
       "-threads",
       String(DECODE_FFMPEG_THREADS),
+      // Tone mapping works in 32-bit float and is several times the cost of
+      // the scale alone; on one thread a 4K PQ clip barely kept up with
+      // playback on a fast desktop core.
       "-filter_threads",
-      "1",
+      mode === "prores-hdr" ? String(DECODE_FFMPEG_THREADS) : "1",
     );
   if (start != null && start > 0) args.push("-ss", start.toFixed(3));
   // Keep FFmpeg's automatic picture selection for remux-only containers.
@@ -643,7 +654,7 @@ function startRemuxSession(
       "-write_tmcd",
       "0",
       "-vf",
-      "scale=w='min(1920,iw)':h='min(1080,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2",
+      proResPreviewFilter(mode === "prores-hdr"),
       "-c:v",
       "libx264",
       "-preset",
@@ -836,7 +847,9 @@ function serveRemux(
 
   void (async () => {
     const releaseSlot = await acquireForResponse(
-      mode === "prores" ? proResPreviewSlots : remuxSlots,
+      mode === "prores" || mode === "prores-hdr"
+        ? proResPreviewSlots
+        : remuxSlots,
       res,
     );
     if (!releaseSlot) return;

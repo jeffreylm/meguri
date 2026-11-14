@@ -154,7 +154,10 @@ Containers Chromium cannot demux — `REMUX_CONTAINERS` = `mkv` / `avi` / `wmv` 
 `?t=<seconds>` query parameter. The server also uses fragmented MP4 for MP4,
 M4V, and MOV with a default AC-3 or E-AC-3 audio track. It copies the primary
 picture stream and converts that audio track to AAC, keeping its channel count.
-ProRes uses a local H.264 preview. Chromium-unsupported still images (`heic` /
+ProRes uses a local H.264 preview. A ProRes clip tagged as PQ or HLG HDR is
+tone mapped to Rec.709 with zscale and tonemap (`electron/core/proResPreview.ts`),
+when the bundled ffmpeg has both filters; the server checks that once, with
+`ffmpeg -filters`, and retries after a failed check. Chromium-unsupported still images (`heic` /
 `heif` / `tiff`, `TRANSCODE_IMAGES`) are transcoded to JPEG.
 
 ### Frame previews
