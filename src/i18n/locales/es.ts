@@ -2,13 +2,11 @@
 import type { TranslationKey } from "./ja";
 
 export const es: Record<TranslationKey, string> = {
-  // App name: the single-kanji display name (guideline 00), identical in every locale.
-  "app.name": "巡",
-
   // common
   "common.close": "Cerrar",
   "common.cancel": "Cancelar",
   "common.ok": "Aceptar",
+  "common.actionFailed": "No se pudo completar la acción",
 
   // kind
   "kind.video": "Vídeo",
@@ -112,7 +110,7 @@ export const es: Record<TranslationKey, string> = {
   "libraryMerge.progress": "{done} / {total} espacios de trabajo",
   "libraryMerge.failed": "No se pudieron trasladar algunos espacios de trabajo",
   "libraryMerge.failedDesc":
-    "{list}\nSiguen funcionando como antes. Meguri lo intentará de nuevo en el próximo inicio.",
+    "{list}\nSiguen funcionando como antes. {app} lo intentará de nuevo en el próximo inicio.",
   "libraryMerge.failedItem": "{name}: {reason}",
   "libraryMerge.reason.diskFull":
     "El disco está lleno. Libera espacio y vuelve a intentarlo.",
@@ -122,9 +120,17 @@ export const es: Record<TranslationKey, string> = {
   "libraryMerge.reason.open": "No se pudo abrir su base de datos.",
   "libraryMerge.retry": "Reintentar",
   "library.restored":
-    "Tu biblioteca estaba dañada, así que Meguri restauró la copia del {date}",
+    "Tu biblioteca estaba dañada, así que {app} restauró la copia del {date}",
   "library.restoredDesc":
     "Se han perdido los favoritos, las valoraciones, las etiquetas y demás cambios posteriores. El archivo dañado se conserva en la misma carpeta que la biblioteca.",
+  "config.movedAside":
+    "El archivo de configuración (config.json) estaba dañado, así que {app} se ha iniciado con la configuración predeterminada",
+  "config.movedAsideDesc":
+    "Tus espacios de trabajo y colecciones se conservan en el archivo dañado, guardado como config.json.corrupt-<fecha> en la misma carpeta.",
+  "config.unreadable":
+    "{app} no pudo leer el archivo de configuración (config.json) y funciona con la configuración predeterminada",
+  "config.unreadableDesc":
+    "El archivo no se ha modificado. Comprueba que ninguna otra aplicación lo esté usando y reinicia {app}.",
   "settings.about": "Acerca de",
   "about.version": "{name} versión {version}",
   "about.appLicense": "{name} se publica bajo la licencia MIT.",
@@ -164,6 +170,17 @@ export const es: Record<TranslationKey, string> = {
   "home.scanCanceled": "Escaneo cancelado",
   "home.escCloseHint": "Pulsa Esc de nuevo para cerrar la ventana",
   "home.scanError": "Se produjo un error durante el escaneo",
+  "home.scanRootUnreadable":
+    "No se pudo acceder a la carpeta del espacio de trabajo",
+  "home.scanRootUnreadableNamed": "No se pudo acceder a la carpeta de «{name}»",
+  "home.scanRootUnreadableDesc":
+    "Comprueba que la carpeta no se haya movido ni eliminado, que su unidad o recurso compartido de red esté conectado y que {app} pueda leerla, y vuelve a escanear. La lista de archivos se ha dejado como estaba.",
+  "home.scanSkipped":
+    "Se omitieron {count} carpeta(s) o archivo(s) que no se pudieron leer",
+  "home.scanSkippedNamed":
+    "Se omitieron {count} carpeta(s) o archivo(s) de «{name}» que no se pudieron leer",
+  "home.scanSkippedDesc":
+    "Puede que {app} no tenga permiso para leerlos o que otro programa los esté usando. Esa parte de la lista de archivos se ha dejado como estaba y el próximo escaneo lo volverá a intentar.",
   "home.scanStartFailed": "No se pudo iniciar el escaneo",
   "home.scanAlreadyRunning": "Ya hay un escaneo en curso",
 
@@ -237,6 +254,10 @@ export const es: Record<TranslationKey, string> = {
   // media detail
   "media.notFound": "Archivo no encontrado.",
   "media.openExternal": "Abrir externamente",
+  "media.openExternalFailed": "No se pudo abrir en la aplicación externa",
+  "fileMenu.open": "Abrir",
+  "fileMenu.inspect": "Abrir detalles sin reproducir",
+  "fileMenu.some": "Algunos",
   "media.openFolder": "Abrir carpeta contenedora",
   "media.copyFilePath": "Copiar ruta del archivo",
   "media.filePathCopied": "Ruta del archivo copiada",
@@ -272,6 +293,7 @@ export const es: Record<TranslationKey, string> = {
   "shortcuts.inspectFocused":
     "Abrir los detalles del elemento enfocado (sin reproducir)",
   "shortcuts.watchLater": "Alternar Ver más tarde",
+  "shortcuts.fileMenu": "Abrir el menú del archivo",
   "shortcuts.selectAll": "Seleccionar todo lo cargado",
   "shortcuts.bulkTags": "Editar etiquetas de la selección",
   "shortcuts.help": "Esta ayuda",
@@ -311,6 +333,12 @@ export const es: Record<TranslationKey, string> = {
   "media.currentMainThumb": "Miniatura principal actual:",
 
   // player controls
+  "player.subtitles": "Subtítulos",
+  "player.subtitleAuto": "Coincidir con el idioma del audio",
+  "player.subtitleOff": "Desactivados",
+  "player.subtitleLoading": "Cargando subtítulos…",
+  "player.subtitleUnavailable": "No se pudo cargar esta pista de subtítulos.",
+  "player.subtitleTrackNumber": "Pista {number}",
   "player.play": "Reproducir",
   "player.playKey": "Reproducir (Space)",
   "player.pauseKey": "Pausar (Space)",
@@ -320,6 +348,11 @@ export const es: Record<TranslationKey, string> = {
   "player.unmute": "Activar sonido (M)",
   "player.fullscreen": "Pantalla completa (F)",
   "player.volume": "Volumen",
+  "player.audioTrack": "Pista de audio",
+  "player.audioTrackNumber": "Pista {number}",
+  "player.audioTrackDefault": "Predeterminada",
+  "player.audioTrackUnavailable":
+    "No se pudo reproducir esta pista. Se restauró la anterior.",
   "player.seek": "Buscar",
   "player.playFailed": "No se pudo reproducir en el reproductor integrado.",
   "player.openExternal": "Abrir en un reproductor externo",
@@ -565,8 +598,7 @@ export const es: Record<TranslationKey, string> = {
   "discover.empty": "No hay medios para recomendar.",
   "discover.emptyHint":
     "Ejecuta «Escanear» para importar vídeos e imágenes y se recomendarán aquí al azar.",
-  "discover.sceneHint":
-    "Pasa el cursor para ampliar · haz clic para reproducir desde ese punto",
+  "discover.sceneHint": "Haz clic en una escena para saltar a ese punto",
   "discover.moreScenes": "+{count}",
 
   // Historial de reproducción
@@ -587,13 +619,33 @@ export const es: Record<TranslationKey, string> = {
   "duplicates.empty": "No se encontraron archivos duplicados.",
   "duplicates.emptyHint":
     "Los archivos con contenido idéntico (hash y tamaño coincidentes) aparecerán aquí.",
-  "duplicates.summary":
-    "{groups} grupos / {files} archivos / {size} duplicados",
+  "duplicates.loadFailed":
+    "No se pudieron cargar los archivos duplicados. Inténtalo de nuevo.",
+  "duplicates.retry": "Reintentar",
   "duplicates.fileCount": "{count} archivos",
   "duplicates.truncated":
     "Demasiados grupos; solo se muestran los {max} primeros.",
   "duplicates.filter": "Mostrar solo archivos duplicados",
   "duplicates.chip": "Duplicados",
+  "duplicates.groupCount": "{count} grupos",
+  "duplicates.reclaimable": "Recuperable",
+  "duplicates.search": "Filtrar por nombre o ruta",
+  "duplicates.sortLabel": "Ordenar por",
+  "duplicates.sort.reclaimable": "Tamaño recuperable",
+  "duplicates.sort.size": "Tamaño del archivo",
+  "duplicates.sort.count": "Número de copias",
+  "duplicates.sort.added": "Añadidos recientemente",
+  "duplicates.groupList": "Grupos de duplicados",
+  "duplicates.groupDetail": "Detalles del grupo",
+  "duplicates.noMatch": "Ningún grupo coincide con el filtro.",
+  "duplicates.copies": "Copias",
+  "duplicates.diffLegend":
+    "Resaltado: lo que distingue esta copia de las demás",
+  "duplicates.oldest": "Más antigua",
+  "duplicates.oldestHint": "La copia que se indexó primero",
+  "duplicates.added": "Añadido {date}",
+  "duplicates.lastViewed": "Visto por última vez {date}",
+  "duplicates.open": "Abrir",
 
   // Pantalla de gestión de etiquetas
   // auto tagging
@@ -879,7 +931,7 @@ export const es: Record<TranslationKey, string> = {
   "drop.overlayTitle":
     "Suelta carpetas para añadirlas como espacios de trabajo",
   "drop.foldersOnly":
-    "Meguri indexa carpetas, no archivos sueltos. Suelta una carpeta.",
+    "{app} indexa carpetas, no archivos sueltos. Suelta una carpeta.",
   "drop.addTitle": "Añadir espacio de trabajo",
   "drop.addConfirm": "¿Añadir «{name}» como espacio de trabajo y escanearla?",
   "drop.addAction": "Añadir",
@@ -1049,7 +1101,7 @@ export const es: Record<TranslationKey, string> = {
   "tour.languageTitle": "Elige tu idioma",
   "tour.languageBody":
     "Elige el idioma que quieres usar. El resto del recorrido lo seguirá, y puedes cambiarlo luego en Ajustes.",
-  "tour.welcomeTitle": "Te damos la bienvenida a Meguri",
+  "tour.welcomeTitle": "Te damos la bienvenida a {app}",
   "tour.welcomeBody":
     "Te enseño cómo funciona. Pulsa Esc para saltarlo cuando quieras.",
   "tour.addWorkspaceTitle": "Añadir una carpeta",

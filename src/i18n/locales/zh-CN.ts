@@ -2,13 +2,11 @@
 import type { TranslationKey } from "./ja";
 
 export const zhCN: Record<TranslationKey, string> = {
-  // App name: the single-kanji display name (guideline 00), identical in every locale.
-  "app.name": "巡",
-
   // common
   "common.close": "关闭",
   "common.cancel": "取消",
   "common.ok": "确定",
+  "common.actionFailed": "操作失败",
 
   // kind
   "kind.video": "视频",
@@ -113,6 +111,14 @@ export const zhCN: Record<TranslationKey, string> = {
   "library.restored": "资料库已损坏，已从 {date} 的副本恢复",
   "library.restoredDesc":
     "此后对收藏、评分、标签等所做的更改已丢失。损坏的文件保留在资料库所在的文件夹中。",
+  "config.movedAside":
+    "设置文件（config.json）已损坏，{app} 已使用默认设置启动",
+  "config.movedAsideDesc":
+    "已登记的工作区和收藏集保留在损坏的文件中，该文件已另存为同一文件夹中的 config.json.corrupt-<日期>。",
+  "config.unreadable":
+    "无法读取设置文件（config.json），{app} 正以默认设置运行",
+  "config.unreadableDesc":
+    "该文件未被修改。请确认没有其他应用正在使用它，然后重新启动 {app}。",
   "settings.about": "关于",
   "about.version": "{name} 版本 {version}",
   "about.appLicense": "{name} 基于 MIT License 发布。",
@@ -150,6 +156,14 @@ export const zhCN: Record<TranslationKey, string> = {
   "home.scanCanceled": "已取消扫描",
   "home.escCloseHint": "再按一次 Esc 关闭窗口",
   "home.scanError": "扫描过程中发生错误",
+  "home.scanRootUnreadable": "无法访问工作区文件夹",
+  "home.scanRootUnreadableNamed": "无法访问“{name}”的文件夹",
+  "home.scanRootUnreadableDesc":
+    "请确认该文件夹未被移动或删除、其驱动器或网络共享已连接，且 {app} 有读取权限，然后重新扫描。文件列表保持不变。",
+  "home.scanSkipped": "已跳过 {count} 个无法读取的文件夹或文件",
+  "home.scanSkippedNamed": "已跳过“{name}”中 {count} 个无法读取的文件夹或文件",
+  "home.scanSkippedDesc":
+    "{app} 可能没有读取权限，或其他程序正在使用它们。文件列表中的这部分保持不变，下次扫描时会重试。",
   "home.scanStartFailed": "无法开始扫描",
   "home.scanAlreadyRunning": "扫描已在进行中",
 
@@ -223,6 +237,10 @@ export const zhCN: Record<TranslationKey, string> = {
   // media detail
   "media.notFound": "未找到文件。",
   "media.openExternal": "用外部程序打开",
+  "media.openExternalFailed": "无法在外部应用中打开",
+  "fileMenu.open": "打开",
+  "fileMenu.inspect": "打开详情（不播放）",
+  "fileMenu.some": "部分",
   "media.openFolder": "打开所在文件夹",
   "media.copyFilePath": "复制文件路径",
   "media.filePathCopied": "已复制文件路径",
@@ -256,6 +274,7 @@ export const zhCN: Record<TranslationKey, string> = {
   "shortcuts.openFocused": "打开选中项",
   "shortcuts.inspectFocused": "打开选中项的详情（不播放）",
   "shortcuts.watchLater": "切换稍后观看",
+  "shortcuts.fileMenu": "打开文件菜单",
   "shortcuts.selectAll": "全选已加载项",
   "shortcuts.bulkTags": "编辑选中项的标签",
   "shortcuts.help": "本帮助",
@@ -294,6 +313,12 @@ export const zhCN: Record<TranslationKey, string> = {
   "media.currentMainThumb": "当前主缩略图：",
 
   // player controls
+  "player.subtitles": "字幕",
+  "player.subtitleAuto": "匹配音轨语言",
+  "player.subtitleOff": "关闭",
+  "player.subtitleLoading": "正在加载字幕…",
+  "player.subtitleUnavailable": "无法加载此字幕轨。",
+  "player.subtitleTrackNumber": "字幕轨 {number}",
   "player.play": "播放",
   "player.playKey": "播放 (Space)",
   "player.pauseKey": "暂停 (Space)",
@@ -303,6 +328,10 @@ export const zhCN: Record<TranslationKey, string> = {
   "player.unmute": "取消静音 (M)",
   "player.fullscreen": "全屏 (F)",
   "player.volume": "音量",
+  "player.audioTrack": "音轨",
+  "player.audioTrackNumber": "音轨 {number}",
+  "player.audioTrackDefault": "默认",
+  "player.audioTrackUnavailable": "无法播放此音轨，已恢复上一音轨。",
   "player.seek": "进度",
   "player.playFailed": "无法在内置播放器中播放。",
   "player.openExternal": "用外部播放器打开",
@@ -532,7 +561,7 @@ export const zhCN: Record<TranslationKey, string> = {
   "discover.inFolder": "正在从“{path}”中挑选",
   "discover.empty": "没有可推荐的媒体。",
   "discover.emptyHint": "执行“扫描”导入视频和图片后，这里会随机推荐。",
-  "discover.sceneHint": "悬停放大 · 点击从该时间点播放",
+  "discover.sceneHint": "点击场景即可跳转",
   "discover.moreScenes": "+{count}",
 
   // 播放历史
@@ -552,11 +581,30 @@ export const zhCN: Record<TranslationKey, string> = {
   "duplicates.title": "重复文件",
   "duplicates.empty": "未找到重复文件。",
   "duplicates.emptyHint": "内容相同（哈希和大小一致）的文件会显示在这里。",
-  "duplicates.summary": "{groups} 组 / {files} 个文件 / 重复 {size}",
+  "duplicates.loadFailed": "无法加载重复文件。请重试。",
+  "duplicates.retry": "重试",
   "duplicates.fileCount": "{count} 个",
   "duplicates.truncated": "组数过多，仅显示前 {max} 组。",
   "duplicates.filter": "仅显示重复文件",
   "duplicates.chip": "重复",
+  "duplicates.groupCount": "{count} 组",
+  "duplicates.reclaimable": "可释放",
+  "duplicates.search": "按文件名或路径筛选",
+  "duplicates.sortLabel": "排序",
+  "duplicates.sort.reclaimable": "可释放大小",
+  "duplicates.sort.size": "文件大小",
+  "duplicates.sort.count": "副本数",
+  "duplicates.sort.added": "最近添加",
+  "duplicates.groupList": "重复组",
+  "duplicates.groupDetail": "组详情",
+  "duplicates.noMatch": "没有符合条件的组。",
+  "duplicates.copies": "副本",
+  "duplicates.diffLegend": "高亮显示与其他副本不同的部分",
+  "duplicates.oldest": "最早",
+  "duplicates.oldestHint": "最先被索引的副本",
+  "duplicates.added": "添加于 {date}",
+  "duplicates.lastViewed": "上次查看 {date}",
+  "duplicates.open": "打开",
 
   // 标签管理界面
   // auto tagging
@@ -980,7 +1028,7 @@ export const zhCN: Record<TranslationKey, string> = {
   "tour.languageTitle": "选择语言",
   "tour.languageBody":
     "选择要使用的语言。接下来的教程也会使用该语言，之后也可以在设置中更改",
-  "tour.welcomeTitle": "欢迎使用 Meguri",
+  "tour.welcomeTitle": "欢迎使用 {app}",
   "tour.welcomeBody": "我来带你快速了解一下。随时按 Esc 可以跳过",
   "tour.addWorkspaceTitle": "添加文件夹",
   "tour.addWorkspaceBody":

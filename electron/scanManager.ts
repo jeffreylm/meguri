@@ -1,14 +1,14 @@
 // Scan orchestration: which workspaces are being scanned, how to abort them,
-// and the renderer events a scan reports. main.ts owns one instance and hands
+// and the renderer events a scan reports. app.ts owns one instance and hands
 // it to the IPC layer; nothing else keeps scan state.
 //
-// Lives beside main.ts rather than under core/: it drives core's pipeline
+// Lives beside app.ts rather than under core/: it drives core's pipeline
 // (jobs.ts) but also knows the renderer event channels, which core does not.
 import type { Core } from "./core/index.js";
 import { runScan } from "./core/jobs.js";
 import log from "./core/logger.js";
 import * as q from "./core/queries.js";
-import { emptyScanStats } from "./core/scan.js";
+import { emptyScanStats, ScanRootUnreadableError } from "./core/scan.js";
 import type { QueryWorkerClient } from "./core/queryWorkerClient.js";
 import type { DeriveAutoTags } from "./core/autoTagDeriver.js";
 import type { Workspaces } from "./core/workspaces.js";
@@ -40,6 +40,10 @@ export class ScanManager {
   private readonly controllers = new Map<string, AbortController>();
   // Completion promises for in-progress scans, keyed by workspace ID.
   private readonly promises = new Map<string, Promise<void>>();
+  // Workspaces whose last scan could not read their folder. Kept for the
+  // renderer to ask about: the startup scan can fail before it listens for
+  // scan:done, and that event would be lost (#313).
+  private readonly unreadable = new Set<string>();
   private seq = 1;
 
   constructor(private readonly deps: ScanManagerDeps) {}
@@ -62,6 +66,11 @@ export class ScanManager {
     const core = ws.active();
     if (!core) return "";
     return this.scanCore(core, ws.activeId, opts);
+  }
+
+  /** Workspaces whose last scan could not read their folder. */
+  unreadableWorkspaces(): string[] {
+    return [...this.unreadable];
   }
 
   /** Abort one workspace's scan and wait for it to settle. */
@@ -101,12 +110,17 @@ export class ScanManager {
               });
             else if (e.type === "thumbDone")
               emit("thumb:done", { id: e.id, workspaceId: wsId });
-            else if (e.type === "done")
+            else if (e.type === "done") {
+              // Finished, so the folder was read: whatever happened before
+              // is over. A canceled scan may not have got that far.
+              if (wsId && !e.aborted) this.unreadable.delete(wsId);
               emit("scan:done", {
                 jobId: e.jobId,
                 stats: e.stats,
                 aborted: e.aborted,
+                workspaceId: wsId ?? undefined,
               });
+            }
           },
           {
             rebuild: opts.rebuild,
@@ -119,16 +133,30 @@ export class ScanManager {
         );
       } catch (err) {
         log.error("scan failed", err);
-        emit("scan:done", { jobId, stats: emptyScanStats(), error: true });
+        if (wsId) {
+          if (err instanceof ScanRootUnreadableError) this.unreadable.add(wsId);
+          else this.unreadable.delete(wsId);
+        }
+        emit("scan:done", {
+          jobId,
+          stats: emptyScanStats(),
+          error: true,
+          errorReason:
+            err instanceof ScanRootUnreadableError
+              ? "root-unreadable"
+              : undefined,
+          workspaceId: wsId ?? undefined,
+        });
       } finally {
         if (wsId) {
           this.scanning.delete(wsId);
           this.controllers.delete(wsId);
           this.promises.delete(wsId);
         }
-        // The scan's auto-tagging and its first hashes (migrateMetaKey) change
-        // tags in the library every workspace shares: the others' keyword
-        // indexes follow here, once a scan.
+        // The scan's auto-tagging, its first hashes (migrateMetaKey) and its
+        // changed files' metadata (copyMetaKey) change tags in the library
+        // every workspace shares: the others' keyword indexes follow here,
+        // once a scan.
         this.deps.ws.syncTagIndexes();
         // Scans can change duplicate group membership; clear derived query caches.
         // Runs after the bookkeeping above so a failure here can never leave the

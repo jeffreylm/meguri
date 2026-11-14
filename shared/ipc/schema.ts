@@ -425,6 +425,10 @@ export const LibraryMergeEventSchema = z.discriminatedUnion("state", [
 ]);
 export type LibraryMergeEvent = z.infer<typeof LibraryMergeEventSchema>;
 
+/** What went wrong reading config.json at startup (see appConfig.ts). */
+export const ConfigProblemSchema = z.enum(["moved-aside", "unreadable"]);
+export type ConfigProblem = z.infer<typeof ConfigProblemSchema>;
+
 export const AppStatusSchema = z.object({
   root: z.string().nullable(),
   ready: z.boolean(),
@@ -443,6 +447,10 @@ export const AppStatusSchema = z.object({
   /** Set when the library was found damaged at startup and restored from
    *  its backup copy: when that copy was taken (Unix seconds). */
   libraryRestoredFrom: z.number().optional(),
+  /** Set when config.json could not be used at startup: "moved-aside" when it
+   *  could not be parsed and was renamed to config.json.corrupt-<time>,
+   *  "unreadable" when it could not be read and is not written over. */
+  configProblem: ConfigProblemSchema.optional(),
 });
 export type AppStatus = z.infer<typeof AppStatusSchema>;
 
@@ -512,9 +520,17 @@ export const ScanDoneSchema = z.object({
     moved: z.number(),
     deleted: z.number(),
     unchanged: z.number(),
+    /** Folders and files skipped because they could not be read. */
+    skipped: z.number(),
   }),
   aborted: z.boolean().optional(),
   error: z.boolean().optional(),
+  /** Why the scan failed, when it is a known case: "root-unreadable" when
+   *  the workspace's folder could not be read (an unplugged drive, a share
+   *  that is down). */
+  errorReason: z.enum(["root-unreadable"]).optional(),
+  /** The workspace scanned (absent for a scan not tied to one). */
+  workspaceId: z.string().optional(),
 });
 export type ScanDone = z.infer<typeof ScanDoneSchema>;
 
@@ -535,7 +551,8 @@ export const UpdateInfoSchema = z.object({
   available: z.boolean(),
   /**
    * Where the "View" action should send the user: the GitHub release page, or
-   * the MS Store product deep link (`ms-windows-store://`) on Store installs.
+   * the MS Store product deep link (`ms-windows-store://`) on Store installs
+   * of an app that has a Store product ID.
    */
   url: z.url(),
   /** Release name/title, when present. */

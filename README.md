@@ -23,7 +23,7 @@ videos and images with thumbnails. It recursively scans any folder you point it 
 generates thumbnails, tags, and metadata, and lets you browse the collection in
 a native window.
 
-The name **Meguri** comes from the Japanese word *巡り* — "going around,
+The name **Meguri** comes from the Japanese word _巡り_ — "going around,
 coming back around" — with the sentiment of wandering back through your
 memories and rediscovering them.
 
@@ -52,8 +52,9 @@ rediscovering, and enjoying what you already have.
 of it sinks out of sight. Discovery deals you a random hand from your library
 and shows each pick full-screen — the video front and center over a blurred
 backdrop, with a rail of scene previews to jump from — so every visit surfaces
-something worth rediscovering. One click reshuffles the deck; one more starts
-playback.
+something worth rediscovering. Play or pause the clip in Discovery, or click a
+scene thumbnail to jump to that moment while keeping the current view and
+playback state. **Open** takes you to the file details.
 
 ![Discovery demo — immersive random picks with a scene-preview rail and reshuffle](./docs/assets/discover.gif)
 
@@ -85,9 +86,9 @@ Prebuilt packages for all platforms are also available on
 
 | Platform | Packages                                      |
 | -------- | --------------------------------------------- |
-| Linux    | AppImage / deb                                |
+| Linux    | AppImage / deb (glibc 2.35 or later)          |
 | Windows  | Microsoft Store / Installer (NSIS) / portable |
-| macOS    | dmg / zip (Apple silicon)                     |
+| macOS    | dmg / zip (Apple silicon, macOS 13 or later)  |
 
 ### macOS: first launch
 
@@ -209,13 +210,14 @@ Or run from source — see [Setup and Launch](#setup-and-launch).
   window: drop a file on it to queue it in Watch Later, double-click it for
   Discovery, or put it away from its menu
 - 🎨 **Themes** — base16-based multi-theme switching (gruvbox / solarized /
-  monokai / nord / dracula, etc.)
+  monokai / nord / catppuccin, etc.)
 - 🖌️ **Custom CSS** — layer your own `custom.css` over the theme to recolor or
   restyle the UI, or keep several stylesheets as CSS themes and pick one next
   to the built-in themes; saved changes apply instantly
 - 🔎 **Content zoom** — Ctrl + wheel (and Ctrl +/-/0)
-- 🔒 **Privacy-first** — no telemetry, no analytics, no external network
-  communication ([see below](#privacy))
+- 🔒 **Privacy-first** — no telemetry, no analytics, and your data never
+  leaves your machine; the only external request is an optional update check
+  ([see below](#privacy))
 
 ## Screenshots
 
@@ -325,7 +327,7 @@ the seed step with `MEGURI_SEED_SAMPLE_CONFIG=force`.
 
 ```bash
 npm run build      # build main / preload / renderer
-npm run dist       # generate AppImage / deb (electron-builder)
+npm run dist       # this platform's packages (electron-builder; see Download)
 ```
 
 ### Type checking
@@ -357,28 +359,50 @@ To watch the app while debugging, run on the current display instead:
 npm run test:e2e
 ```
 
-CI installs Playwright browser dependencies with `npm run test:e2e:install`
-(Ubuntu/Debian only). On other distros (e.g. Arch), skip `--with-deps` if you
-already run Electron apps locally.
+The tests launch the Electron app, not Playwright's browsers, so CI installs no
+Playwright browsers. On a fresh Ubuntu/Debian machine that lacks the libraries
+Electron needs, `npm run test:e2e:install` pulls them in.
 
 ## Basic Usage
 
-| Action     | How                                                                                                                |
-| ---------- | ------------------------------------------------------------------------------------------------------------------ |
-| Scan       | Runs automatically at startup. Re-scan via the header "Scan" (incremental, move tracking)                          |
+| Action     | How                                                                                                                  |
+| ---------- | -------------------------------------------------------------------------------------------------------------------- |
+| Scan       | Runs automatically at startup. Re-scan via the header "Scan" (incremental, move tracking)                            |
 | Play       | Click a thumbnail → play in the detail view (audio plays in the bottom bar). When unsupported, use "Open externally" |
-| Tag / Rate | Assign in the detail view (tags have autocomplete). Click a tag in the grid to search                              |
-| Search     | Filter and sort by full text, kind, and rating in the top bar (conditions shown as badges, individually removable) |
-| Theme      | Switch from Theme at the top-right of the header                                                                   |
-| Zoom       | Ctrl + wheel, Ctrl +/-, Ctrl + 0 to reset                                                                          |
+| Tag / Rate | Assign in the detail view (tags have autocomplete). Click a tag in the grid to search                                |
+| Search     | Filter and sort by full text, kind, and rating in the top bar (conditions shown as badges, individually removable)   |
+| Theme      | Switch from Theme at the top-right of the header                                                                     |
+| Zoom       | Ctrl + wheel, Ctrl +/-, Ctrl + 0 to reset                                                                            |
 
 To drag a file to another app, hover over it in grid or list view and drag
 the arrow beside its selection checkbox. Drag from a selected file's arrow
 to carry the whole selection.
 
 ProRes clips play in Meguri through a local H.264 preview at up to
-1920 × 1080. The original clip is still used when you drag it into an editor
-or open it externally.
+1920 × 1080. For ProRes clips tagged as PQ or HLG HDR, the player uses the
+available FFmpeg color filters to fit the highlights and colors into an SDR
+preview. SDR clips use the regular preview. Dragging a clip into an editor or
+opening it externally uses the original file.
+
+The built-in player converts Dolby Digital (AC-3) or Dolby Digital Plus
+(E-AC-3) audio to AAC when needed for playback. This includes MP4, M4V, and MOV
+clips with a default Dolby audio track, as well as repackaged containers such
+as MKV. The Dolby conversion copies the original picture stream and preserves
+the surround channel count. The original file stays untouched.
+
+For ProRes, MKV, AVI, WMV, FLV, or TS clips with multiple audio tracks, use
+**Audio track** beside the volume control in the full player. **Default**
+uses the usual playback selection when you open a clip. Switching tracks
+keeps the playhead and play or pause state.
+
+### Embedded subtitles
+
+Use **Subtitle track** in the clip player or fullscreen to choose an embedded
+text track or turn captions off. Meguri remembers the choice per clip. When the
+audio language is known, **Match audio language** can choose the corresponding
+subtitle. Meguri loads text near the playhead as you watch or seek.
+
+Supported tracks include SRT, ASS/SSA as plain text, WebVTT, and MP4 timed text.
 
 ## Custom CSS
 
@@ -505,11 +529,19 @@ Meguri is **privacy-first**: everything stays on your machine.
 - **No telemetry, no analytics.** Meguri contains no usage-tracking mechanism
   such as Google Analytics, crash reporters, or any other third-party
   measurement SDK.
-- **No external network communication.** The app never sends your data —
-  file names, paths, tags, search queries, playback history, or anything
-  else — to any external server. The only network activity is a local HTTP
-  media server bound to `127.0.0.1`, used solely to stream your own files to
-  the app window.
+- **Your data never leaves your machine.** The app never sends file names,
+  paths, tags, search queries, playback history, or anything else about your
+  library to any external server. Your files are streamed to the app window
+  by a local HTTP media server bound to `127.0.0.1`.
+- **One external request: the update check.** To tell you about new
+  versions, Meguri asks GitHub's API for the latest release
+  (`api.github.com/repos/zabuton-app/meguri/releases/latest`). The request
+  carries nothing but the app name and version in its `User-Agent`, though
+  GitHub sees your IP address, as with any request. It runs shortly after
+  startup, at most once every six hours, and when you click **Check now** in
+  the settings or **Check for Updates…** in the tray menu. To turn the
+  automatic check off, open **Settings → App → Updates** and turn off
+  **Check automatically on startup**.
 - **Fully offline.** All features work without an internet connection.
 
 ## Architecture
@@ -517,7 +549,8 @@ Meguri is **privacy-first**: everything stays on your machine.
 ```text
 Meguri/
 ├─ electron/                # main process (Node/TypeScript)
-│  ├─ main.ts               # startup, windows, tray
+│  ├─ main.ts               # entry point: calls startApp() with Meguri's identity
+│  ├─ app.ts                # startup, windows, tray
 │  ├─ scanManager.ts        # scan orchestration (start / abort, renderer events)
 │  ├─ ipc/                  # IPC handlers, one module per domain
 │  ├─ preload.ts            # contextBridge (window.api)
@@ -533,6 +566,7 @@ Meguri/
 │  ├─ ipc/                  # typed client for window.api
 │  ├─ components/  routes/  themes/  hooks/
 ├─ electron.vite.config.ts  # unified build of main/preload/renderer
+├─ electron.vite.shared.ts  # the build settings it uses
 └─ index.html
 ```
 
@@ -549,13 +583,17 @@ welcome!** 🎉
 You don't need to write code to help. Ideas, feature requests, bug reports,
 UI/UX feedback, translations, and documentation improvements are all just as
 appreciated — if Meguri could do something better for your library, please
-[open an issue](https://github.com/zabuton-app/meguri/issues) and tell us
-about it.
+tell us about it: share ideas and feedback in
+[Discussions](https://github.com/zabuton-app/meguri/discussions), and report
+bugs as [issues](https://github.com/zabuton-app/meguri/issues).
 
 ## Contributing
 
 Issues and pull requests are welcome. Before opening a larger change, please
-start with an issue so the scope and direction can be discussed first.
+start a conversation — an idea in
+[Discussions](https://github.com/zabuton-app/meguri/discussions/categories/ideas)
+or an issue — so the scope and direction can be agreed first. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow.
 
 For development:
 
@@ -570,6 +608,8 @@ Before submitting a pull request, run:
 npm run typecheck
 npm test
 npm run test:e2e:headless
+npm run lint
+npm run format:check
 ```
 
 Keep changes focused, avoid unrelated refactors, and include tests when a change
@@ -585,7 +625,8 @@ A few conventions to follow:
   (e.g. `feat/#9-hover-preview`), branched from `main`.
 - **Keep all locales in sync**: when adding or changing UI strings, update every
   locale in [src/i18n/locales/](src/i18n/locales/) (ja / en / es / fr / ko /
-  zh-CN). `ja.ts` is the source of truth for translation keys.
+  zh-CN). `ja.ts` is the source of truth for translation keys. Write `{app}`
+  for the app's name instead of "Meguri"; it is filled in at run time.
 - **Read the developer docs first**: [docs/README.md](docs/README.md) is the
   index of the architecture reference — worth a look before touching scanning,
   the database, IPC, or the media server.

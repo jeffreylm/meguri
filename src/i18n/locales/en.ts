@@ -2,13 +2,11 @@
 import type { TranslationKey } from "./ja";
 
 export const en: Record<TranslationKey, string> = {
-  // App name: the single-kanji display name (guideline 00), identical in every locale.
-  "app.name": "巡",
-
   // common
   "common.close": "Close",
   "common.cancel": "Cancel",
   "common.ok": "OK",
+  "common.actionFailed": "Could not complete the action",
 
   // kind
   "kind.video": "Video",
@@ -110,7 +108,7 @@ export const en: Record<TranslationKey, string> = {
   "libraryMerge.progress": "{done} / {total} workspaces",
   "libraryMerge.failed": "Some workspaces could not be moved",
   "libraryMerge.failedDesc":
-    "{list}\nThey keep working as before. Meguri tries again at the next launch.",
+    "{list}\nThey keep working as before. {app} tries again at the next launch.",
   "libraryMerge.failedItem": "{name}: {reason}",
   "libraryMerge.reason.diskFull":
     "The disk is full. Free some space, then try again.",
@@ -120,9 +118,17 @@ export const en: Record<TranslationKey, string> = {
   "libraryMerge.reason.open": "Its database could not be opened.",
   "libraryMerge.retry": "Try again",
   "library.restored":
-    "Your library was damaged, so Meguri restored the copy from {date}",
+    "Your library was damaged, so {app} restored the copy from {date}",
   "library.restoredDesc":
     "Favorites, ratings, tags and other changes made after that are lost. The damaged file is kept in the same folder as the library.",
+  "config.movedAside":
+    "Your settings file (config.json) was damaged, so {app} started with the default settings",
+  "config.movedAsideDesc":
+    "Your workspaces and collections are kept in the damaged file, saved as config.json.corrupt-<date> in the same folder.",
+  "config.unreadable":
+    "{app} could not read your settings file (config.json) and is running with the default settings",
+  "config.unreadableDesc":
+    "The file has not been changed. Make sure no other app is using it, then restart {app}.",
   "settings.about": "About",
   "about.version": "{name} version {version}",
   "about.appLicense": "{name} is released under the MIT License.",
@@ -160,6 +166,16 @@ export const en: Record<TranslationKey, string> = {
   "home.scanCanceled": "Scan canceled",
   "home.escCloseHint": "Press Esc again to close the window",
   "home.scanError": "An error occurred during the scan",
+  "home.scanRootUnreadable": "The workspace folder could not be reached",
+  "home.scanRootUnreadableNamed": 'The folder of "{name}" could not be reached',
+  "home.scanRootUnreadableDesc":
+    "Check that the folder has not been moved or deleted, that its drive or network share is connected, and that {app} can read it, then scan again. The file list has been left as it was.",
+  "home.scanSkipped":
+    "Skipped {count} folder(s) or file(s) that could not be read",
+  "home.scanSkippedNamed":
+    'Skipped {count} folder(s) or file(s) in "{name}" that could not be read',
+  "home.scanSkippedDesc":
+    "{app} may not have permission to read them, or another program may be using them. That part of the file list has been left as it was, and the next scan will try again.",
   "home.scanStartFailed": "Could not start scan",
   "home.scanAlreadyRunning": "A scan is already in progress",
 
@@ -233,6 +249,10 @@ export const en: Record<TranslationKey, string> = {
   // media detail
   "media.notFound": "File not found.",
   "media.openExternal": "Open externally",
+  "media.openExternalFailed": "Could not open externally",
+  "fileMenu.open": "Open",
+  "fileMenu.inspect": "Open details without playing",
+  "fileMenu.some": "Some",
   "media.openFolder": "Open containing folder",
   "media.copyFilePath": "Copy File Path",
   "media.filePathCopied": "File path copied",
@@ -267,6 +287,7 @@ export const en: Record<TranslationKey, string> = {
   "shortcuts.openFocused": "Open focused item",
   "shortcuts.inspectFocused": "Open focused item's details (no playback)",
   "shortcuts.watchLater": "Toggle Watch Later",
+  "shortcuts.fileMenu": "Open the file menu",
   "shortcuts.selectAll": "Select everything loaded",
   "shortcuts.bulkTags": "Edit tags on the selection",
   "shortcuts.help": "This help",
@@ -305,6 +326,12 @@ export const en: Record<TranslationKey, string> = {
   "media.currentMainThumb": "Current main thumbnail:",
 
   // player controls
+  "player.subtitles": "Subtitle track",
+  "player.subtitleAuto": "Match audio language",
+  "player.subtitleOff": "Off",
+  "player.subtitleLoading": "Loading subtitles…",
+  "player.subtitleUnavailable": "This subtitle track could not be loaded.",
+  "player.subtitleTrackNumber": "Track {number}",
   "player.play": "Play",
   "player.playKey": "Play (Space)",
   "player.pauseKey": "Pause (Space)",
@@ -314,6 +341,11 @@ export const en: Record<TranslationKey, string> = {
   "player.unmute": "Unmute (M)",
   "player.fullscreen": "Fullscreen (F)",
   "player.volume": "Volume",
+  "player.audioTrack": "Audio track",
+  "player.audioTrackNumber": "Track {number}",
+  "player.audioTrackDefault": "Default",
+  "player.audioTrackUnavailable":
+    "This audio track could not play. Restored the previous track.",
   "player.seek": "Seek",
   "player.playFailed": "Could not play in the built-in player.",
   "player.openExternal": "Open in external player",
@@ -552,7 +584,7 @@ export const en: Record<TranslationKey, string> = {
   "discover.empty": "No media to recommend.",
   "discover.emptyHint":
     'Run "Scan" to import videos and images, and they\'ll be recommended here at random.',
-  "discover.sceneHint": "Hover to enlarge · click to play from that point",
+  "discover.sceneHint": "Click a scene to jump to it",
   "discover.moreScenes": "+{count}",
 
   // Play history
@@ -573,11 +605,31 @@ export const en: Record<TranslationKey, string> = {
   "duplicates.empty": "No duplicate files found.",
   "duplicates.emptyHint":
     "Files with identical content (matching hash and size) will appear here.",
-  "duplicates.summary": "{groups} groups / {files} files / {size} duplicated",
+  "duplicates.loadFailed": "Could not load duplicate files. Please try again.",
+  "duplicates.retry": "Try again",
   "duplicates.fileCount": "{count} files",
   "duplicates.truncated": "Too many groups; showing only the top {max}.",
   "duplicates.filter": "Show only duplicate files",
   "duplicates.chip": "Duplicates",
+  "duplicates.groupCount": "{count} groups",
+  "duplicates.reclaimable": "Reclaimable",
+  "duplicates.search": "Filter by file name or path",
+  "duplicates.sortLabel": "Sort by",
+  "duplicates.sort.reclaimable": "Reclaimable size",
+  "duplicates.sort.size": "File size",
+  "duplicates.sort.count": "Copy count",
+  "duplicates.sort.added": "Recently added",
+  "duplicates.groupList": "Duplicate groups",
+  "duplicates.groupDetail": "Group details",
+  "duplicates.noMatch": "No groups match the filter.",
+  "duplicates.copies": "Copies",
+  "duplicates.diffLegend":
+    "Highlighted: where this copy differs from the others",
+  "duplicates.oldest": "Oldest",
+  "duplicates.oldestHint": "The copy that was indexed first",
+  "duplicates.added": "Added {date}",
+  "duplicates.lastViewed": "Last viewed {date}",
+  "duplicates.open": "Open",
 
   // Tag management screen
   // auto tagging
@@ -854,7 +906,7 @@ export const en: Record<TranslationKey, string> = {
   "workspace.alreadyAddedToast": "This folder is already a workspace",
   "drop.overlayTitle": "Drop folders to add them as workspaces",
   "drop.foldersOnly":
-    "Meguri indexes folders, not individual files. Drop a folder instead.",
+    "{app} indexes folders, not individual files. Drop a folder instead.",
   "drop.addTitle": "Add workspace",
   "drop.addConfirm": 'Add "{name}" as a workspace and scan it?',
   "drop.addAction": "Add",
@@ -1021,7 +1073,7 @@ export const en: Record<TranslationKey, string> = {
   "tour.languageTitle": "Choose your language",
   "tour.languageBody":
     "Pick the language to use. The rest of this tour follows it, and you can change it later in Settings.",
-  "tour.welcomeTitle": "Welcome to Meguri",
+  "tour.welcomeTitle": "Welcome to {app}",
   "tour.welcomeBody": "Let me show you around. Press Esc to skip at any time.",
   "tour.addWorkspaceTitle": "Add a folder",
   "tour.addWorkspaceBody":

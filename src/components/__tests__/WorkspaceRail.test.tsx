@@ -1,3 +1,6 @@
+// @vitest-environment jsdom
+// happy-dom builds its own DataTransfer instead of using the plain object passed
+// to fireEvent, so dropEffect writes are not seen.
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { WorkspaceRail } from "@/components/WorkspaceRail";
@@ -42,8 +45,8 @@ vi.mock("@/ipc/client", () => ({
       mocks.collectionSetMembership(...args),
   },
   events: {
-    onWorkspaceChanged: vi.fn().mockResolvedValue(() => {}),
-    onScanDone: vi.fn().mockResolvedValue(() => {}),
+    onWorkspaceChanged: vi.fn().mockReturnValue(() => {}),
+    onScanDone: vi.fn().mockReturnValue(() => {}),
   },
   ALL_ID: "__all__",
   COLLECTION_ID_PREFIX: "collection:",

@@ -2,13 +2,11 @@
 import type { TranslationKey } from "./ja";
 
 export const ko: Record<TranslationKey, string> = {
-  // App name: the single-kanji display name (guideline 00), identical in every locale.
-  "app.name": "巡",
-
   // common
   "common.close": "닫기",
   "common.cancel": "취소",
   "common.ok": "확인",
+  "common.actionFailed": "작업에 실패했습니다",
 
   // kind
   "kind.video": "동영상",
@@ -120,6 +118,14 @@ export const ko: Record<TranslationKey, string> = {
     "라이브러리가 손상되어 {date} 시점의 사본으로 복원했습니다",
   "library.restoredDesc":
     "그 이후에 바꾼 즐겨찾기, 평점, 태그 등은 사라졌습니다. 손상된 파일은 라이브러리와 같은 폴더에 남겨 두었습니다.",
+  "config.movedAside":
+    "설정 파일(config.json)이 손상되어 기본 설정으로 시작했습니다",
+  "config.movedAsideDesc":
+    "등록한 워크스페이스와 컬렉션은 손상된 파일에 남아 있으며, 같은 폴더에 config.json.corrupt-<날짜>로 저장해 두었습니다.",
+  "config.unreadable":
+    "설정 파일(config.json)을 읽을 수 없어 기본 설정으로 실행 중입니다",
+  "config.unreadableDesc":
+    "파일은 변경하지 않았습니다. 다른 앱이 사용 중인지 확인한 뒤 {app}를 다시 시작하세요.",
   "settings.about": "정보",
   "about.version": "{name} 버전 {version}",
   "about.appLicense": "{name}는 MIT License로 공개되어 있습니다.",
@@ -157,6 +163,15 @@ export const ko: Record<TranslationKey, string> = {
   "home.scanCanceled": "스캔을 취소했습니다",
   "home.escCloseHint": "Esc 키를 한 번 더 누르면 창이 닫힙니다",
   "home.scanError": "스캔 중 오류가 발생했습니다",
+  "home.scanRootUnreadable": "워크스페이스 폴더에 접근할 수 없습니다",
+  "home.scanRootUnreadableNamed": '"{name}" 폴더에 접근할 수 없습니다',
+  "home.scanRootUnreadableDesc":
+    "폴더가 이동되거나 삭제되지 않았는지, 드라이브나 네트워크 공유가 연결되어 있는지, {app}가 읽을 수 있는지 확인한 뒤 다시 스캔하세요. 파일 목록은 그대로 두었습니다.",
+  "home.scanSkipped": "읽을 수 없는 폴더나 파일 {count}개를 건너뛰었습니다",
+  "home.scanSkippedNamed":
+    '"{name}"에서 읽을 수 없는 폴더나 파일 {count}개를 건너뛰었습니다',
+  "home.scanSkippedDesc":
+    "{app}에 읽기 권한이 없거나 다른 프로그램이 사용 중일 수 있습니다. 파일 목록의 해당 부분은 그대로 두었으며, 다음 스캔에서 다시 시도합니다.",
   "home.scanStartFailed": "스캔을 시작할 수 없습니다",
   "home.scanAlreadyRunning": "스캔이 이미 실행 중입니다",
 
@@ -230,6 +245,10 @@ export const ko: Record<TranslationKey, string> = {
   // media detail
   "media.notFound": "파일을 찾을 수 없습니다.",
   "media.openExternal": "외부에서 열기",
+  "media.openExternalFailed": "외부 앱에서 열 수 없습니다",
+  "fileMenu.open": "열기",
+  "fileMenu.inspect": "재생하지 않고 상세 열기",
+  "fileMenu.some": "일부",
   "media.openFolder": "폴더 열기",
   "media.copyFilePath": "파일 경로 복사",
   "media.filePathCopied": "파일 경로를 복사했습니다",
@@ -264,6 +283,7 @@ export const ko: Record<TranslationKey, string> = {
   "shortcuts.openFocused": "선택한 항목 열기",
   "shortcuts.inspectFocused": "선택한 항목의 상세 열기(재생 안 함)",
   "shortcuts.watchLater": "나중에 보기 전환",
+  "shortcuts.fileMenu": "파일 메뉴 열기",
   "shortcuts.selectAll": "불러온 항목 모두 선택",
   "shortcuts.bulkTags": "선택 항목의 태그 편집",
   "shortcuts.help": "이 도움말",
@@ -302,6 +322,12 @@ export const ko: Record<TranslationKey, string> = {
   "media.currentMainThumb": "현재 메인 썸네일:",
 
   // player controls
+  "player.subtitles": "자막",
+  "player.subtitleAuto": "오디오 언어와 일치",
+  "player.subtitleOff": "끄기",
+  "player.subtitleLoading": "자막 불러오는 중…",
+  "player.subtitleUnavailable": "이 자막 트랙을 불러올 수 없습니다.",
+  "player.subtitleTrackNumber": "트랙 {number}",
   "player.play": "재생",
   "player.playKey": "재생 (Space)",
   "player.pauseKey": "일시정지 (Space)",
@@ -311,6 +337,11 @@ export const ko: Record<TranslationKey, string> = {
   "player.unmute": "음소거 해제 (M)",
   "player.fullscreen": "전체화면 (F)",
   "player.volume": "음량",
+  "player.audioTrack": "오디오 트랙",
+  "player.audioTrackNumber": "트랙 {number}",
+  "player.audioTrackDefault": "기본값",
+  "player.audioTrackUnavailable":
+    "이 오디오 트랙을 재생할 수 없어 이전 트랙으로 돌아갔습니다.",
   "player.seek": "탐색",
   "player.playFailed": "내장 플레이어로 재생할 수 없습니다.",
   "player.openExternal": "외부 플레이어로 열기",
@@ -550,7 +581,7 @@ export const ko: Record<TranslationKey, string> = {
   "discover.empty": "추천할 미디어가 없습니다.",
   "discover.emptyHint":
     "「스캔」으로 동영상과 이미지를 가져오면 여기에서 무작위로 추천됩니다.",
-  "discover.sceneHint": "마우스를 올리면 확대 · 클릭하면 해당 지점부터 재생",
+  "discover.sceneHint": "장면을 클릭하면 해당 위치로 이동합니다",
   "discover.moreScenes": "+{count}",
 
   // 재생 기록
@@ -571,11 +602,31 @@ export const ko: Record<TranslationKey, string> = {
   "duplicates.empty": "중복 파일을 찾을 수 없습니다.",
   "duplicates.emptyHint":
     "내용이 동일한(해시와 크기가 일치하는) 파일이 여러 개 있으면 여기에 표시됩니다.",
-  "duplicates.summary": "{groups}개 그룹 / {files}개 파일 / 중복 {size}",
+  "duplicates.loadFailed":
+    "중복 파일을 불러오지 못했습니다. 다시 시도해 주세요.",
+  "duplicates.retry": "다시 시도",
   "duplicates.fileCount": "{count}개",
   "duplicates.truncated": "그룹이 많아 상위 {max}개만 표시합니다.",
   "duplicates.filter": "중복 파일만 표시",
   "duplicates.chip": "중복",
+  "duplicates.groupCount": "{count}개 그룹",
+  "duplicates.reclaimable": "확보 가능",
+  "duplicates.search": "파일 이름·경로로 필터",
+  "duplicates.sortLabel": "정렬",
+  "duplicates.sort.reclaimable": "확보 가능 용량",
+  "duplicates.sort.size": "파일 크기",
+  "duplicates.sort.count": "사본 수",
+  "duplicates.sort.added": "최근 추가",
+  "duplicates.groupList": "중복 그룹",
+  "duplicates.groupDetail": "그룹 상세",
+  "duplicates.noMatch": "조건에 맞는 그룹이 없습니다.",
+  "duplicates.copies": "사본",
+  "duplicates.diffLegend": "다른 사본과 다른 부분을 강조 표시합니다",
+  "duplicates.oldest": "가장 오래됨",
+  "duplicates.oldestHint": "가장 먼저 색인된 사본",
+  "duplicates.added": "추가 {date}",
+  "duplicates.lastViewed": "마지막 열람 {date}",
+  "duplicates.open": "열기",
 
   // 태그 관리 화면
   // auto tagging
@@ -1024,7 +1075,7 @@ export const ko: Record<TranslationKey, string> = {
   "tour.languageTitle": "언어를 골라 줘",
   "tour.languageBody":
     "사용할 언어를 골라 줘. 이 안내도 그 언어로 진행할게. 나중에 설정에서 바꿀 수도 있어",
-  "tour.welcomeTitle": "Meguri에 오신 걸 환영해",
+  "tour.welcomeTitle": "{app}에 오신 걸 환영해",
   "tour.welcomeBody":
     "사용법을 간단히 안내할게. Esc를 누르면 언제든 건너뛸 수 있어",
   "tour.addWorkspaceTitle": "폴더 추가",

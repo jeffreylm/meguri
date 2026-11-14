@@ -94,7 +94,9 @@ CREATE TABLE IF NOT EXISTS files (
 const CORE_DDL = `
 CREATE TABLE IF NOT EXISTS scan_roots (
   id INTEGER PRIMARY KEY, path TEXT NOT NULL UNIQUE, path_hash TEXT NOT NULL,
-  last_scan_at INTEGER, created_at INTEGER NOT NULL
+  last_scan_at INTEGER, created_at INTEGER NOT NULL,
+  -- 1 when the root was a mountpoint at the last scan (see isMountpoint).
+  mountpoint INTEGER
 );
 
 ${FILES_DDL};
@@ -380,6 +382,11 @@ function backfillColumns(db: DB): void {
       "CREATE INDEX IF NOT EXISTS main.idx_file_meta_resume ON file_meta(meta_key) WHERE resume_position IS NOT NULL",
     );
   }
+  // Whether the root was a mountpoint at the last scan: an unmounted one must
+  // not read as an empty folder (#312).
+  if (!hasColumn(db, "scan_roots", "mountpoint")) {
+    db.exec("ALTER TABLE scan_roots ADD COLUMN mountpoint INTEGER");
+  }
   // Filesystem creation time (birthtime), NULL where the filesystem doesn't
   // provide it. The index lives here (not in CORE_DDL) because on pre-existing
   // DBs the column only exists after this ALTER runs.
@@ -469,7 +476,7 @@ function migrateFilesTable(db: DB): void {
 }
 
 /** The tables that hold user-curated metadata under a meta_key. migrateMetaKey
- *  (queries/meta.ts) lists the same tables; keep the two in step. */
+ *  and copyMetaKey (queries/meta.ts) list the same tables; keep them in step. */
 export const META_KEYED_TABLES = [
   "file_meta",
   "meta_tags",

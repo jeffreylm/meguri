@@ -34,6 +34,7 @@ import {
   VIEW_KEY,
 } from "@/routes/Home/utils";
 import { addDays, daySeconds, formatDay } from "@shared/day";
+import { formatDate } from "@/lib/dates";
 
 const mocks = vi.hoisted(() => ({
   appStatus: vi.fn(),
@@ -53,6 +54,12 @@ const mocks = vi.hoisted(() => ({
     vi.fn<(ws: string, path: string) => Promise<unknown>>(),
   folderCopyPath: vi.fn<(ws: string, path: string) => Promise<unknown>>(),
   workspaceSwitch: vi.fn<(id: string) => Promise<unknown>>(),
+  scanUnreadableWorkspaces: vi.fn<() => Promise<string[]>>(),
+}));
+
+// The scan:done listeners Home subscribes, for a test to fire.
+const scanDone = vi.hoisted(() => ({
+  handlers: [] as ((done: unknown) => void)[],
 }));
 
 // Toasts are asserted on the call: no Toaster is mounted in these tests.
@@ -60,6 +67,7 @@ const toasts = vi.hoisted(() => ({
   error: vi.fn(),
   info: vi.fn(),
   success: vi.fn(),
+  warning: vi.fn(),
 }));
 vi.mock("sonner", () => ({
   toast: Object.assign(vi.fn(), toasts),
@@ -78,6 +86,7 @@ vi.mock("@/ipc/client", () => ({
     fileSetRating: (...args: unknown[]) => mocks.fileSetRating(...args),
     fileRecordPlay: (...args: unknown[]) => mocks.fileRecordPlay(...args),
     scanStart: (...args: unknown[]) => mocks.scanStart(...args),
+    scanUnreadableWorkspaces: () => mocks.scanUnreadableWorkspaces(),
     workspaceStats: () => mocks.workspaceStats(),
     foldersList: (ws: string, path: string) => mocks.foldersList(ws, path),
     folderFiles: (ws: string, paths: string[]) => mocks.folderFiles(ws, paths),
@@ -100,10 +109,13 @@ vi.mock("@/ipc/client", () => ({
     collectionRemoveFile: vi.fn().mockResolvedValue(undefined),
   },
   events: {
-    onThumbDone: vi.fn().mockResolvedValue(() => {}),
-    onScanDone: vi.fn().mockResolvedValue(() => {}),
-    onScanProgress: vi.fn().mockResolvedValue(() => {}),
-    onWorkspaceChanged: vi.fn().mockResolvedValue(() => {}),
+    onThumbDone: vi.fn().mockReturnValue(() => {}),
+    onScanDone: (cb: (done: unknown) => void) => {
+      scanDone.handlers.push(cb);
+      return () => {};
+    },
+    onScanProgress: vi.fn().mockReturnValue(() => {}),
+    onWorkspaceChanged: vi.fn().mockReturnValue(() => {}),
   },
   ALL_ID: "__all__",
   COLLECTION_ID_PREFIX: "collection:",
@@ -159,7 +171,131 @@ describe("Home + MediaDetail integration", () => {
     mocks.fileSetRating.mockResolvedValue(undefined);
     mocks.fileRecordPlay.mockResolvedValue(undefined);
     mocks.scanStart.mockResolvedValue(null);
+    mocks.scanUnreadableWorkspaces.mockResolvedValue([]);
     mocks.workspaceStats.mockResolvedValue({ fileCount: 1, lastScanAt: null });
+  });
+
+  const STATS = {
+    inserted: 0,
+    updated: 0,
+    moved: 0,
+    deleted: 0,
+    unchanged: 0,
+    skipped: 0,
+  };
+  const fireScanDone = (done: Record<string, unknown>) => {
+    for (const fire of scanDone.handlers) {
+      fire({ jobId: "job-1", stats: STATS, ...done });
+    }
+  };
+  const renderReady = async () => {
+    scanDone.handlers.length = 0;
+    const { queryClient } = renderWithProviders(<AppRoutes />);
+    await waitFor(() => {
+      expect(queryClient.getQueryData(["workspaces_list"])).toBeTruthy();
+      expect(scanDone.handlers.length).toBeGreaterThan(0);
+    });
+  };
+
+  describe("a workspace folder that could not be read", () => {
+    const fireUnreadable = (workspaceId: string) =>
+      fireScanDone({
+        error: true,
+        errorReason: "root-unreadable",
+        workspaceId,
+      });
+
+    it("names the workspace", async () => {
+      await renderReady();
+      fireUnreadable(WS_ID);
+      await waitFor(() => expect(toasts.error).toHaveBeenCalled());
+      expect(String(toasts.error.mock.calls.at(-1)?.[0])).toBe(
+        'The folder of "Media" could not be reached',
+      );
+    });
+
+    it("tells about a failure from before the view was listening", async () => {
+      mocks.scanUnreadableWorkspaces.mockResolvedValue([WS_ID]);
+      renderWithProviders(<AppRoutes />);
+      await waitFor(() =>
+        expect(toasts.error).toHaveBeenCalledWith(
+          'The folder of "Media" could not be reached',
+          expect.objectContaining({ id: `scan-root-unreadable:${WS_ID}` }),
+        ),
+      );
+    });
+
+    it("keeps one notice per workspace", async () => {
+      await renderReady();
+      fireUnreadable(WS_ID);
+      fireUnreadable("ws-other");
+      await waitFor(() => expect(toasts.error).toHaveBeenCalledTimes(2));
+      const ids = toasts.error.mock.calls.map(
+        (c) => (c[1] as { id: string }).id,
+      );
+      expect(new Set(ids).size).toBe(2);
+    });
+
+    it("says it without a name when the workspace is not known", async () => {
+      await renderReady();
+      fireUnreadable("ws-gone");
+      await waitFor(() => expect(toasts.error).toHaveBeenCalled());
+      expect(String(toasts.error.mock.calls.at(-1)?.[0])).toBe(
+        "The workspace folder could not be reached",
+      );
+    });
+  });
+
+  describe("folders or files a scan could not read", () => {
+    const fireSkipped = (workspaceId: string, skipped: number) =>
+      fireScanDone({ stats: { ...STATS, skipped }, workspaceId });
+    beforeEach(() => {
+      toasts.warning.mockClear();
+      toasts.success.mockClear();
+    });
+
+    it("names the workspace and the count, also for an automatic scan", async () => {
+      await renderReady();
+      fireSkipped(WS_ID, 3);
+      await waitFor(() =>
+        expect(toasts.warning).toHaveBeenCalledWith(
+          'Skipped 3 folder(s) or file(s) in "Media" that could not be read',
+          expect.objectContaining({ id: `scan-skipped:${WS_ID}` }),
+        ),
+      );
+      expect(toasts.success).not.toHaveBeenCalled();
+    });
+
+    it("says it without a name when the workspace is not known", async () => {
+      await renderReady();
+      fireSkipped("ws-gone", 1);
+      await waitFor(() =>
+        expect(toasts.warning).toHaveBeenCalledWith(
+          "Skipped 1 folder(s) or file(s) that could not be read",
+          expect.anything(),
+        ),
+      );
+    });
+
+    it("leaves it to the cancel notice when the scan was aborted", async () => {
+      await renderReady();
+      fireScanDone({
+        stats: { ...STATS, skipped: 2 },
+        aborted: true,
+        workspaceId: WS_ID,
+      });
+      await waitFor(() => expect(toasts.info).toHaveBeenCalled());
+      await new Promise((r) => setTimeout(r, 50));
+      expect(toasts.warning).not.toHaveBeenCalled();
+    });
+
+    it("stays quiet when nothing was skipped", async () => {
+      await renderReady();
+      fireSkipped(WS_ID, 0);
+      // Let the name lookup a notice would wait on settle first.
+      await new Promise((r) => setTimeout(r, 50));
+      expect(toasts.warning).not.toHaveBeenCalled();
+    });
   });
 
   it("lists files on Home and opens MediaDetail from a grid link", async () => {
@@ -1699,7 +1835,7 @@ describe("Home heatmap", () => {
   const date = addDays(new Date(), -1);
   const yesterday = formatDay(date);
   const [start, end] = daySeconds(date);
-  const shown = date.toLocaleDateString();
+  const shown = formatDate(date, "en");
 
   /** The most recent files_search query the component issued. */
   function lastQuery(): Record<string, unknown> {
@@ -1833,7 +1969,7 @@ describe("Home heatmap", () => {
       }),
     );
     expect(chipLabels()).toEqual([
-      `Played date: ${before.toLocaleDateString()}–${shown}`,
+      `Played date: ${formatDate(before, "en")}–${shown}`,
     ]);
     for (const day of [
       formatDay(before),

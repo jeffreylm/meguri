@@ -2,13 +2,11 @@
 import type { TranslationKey } from "./ja";
 
 export const fr: Record<TranslationKey, string> = {
-  // App name: the single-kanji display name (guideline 00), identical in every locale.
-  "app.name": "巡",
-
   // common
   "common.close": "Fermer",
   "common.cancel": "Annuler",
   "common.ok": "OK",
+  "common.actionFailed": "Impossible d'effectuer l'action",
 
   // kind
   "kind.video": "Vidéo",
@@ -112,7 +110,7 @@ export const fr: Record<TranslationKey, string> = {
   "libraryMerge.progress": "{done} / {total} espaces de travail",
   "libraryMerge.failed": "Certains espaces de travail n'ont pas pu être migrés",
   "libraryMerge.failedDesc":
-    "{list}\nIls fonctionnent comme avant. Meguri réessaiera au prochain lancement.",
+    "{list}\nIls fonctionnent comme avant. {app} réessaiera au prochain lancement.",
   "libraryMerge.failedItem": "{name} : {reason}",
   "libraryMerge.reason.diskFull":
     "Le disque est plein. Libérez de l'espace, puis réessayez.",
@@ -123,9 +121,17 @@ export const fr: Record<TranslationKey, string> = {
   "libraryMerge.reason.open": "Sa base de données n'a pas pu être ouverte.",
   "libraryMerge.retry": "Réessayer",
   "library.restored":
-    "Votre bibliothèque était endommagée : Meguri a restauré la copie du {date}",
+    "Votre bibliothèque était endommagée : {app} a restauré la copie du {date}",
   "library.restoredDesc":
     "Les favoris, notes, tags et autres modifications faits ensuite sont perdus. Le fichier endommagé est conservé dans le même dossier que la bibliothèque.",
+  "config.movedAside":
+    "Le fichier de réglages (config.json) était endommagé : {app} a démarré avec les réglages par défaut",
+  "config.movedAsideDesc":
+    "Vos espaces de travail et collections sont conservés dans le fichier endommagé, enregistré sous config.json.corrupt-<date> dans le même dossier.",
+  "config.unreadable":
+    "{app} n’a pas pu lire le fichier de réglages (config.json) et fonctionne avec les réglages par défaut",
+  "config.unreadableDesc":
+    "Le fichier n’a pas été modifié. Vérifiez qu’aucune autre application ne l’utilise, puis redémarrez {app}.",
   "settings.about": "À propos",
   "about.version": "{name} version {version}",
   "about.appLicense": "{name} est publié sous licence MIT.",
@@ -165,6 +171,16 @@ export const fr: Record<TranslationKey, string> = {
   "home.scanCanceled": "Scan annulé",
   "home.escCloseHint": "Appuyez à nouveau sur Échap pour fermer la fenêtre",
   "home.scanError": "Une erreur s'est produite pendant le scan",
+  "home.scanRootUnreadable":
+    "Le dossier de l’espace de travail est inaccessible",
+  "home.scanRootUnreadableNamed": "Le dossier de « {name} » est inaccessible",
+  "home.scanRootUnreadableDesc":
+    "Vérifiez que le dossier n’a pas été déplacé ou supprimé, que son disque ou partage réseau est connecté et que {app} peut le lire, puis relancez le scan. La liste des fichiers a été laissée telle quelle.",
+  "home.scanSkipped": "{count} dossier(s) ou fichier(s) illisible(s) ignoré(s)",
+  "home.scanSkippedNamed":
+    "{count} dossier(s) ou fichier(s) illisible(s) ignoré(s) dans « {name} »",
+  "home.scanSkippedDesc":
+    "{app} n’a peut-être pas l’autorisation de les lire, ou un autre programme les utilise. Cette partie de la liste des fichiers a été laissée telle quelle, et le prochain scan réessaiera.",
   "home.scanStartFailed": "Impossible de démarrer le scan",
   "home.scanAlreadyRunning": "Un scan est déjà en cours",
 
@@ -239,6 +255,10 @@ export const fr: Record<TranslationKey, string> = {
   // media detail
   "media.notFound": "Fichier introuvable.",
   "media.openExternal": "Ouvrir avec une application externe",
+  "media.openExternalFailed": "Impossible d’ouvrir dans l’application externe",
+  "fileMenu.open": "Ouvrir",
+  "fileMenu.inspect": "Ouvrir les détails sans lecture",
+  "fileMenu.some": "Certains",
   "media.openFolder": "Ouvrir le dossier",
   "media.copyFilePath": "Copier le chemin du fichier",
   "media.filePathCopied": "Chemin du fichier copié",
@@ -274,6 +294,7 @@ export const fr: Record<TranslationKey, string> = {
   "shortcuts.inspectFocused":
     "Ouvrir les détails de l'élément ciblé (sans lecture)",
   "shortcuts.watchLater": "Basculer À regarder plus tard",
+  "shortcuts.fileMenu": "Ouvrir le menu du fichier",
   "shortcuts.selectAll": "Tout sélectionner (chargé)",
   "shortcuts.bulkTags": "Modifier les tags de la sélection",
   "shortcuts.help": "Cette aide",
@@ -313,6 +334,13 @@ export const fr: Record<TranslationKey, string> = {
   "media.currentMainThumb": "Miniature principale actuelle :",
 
   // player controls
+  "player.subtitles": "Sous-titres",
+  "player.subtitleAuto": "Suivre la langue audio",
+  "player.subtitleOff": "Désactivés",
+  "player.subtitleLoading": "Chargement des sous-titres…",
+  "player.subtitleUnavailable":
+    "Impossible de charger cette piste de sous-titres.",
+  "player.subtitleTrackNumber": "Piste {number}",
   "player.play": "Lecture",
   "player.playKey": "Lecture (Space)",
   "player.pauseKey": "Pause (Space)",
@@ -322,6 +350,11 @@ export const fr: Record<TranslationKey, string> = {
   "player.unmute": "Réactiver le son (M)",
   "player.fullscreen": "Plein écran (F)",
   "player.volume": "Volume",
+  "player.audioTrack": "Piste audio",
+  "player.audioTrackNumber": "Piste {number}",
+  "player.audioTrackDefault": "Par défaut",
+  "player.audioTrackUnavailable":
+    "Impossible de lire cette piste. La piste précédente a été rétablie.",
   "player.seek": "Position",
   "player.playFailed": "Impossible de lire dans le lecteur intégré.",
   "player.openExternal": "Ouvrir dans un lecteur externe",
@@ -567,8 +600,7 @@ export const fr: Record<TranslationKey, string> = {
   "discover.empty": "Aucun média à recommander.",
   "discover.emptyHint":
     "Lancez « Analyser » pour importer des vidéos et des images ; elles seront recommandées ici au hasard.",
-  "discover.sceneHint":
-    "Survolez pour agrandir · cliquez pour lire à partir de ce point",
+  "discover.sceneHint": "Cliquez sur une scène pour y accéder",
   "discover.moreScenes": "+{count}",
 
   // Historique de lecture
@@ -590,13 +622,33 @@ export const fr: Record<TranslationKey, string> = {
   "duplicates.empty": "Aucun fichier en double trouvé.",
   "duplicates.emptyHint":
     "Les fichiers au contenu identique (hachage et taille correspondants) apparaîtront ici.",
-  "duplicates.summary":
-    "{groups} groupes / {files} fichiers / {size} en double",
+  "duplicates.loadFailed":
+    "Impossible de charger les fichiers en double. Veuillez réessayer.",
+  "duplicates.retry": "Réessayer",
   "duplicates.fileCount": "{count} fichiers",
   "duplicates.truncated":
     "Trop de groupes ; seuls les {max} premiers sont affichés.",
   "duplicates.filter": "Afficher uniquement les fichiers en double",
   "duplicates.chip": "Doublons",
+  "duplicates.groupCount": "{count} groupes",
+  "duplicates.reclaimable": "Récupérable",
+  "duplicates.search": "Filtrer par nom ou chemin",
+  "duplicates.sortLabel": "Trier par",
+  "duplicates.sort.reclaimable": "Taille récupérable",
+  "duplicates.sort.size": "Taille du fichier",
+  "duplicates.sort.count": "Nombre de copies",
+  "duplicates.sort.added": "Ajoutés récemment",
+  "duplicates.groupList": "Groupes de doublons",
+  "duplicates.groupDetail": "Détails du groupe",
+  "duplicates.noMatch": "Aucun groupe ne correspond au filtre.",
+  "duplicates.copies": "Copies",
+  "duplicates.diffLegend":
+    "En surbrillance : ce qui distingue cette copie des autres",
+  "duplicates.oldest": "La plus ancienne",
+  "duplicates.oldestHint": "La copie indexée en premier",
+  "duplicates.added": "Ajouté le {date}",
+  "duplicates.lastViewed": "Vu le {date}",
+  "duplicates.open": "Ouvrir",
 
   // Écran de gestion des tags
   // auto tagging
@@ -883,7 +935,7 @@ export const fr: Record<TranslationKey, string> = {
   "drop.overlayTitle":
     "Déposez des dossiers pour les ajouter comme espaces de travail",
   "drop.foldersOnly":
-    "Meguri indexe des dossiers, pas des fichiers isolés. Déposez un dossier.",
+    "{app} indexe des dossiers, pas des fichiers isolés. Déposez un dossier.",
   "drop.addTitle": "Ajouter un espace de travail",
   "drop.addConfirm":
     "Ajouter « {name} » comme espace de travail et l’analyser ?",
@@ -1054,7 +1106,7 @@ export const fr: Record<TranslationKey, string> = {
   "tour.languageTitle": "Choisis ta langue",
   "tour.languageBody":
     "Choisis la langue à utiliser. La suite de la visite l'utilisera, et tu pourras la changer plus tard dans les paramètres.",
-  "tour.welcomeTitle": "Bienvenue dans Meguri",
+  "tour.welcomeTitle": "Bienvenue dans {app}",
   "tour.welcomeBody":
     "Je te fais faire le tour. Appuie sur Échap pour passer à tout moment.",
   "tour.addWorkspaceTitle": "Ajouter un dossier",

@@ -46,7 +46,8 @@ with `lib.`: an unqualified `CREATE INDEX` or `CREATE TRIGGER` would land in
 
 In the workspace database (`CORE_DDL`):
 
-- `scan_roots` — the registered root for this database.
+- `scan_roots` — the registered root for this database, with `last_scan_at`
+  and `mountpoint` (whether the root was a mountpoint at the last scan).
 - `files` — the file index: `rel_path`, `abs_path`, `kind` (`video` | `image` |
   `audio`), size/mtime/inode, `content_hash`, media metadata (`width`, `height`,
   `duration`, `codec`, `fps`, `captured_at`), `thumb_path` / `thumb_status`, and
@@ -143,12 +144,40 @@ before this change are rebuilt once on open and the metadata under their old
 `p:<root_id>:<rel_path>` keys is moved to the new ones. Because metadata is
 keyed this way, it **survives file moves, renames, and rebuilds of the
 `files` / `files_fts` tables** — anything that would change or regenerate
-`files.id`. It is also what makes the library shared: two workspaces holding
-the same content (the same `content_hash`) read and write the same rows.
+`files.id`. (An index rebuild keeps `files.id` itself: it soft-deletes and
+resets the rows, and the rescan revives them in place.) It is also what makes
+the library shared: two workspaces holding the same content (the same
+`content_hash`) read and write the same rows.
 
 When a file gains its first hash, `migrateMetaKey()` moves its metadata from
 the path key to the hash. Another workspace's copy may already hold metadata
 under that hash; the two are merged by the rules below.
+
+When the content of a file changes at the same path (its tags or cover art
+edited, a recording that grew), it gets a new hash but stays the same file to
+the user: the path, not only the hash, tells it apart. `copyMetaKey()` copies
+its metadata to the new hash, plays and bookmarks included, merged by the rules
+below into what the library already holds there. It is copied rather than
+moved, since another file, in this workspace or another one, may still have the
+old content. Only the user's tags are copied; the tags derived from the content
+(resolution, codec and so on) are derived again for the new content.
+
+Where the path and the hash disagree, the path decides, and the outcome is
+accepted as it is:
+
+- another file's content copied over this one: this file's metadata is merged
+  into that content, so the other file shows it too
+- two files that swap their content: both end up with both files' metadata
+- an edit undone: the content gets back its old metadata merged with what was
+  set in between, so a favorite or a tag removed in between comes back
+- a copy of the old content still listed: the same plays show under both
+
+Nothing is copied to or from empty content: every empty file (truncated by a
+failed sync, or not written yet) has the same hash, which would gather all
+their metadata and hand it to each one that gets content. A changed file moved
+or renamed in the same step is not recognized, and starts without metadata.
+The copies left under old hashes are not cleaned up, so a tag kept only there
+still counts as in use for tag completion.
 
 `file_meta` holds `favorite`, `rating` (0–5), `last_accessed_at`, and
 `thumb_offset_sec` (the user-chosen thumbnail frame offset, `NULL` meaning the
@@ -239,19 +268,19 @@ of the clock counts as the stalest, never as the newest.
 
 Rows for the same `meta_key` are merged so that nothing the user set is lost:
 
-| What | Rule |
-| --- | --- |
-| `favorite` | either one set |
-| `rating`, `last_accessed_at` | the higher |
-| `thumb_offset_sec`, `resume_position` | the newer row's, unless it has none |
-| `tags` | matched on the exact `(namespace, name)` |
-| `meta_tags` | one row per `(meta_key, tag, source)` |
-| `scene_bookmarks` | one within `BOOKMARK_NEAR_EPS` of another is not added |
-| `play_history` | identical events are kept once |
+| What                                  | Rule                                                   |
+| ------------------------------------- | ------------------------------------------------------ |
+| `favorite`                            | either one set                                         |
+| `rating`, `last_accessed_at`          | the higher                                             |
+| `thumb_offset_sec`, `resume_position` | the newer row's, unless it has none                    |
+| `tags`                                | matched on the exact `(namespace, name)`               |
+| `meta_tags`                           | one row per `(meta_key, tag, source)`                  |
+| `scene_bookmarks`                     | one within `BOOKMARK_NEAR_EPS` of another is not added |
+| `play_history`                        | identical events are kept once                         |
 
 Merging the same rows again changes nothing. `FILE_META_MERGE_SET` in
-`queries/meta.ts` holds the `file_meta` rules for both this merge and
-`migrateMetaKey()`.
+`queries/meta.ts` holds the `file_meta` rules for this merge,
+`migrateMetaKey()` and `copyMetaKey()`.
 
 Since every workspace reads the same rows, an edit made in one shows in every
 workspace holding the same content. Tag rename, merge and delete, and clearing
@@ -276,6 +305,14 @@ after any tag change so the searchable `tags_text` stays current. For a batch of
 files — a tag rename, a merge, the derived-tag backfill — use
 `resyncFtsForKeys()` in `db.ts` instead, which re-indexes a whole set of
 `meta_key`s in one pair of statements.
+
+A soft-deleted file has no `files_fts` row once it is removed from the index, or
+once the index is re-synced or rebuilt while it is gone (both skip deleted
+rows); a scan aborted before its index phase leaves new rows without one too.
+When a scan finds such a file unchanged (brought back by "rescan including
+excluded", or a folder that is back), `syncFiles()` reports it in `ftsMissing`,
+and `runScan()` re-syncs its row along with the new, moved and changed files;
+those files are not auto-tagged again.
 
 `tags_text` holds the **user's own** tag names, joined by spaces and
 deduplicated across sources. Three places produce it — `syncFts()`,
@@ -463,13 +500,13 @@ refused operation changes neither, and one that fails partway is finished by
 doing it again. Regex rules name their tags through a template
 and are left alone.
 
-The screen sends ids it loaded earlier, and a rebuild hands ids to other files
-while a move gives a file another name. So `auto_tag_apply` and `auto_tag_edit`
-take, with each id, the place the screen read it at, and write only to the
-files still there (`keepStillAt`, the same check a scan's pass makes before
-its writes); the rest come back as `moved`, and the screen reads the files
-again. Each call is split to fit the file count, the (file, tag) pairs and the
-places' total length (`MAX_AUTO_TAG_PLACE_CHARS`).
+The screen sends ids it loaded earlier, and meanwhile a move gives a file
+another name, or a rebuild drops the row of a file that is gone. So
+`auto_tag_apply` and `auto_tag_edit` take, with each id, the place the screen
+read it at, and write only to the files still there (`keepStillAt`, the same
+check a scan's pass makes before its writes); the rest come back as `moved`, and
+the screen reads the files again. Each call is split to fit the file count, the
+(file, tag) pairs and the places' total length (`MAX_AUTO_TAG_PLACE_CHARS`).
 
 The configuration (`rules`, `keywords`, `folders`, `applyOnScan`, dismissed
 suggestions and excluded terms) is app-wide, in `config.json` under `autoTag`.

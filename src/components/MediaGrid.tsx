@@ -26,6 +26,7 @@ import {
 } from "@/hooks/useWatchLater";
 import type { FileRow, FolderEntry } from "@/ipc/types";
 import { FolderCard } from "@/components/FolderCard";
+import { FileContextMenu } from "@/components/FileContextMenu";
 import {
   useFolderEntries,
   type FolderViewEntry,
@@ -34,6 +35,7 @@ import { FavoriteButton } from "@/components/FavoriteButton";
 import { ExternalFileDragHandle } from "@/components/ExternalFileDragHandle";
 import { RatingButton } from "@/components/RatingButton";
 import { RatingStarsView } from "@/components/RatingStars";
+import { useFavoriteFxLive } from "@/lib/fileFxStore";
 import { useSelectionMode } from "@/components/SelectionContext";
 import { useHoverActivation } from "@/hooks/useHoverActivation";
 import { MediaThumbnail } from "@/components/MediaThumbnail";
@@ -361,75 +363,79 @@ export const MediaGrid = memo(function MediaGrid({
   // display:table to block so absolutely positioned rows track the width correctly.
   return (
     <MediaReorderProvider items={items} reorder={reorder}>
-      <ScrollArea
-        className="page-scroll h-full"
-        viewportClassName="pt-4"
-        viewportRef={setScrollRef}
-      >
-        <div
-          style={{
-            height: virtualizer.getTotalSize(),
-            position: "relative",
-            width: "100%",
-          }}
+      <FileContextMenu items={items} mediaBase={mediaBase} active={navActive}>
+        <ScrollArea
+          className="page-scroll h-full"
+          viewportClassName="pt-4"
+          viewportRef={setScrollRef}
         >
-          {virtualRows.map((vr) => (
-            <div
-              key={vr.key}
-              ref={measureRow}
-              className="absolute left-0 top-0 w-full"
-              style={{ transform: `translateY(${vr.start}px)` }}
-            >
+          <div
+            style={{
+              height: virtualizer.getTotalSize(),
+              position: "relative",
+              width: "100%",
+            }}
+          >
+            {virtualRows.map((vr) => (
               <div
-                className="grid gap-3 px-4 pb-3"
-                style={{
-                  gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-                }}
+                key={vr.key}
+                ref={measureRow}
+                className="absolute left-0 top-0 w-full"
+                style={{ transform: `translateY(${vr.start}px)` }}
               >
-                {rows[vr.index].map((entry, localIndex) => {
-                  const cell = vr.index * cols + localIndex;
-                  if (!entry) {
-                    return <div key={`lead:${cell}`} aria-hidden />;
-                  }
-                  const focused = cell - leadCells === focusedIndex;
-                  if (entry.kind === "folder") {
-                    return (
-                      <FolderCard
-                        key={`folder:${entry.folder.path}`}
-                        entry={entry.folder}
-                        focused={focused}
+                <div
+                  className="grid gap-3 px-4 pb-3"
+                  style={{
+                    gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+                  }}
+                >
+                  {rows[vr.index].map((entry, localIndex) => {
+                    const cell = vr.index * cols + localIndex;
+                    if (!entry) {
+                      return <div key={`lead:${cell}`} aria-hidden />;
+                    }
+                    const focused = cell - leadCells === focusedIndex;
+                    if (entry.kind === "folder") {
+                      return (
+                        <FolderCard
+                          key={`folder:${entry.folder.path}`}
+                          entry={entry.folder}
+                          focused={focused}
+                          mediaBase={mediaBase}
+                          onOpen={onOpenFolder ?? noop}
+                        />
+                      );
+                    }
+                    const f = entry.file;
+                    const card = (
+                      <MediaCard
+                        file={f}
+                        index={entry.fileIndex}
                         mediaBase={mediaBase}
-                        onOpen={onOpenFolder ?? noop}
+                        onTagClick={onTagClick}
+                        focused={focused}
+                        watchLater={watchLaterMembership}
+                        watchLaterRef={
+                          focused ? focusedWatchLaterRef : undefined
+                        }
+                        fileDraggable={!reorder}
                       />
                     );
-                  }
-                  const f = entry.file;
-                  const card = (
-                    <MediaCard
-                      file={f}
-                      index={entry.fileIndex}
-                      mediaBase={mediaBase}
-                      onTagClick={onTagClick}
-                      focused={focused}
-                      watchLater={watchLaterMembership}
-                      watchLaterRef={focused ? focusedWatchLaterRef : undefined}
-                      fileDraggable={!reorder}
-                    />
-                  );
-                  const key = mediaSortId(f);
-                  return reorder ? (
-                    <SortableMedia key={key} id={key}>
-                      {card}
-                    </SortableMedia>
-                  ) : (
-                    <Fragment key={key}>{card}</Fragment>
-                  );
-                })}
+                    const key = mediaSortId(f);
+                    return reorder ? (
+                      <SortableMedia key={key} id={key}>
+                        {card}
+                      </SortableMedia>
+                    ) : (
+                      <Fragment key={key}>{card}</Fragment>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </ScrollArea>
+            ))}
+          </div>
+        </ScrollArea>
+      </FileContextMenu>
     </MediaReorderProvider>
   );
 });
@@ -484,7 +490,10 @@ export const MediaCard = memo(function MediaCard({
   const pinnedWatchLater =
     !!focused || watchLater.has(file.workspaceId, file.id);
   const showCheck = hot || pinnedCheck;
-  const showFavorite = hot || file.favorite;
+  // A heart a menu just took off stays for its settle (see lib/fileFxStore).
+  const favoriteFxLive = useFavoriteFxLive(file);
+  const pinnedFavorite = !!file.favorite || favoriteFxLive;
+  const showFavorite = hot || pinnedFavorite;
   const showWatchLater = hot || pinnedWatchLater;
   return (
     <div
@@ -492,6 +501,7 @@ export const MediaCard = memo(function MediaCard({
       {...hoverHandlers}
       data-testid="media-card"
       data-slot="media-card"
+      data-file-key={mediaSortId(file)}
       aria-current={focused ? "true" : undefined}
       className={cn(
         "group relative flex flex-col overflow-hidden rounded-md border border-border bg-surface transition-colors hover:border-primary",
@@ -499,15 +509,34 @@ export const MediaCard = memo(function MediaCard({
         selected && "border-primary ring-1 ring-primary",
       )}
     >
-      <HashLink
-        to={fileHref(file.id, file.workspaceId)}
-        onClick={(e) => {
-          if (onSelectableClick(e)) return;
-          onThumbnailClick(file)(e);
-        }}
+      {/* The link covers the thumbnail and the toggles sit beside it, not
+          inside it: a <button> nested in an <a> is invalid and leaves focus
+          order and Enter/Space up to the browser. */}
+      <div
         data-thumb
-        className="group/thumb relative block aspect-video overflow-hidden bg-overlay text-muted"
+        className="group/thumb relative aspect-video overflow-hidden bg-overlay text-muted"
       >
+        <HashLink
+          to={fileHref(file.id, file.workspaceId)}
+          onClick={(e) => {
+            if (onSelectableClick(e)) return;
+            onThumbnailClick(file)(e);
+          }}
+          // Named after the file: without a thumbnail the link holds only an
+          // aria-hidden icon and the duration.
+          aria-label={fileNameOf(file.relPath)}
+          // The focus ring is drawn on `after:` so it sits above the
+          // thumbnail image; an inset ring on the link itself would be
+          // painted under it. `pointer-events-none` keeps the hover scrub.
+          className="absolute inset-0 block outline-none after:pointer-events-none after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary"
+        >
+          <MediaThumbnail file={file} mediaBase={mediaBase} />
+          {hasTimeline(file.kind) && !!file.duration && (
+            <span className="absolute bottom-1 right-1 rounded bg-bg/70 px-1 text-[10px] text-fg">
+              {formatDuration(file.duration)}
+            </span>
+          )}
+        </HashLink>
         {showCheck && (
           <SelectionCheck
             file={file}
@@ -520,12 +549,6 @@ export const MediaCard = memo(function MediaCard({
             )}
           />
         )}
-        <MediaThumbnail file={file} mediaBase={mediaBase} />
-        {hasTimeline(file.kind) && file.duration && (
-          <span className="absolute bottom-1 right-1 rounded bg-bg/70 px-1 text-[10px] text-fg">
-            {formatDuration(file.duration)}
-          </span>
-        )}
         {/* Favorite toggle. Always visible when favorited; on hover otherwise.
             No backdrop-blur on this or the other overlays of a card: a
             backdrop-filter per card made every scroll frame re-layerize the
@@ -537,8 +560,8 @@ export const MediaCard = memo(function MediaCard({
             favorite={file.favorite}
             size={16}
             className={cn(
-              "absolute right-1 top-1 rounded bg-bg/70 p-1 transition-opacity",
-              file.favorite
+              "absolute right-1 top-1 z-10 rounded bg-bg/70 p-1 transition-opacity",
+              pinnedFavorite
                 ? "opacity-100"
                 : "card-control-in opacity-0 focus:opacity-100 group-hover:opacity-100",
             )}
@@ -553,12 +576,12 @@ export const MediaCard = memo(function MediaCard({
             watchLater={watchLater}
             size={16}
             className={cn(
-              "absolute right-1 top-9 rounded bg-bg/70 p-1 opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100 aria-pressed:opacity-100",
+              "absolute right-1 top-9 z-10 rounded bg-bg/70 p-1 opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100 aria-pressed:opacity-100",
               !pinnedWatchLater && "card-control-in",
             )}
           />
         )}
-      </HashLink>
+      </div>
       {hot && (
         <ExternalFileDragHandle
           onDragStart={onExternalDragStart}
@@ -569,32 +592,42 @@ export const MediaCard = memo(function MediaCard({
           count — and independent of the card width (single-line truncation,
           no wrapping): the grid's row-height estimate measures this block
           once per column count and derives the rest from the width. */}
-      <HashLink
-        to={fileHref(file.id, file.workspaceId, { autoplay: false })}
-        onClick={onSelectableClick}
-        className="flex flex-col gap-1 border-t border-border px-2 py-1.5"
-      >
-        <div className="truncate text-xs text-fg" title={file.relPath}>
-          {fileNameOf(file.relPath)}
-        </div>
+      <div className="relative flex flex-col gap-1 border-t border-border px-2 py-1.5">
+        {/* The file name's link stretches over the whole region (`after:`),
+            so a click anywhere here still opens the detail paused, while the
+            rating and the tags stay outside the <a> and above its overlay. */}
+        <HashLink
+          to={fileHref(file.id, file.workspaceId, { autoplay: false })}
+          onClick={onSelectableClick}
+          className="block truncate text-xs text-fg outline-none after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary"
+        >
+          {/* The path tooltip is on the name only: on the link it would show
+              over the whole region its overlay covers. */}
+          <span title={file.relPath}>{fileNameOf(file.relPath)}</span>
+        </HashLink>
         <div className="truncate text-[10px] text-muted">{metaLine(file)}</div>
         {/* Editable rating once the card is hovered or focused (drawn only
-            until then). Stops click propagation so it doesn't open the detail. */}
+            until then, under the link's overlay so a click opens the detail). */}
         {hot ? (
-          <RatingButton
-            fileId={file.id}
-            workspaceId={file.workspaceId}
-            rating={file.rating}
-            size={14}
-          />
+          <div className="relative z-10 w-fit">
+            <RatingButton
+              fileId={file.id}
+              workspaceId={file.workspaceId}
+              rating={file.rating}
+              size={14}
+            />
+          </div>
         ) : (
-          <RatingStarsView value={file.rating} size={14} />
+          <RatingStarsView value={file.rating} size={14} file={file} />
         )}
-        {/* Tags shown in full via horizontal scroll. Click to reflect into the search query. Fixed height. */}
-        <div className="no-scrollbar flex h-6 items-center gap-1 overflow-x-auto overflow-y-hidden">
+        {/* Tags shown in full via horizontal scroll. Click to reflect into the
+            search query. Fixed height. Only the chips take the pointer: a
+            click on the gaps or on the "no tags" label falls through to the
+            link, as anywhere else in this region. */}
+        <div className="no-scrollbar pointer-events-none relative z-10 flex h-6 w-fit max-w-full items-center gap-1 overflow-x-auto overflow-y-hidden [&>button]:pointer-events-auto">
           <TagChips tags={file.tags} onTagClick={onTagClick} />
         </div>
-      </HashLink>
+      </div>
     </div>
   );
 });

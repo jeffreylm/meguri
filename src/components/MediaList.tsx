@@ -25,8 +25,10 @@ import { useSelectableClick } from "@/hooks/useSelectableClick";
 import { useFileDrag } from "@/hooks/useFileDrag";
 import type { FileRow, FolderEntry } from "@/ipc/types";
 import { FolderRow } from "@/components/FolderRow";
+import { FileContextMenu } from "@/components/FileContextMenu";
 import { useFolderEntries } from "@/hooks/useFolderEntries";
 import { FavoriteButton } from "@/components/FavoriteButton";
+import { useFavoriteFxLive, useRatingFxLive } from "@/lib/fileFxStore";
 import { ExternalFileDragHandle } from "@/components/ExternalFileDragHandle";
 import { WatchLaterButton } from "@/components/WatchLaterButton";
 import {
@@ -251,63 +253,65 @@ export const MediaList = memo(function MediaList({
 
   return (
     <MediaReorderProvider items={items} reorder={reorder}>
-      <ScrollArea
-        className="page-scroll h-full"
-        viewportClassName="pt-4"
-        viewportRef={setScrollRef}
-      >
-        <div
-          style={{
-            height: virtualizer.getTotalSize(),
-            position: "relative",
-            width: "100%",
-          }}
+      <FileContextMenu items={items} mediaBase={mediaBase} active={navActive}>
+        <ScrollArea
+          className="page-scroll h-full"
+          viewportClassName="pt-4"
+          viewportRef={setScrollRef}
         >
-          {virtualRows.map((vr) => (
-            <div
-              key={vr.key}
-              ref={measureRow}
-              className="absolute left-0 top-0 w-full px-3 pb-0.5"
-              style={{ transform: `translateY(${vr.start}px)` }}
-            >
-              {(() => {
-                const entry = entries[vr.index];
-                const focused = vr.index === focusedIndex;
-                if (entry.kind === "folder") {
-                  return (
-                    <FolderRow
-                      entry={entry.folder}
+          <div
+            style={{
+              height: virtualizer.getTotalSize(),
+              position: "relative",
+              width: "100%",
+            }}
+          >
+            {virtualRows.map((vr) => (
+              <div
+                key={vr.key}
+                ref={measureRow}
+                className="absolute left-0 top-0 w-full px-3 pb-0.5"
+                style={{ transform: `translateY(${vr.start}px)` }}
+              >
+                {(() => {
+                  const entry = entries[vr.index];
+                  const focused = vr.index === focusedIndex;
+                  if (entry.kind === "folder") {
+                    return (
+                      <FolderRow
+                        entry={entry.folder}
+                        mediaBase={mediaBase}
+                        thumbWidth={thumbWidth}
+                        focused={focused}
+                        onOpen={onOpenFolder ?? noop}
+                      />
+                    );
+                  }
+                  const file = entry.file;
+                  const row = (
+                    <MediaRow
+                      file={file}
+                      index={entry.fileIndex}
                       mediaBase={mediaBase}
                       thumbWidth={thumbWidth}
+                      onTagClick={onTagClick}
                       focused={focused}
-                      onOpen={onOpenFolder ?? noop}
+                      watchLater={watchLaterMembership}
+                      watchLaterRef={focused ? focusedWatchLaterRef : undefined}
+                      fileDraggable={!reorder}
                     />
                   );
-                }
-                const file = entry.file;
-                const row = (
-                  <MediaRow
-                    file={file}
-                    index={entry.fileIndex}
-                    mediaBase={mediaBase}
-                    thumbWidth={thumbWidth}
-                    onTagClick={onTagClick}
-                    focused={focused}
-                    watchLater={watchLaterMembership}
-                    watchLaterRef={focused ? focusedWatchLaterRef : undefined}
-                    fileDraggable={!reorder}
-                  />
-                );
-                return reorder ? (
-                  <SortableMedia id={mediaSortId(file)}>{row}</SortableMedia>
-                ) : (
-                  row
-                );
-              })()}
-            </div>
-          ))}
-        </div>
-      </ScrollArea>
+                  return reorder ? (
+                    <SortableMedia id={mediaSortId(file)}>{row}</SortableMedia>
+                  ) : (
+                    row
+                  );
+                })()}
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      </FileContextMenu>
     </MediaReorderProvider>
   );
 });
@@ -364,6 +368,10 @@ const MediaRow = memo(function MediaRow({
   // Values that are set stay on screen; unset toggles only show up on the row
   // under the pointer or keyboard focus. Their space stays reserved either way
   // so the columns do not shift from row to row.
+  // A rating or heart a menu just cleared stays for its settle
+  // (lib/fileFxStore).
+  const favoriteFxLive = useFavoriteFxLive(file);
+  const ratingFxLive = useRatingFxLive(file);
   const reveal = (isSet: boolean) =>
     isSet || focused
       ? undefined
@@ -372,6 +380,7 @@ const MediaRow = memo(function MediaRow({
     <div
       {...dragProps}
       data-slot="media-row"
+      data-file-key={mediaSortId(file)}
       aria-current={focused ? "true" : undefined}
       className={cn(
         "group @container relative flex items-center gap-4 rounded-lg p-2 pr-4 transition-colors hover:bg-overlay/50",
@@ -391,6 +400,9 @@ const MediaRow = memo(function MediaRow({
             if (onSelectableClick(e)) return;
             onThumbnailClick(file)(e);
           }}
+          // Named after the file: without a thumbnail the link holds only an
+          // aria-hidden icon and the duration.
+          aria-label={fileNameOf(file.relPath)}
           className="group/thumb absolute inset-0 block"
         >
           <MediaThumbnail file={file} mediaBase={mediaBase} />
@@ -415,10 +427,11 @@ const MediaRow = memo(function MediaRow({
         <HashLink
           to={fileHref(file.id, file.workspaceId, { autoplay: false })}
           onClick={onSelectableClick}
-          title={file.relPath}
           className="h-6 truncate text-[15px] font-medium leading-6 text-bright-fg outline-none after:absolute after:inset-0 after:rounded-lg after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary"
         >
-          {fileNameOf(file.relPath)}
+          {/* The path tooltip is on the name only: on the link it would show
+              over the whole row its overlay covers. */}
+          <span title={file.relPath}>{fileNameOf(file.relPath)}</span>
         </HashLink>
         {/* Wide rows give the metadata its own columns and show the folder
             here; narrow ones (a docked side peek) fold the metadata into this
@@ -432,7 +445,9 @@ const MediaRow = memo(function MediaRow({
               .join(" · ") || "—"}
           </span>
         </div>
-        <div className="no-scrollbar relative z-10 flex h-5 w-fit max-w-full items-center gap-1 overflow-x-auto overflow-y-hidden">
+        {/* Only the chips take the pointer: a click on the gaps or on the
+            "no tags" label falls through to the row link. */}
+        <div className="no-scrollbar pointer-events-none relative z-10 flex h-5 w-fit max-w-full items-center gap-1 overflow-x-auto overflow-y-hidden [&>button]:pointer-events-auto">
           <TagChips tags={file.tags} onTagClick={onTagClick} />
         </div>
       </div>
@@ -466,7 +481,12 @@ const MediaRow = memo(function MediaRow({
           only the toggles themselves take the pointer. Narrow rows drop the
           rating, which the side peek beside them shows anyway. */}
       <div className="pointer-events-none relative z-10 flex shrink-0 items-center gap-3 [&>*]:pointer-events-auto">
-        <div className={cn("hidden @lg:block", reveal(file.rating > 0))}>
+        <div
+          className={cn(
+            "hidden @lg:block",
+            reveal(file.rating > 0 || ratingFxLive),
+          )}
+        >
           <RatingButton
             fileId={file.id}
             workspaceId={file.workspaceId}
@@ -474,7 +494,7 @@ const MediaRow = memo(function MediaRow({
             size={13}
           />
         </div>
-        <div className={reveal(!!file.favorite)}>
+        <div className={reveal(!!file.favorite || favoriteFxLive)}>
           <FavoriteButton
             fileId={file.id}
             workspaceId={file.workspaceId}

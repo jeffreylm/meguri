@@ -54,6 +54,7 @@ import { usePlaylistAudio } from "./usePlaylistAudio";
 import { useStageTransition } from "./useStageTransition";
 import { useFolderScopeLabel } from "@/hooks/useFolderScopeLabel";
 import { usePlaybackNav } from "@/components/MediaNavContext";
+import { isProResCodec } from "@shared/playbackTracks";
 
 /**
  * Half of one item-to-item transition: the outgoing item fades out over this
@@ -355,6 +356,7 @@ export default function Player() {
     exit,
     navBinding,
     wake,
+    viewRef: rootRef,
   });
 
   // Nothing playable: say so rather than sitting on a black screen (FR-016).
@@ -463,7 +465,8 @@ export default function Player() {
                   wsId={wsId}
                   startAt={resumeStart.startAt}
                   autoplay
-                  isProResPreview={detailFor?.codec === "prores"}
+                  // The server can end a ProRes preview that stops reading.
+                  reopenOnNetworkError={isProResCodec(detailFor?.codec)}
                   navKeys={navBinding}
                   fullscreenTargetRef={rootRef}
                   onNativeDuration={() => undefined}

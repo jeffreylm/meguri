@@ -1,13 +1,11 @@
 // 日本語カタログ（原典）。キーはドット区切りのフラット構造。
 // 補間は {name} 形式。en.ts はこのキー集合と同型でなければならない（型で強制）。
 export const ja = {
-  // アプリ名（表示名の漢字1文字。ガイドライン00）
-  "app.name": "巡",
-
   // 共通
   "common.close": "閉じる",
   "common.cancel": "キャンセル",
   "common.ok": "OK",
+  "common.actionFailed": "操作に失敗しました",
 
   // 種別
   "kind.video": "動画",
@@ -122,6 +120,14 @@ export const ja = {
     "ライブラリが壊れていたため、{date}時点の写しから戻しました",
   "library.restoredDesc":
     "それより後に付けたお気に入り・評価・タグなどは失われています。壊れたファイルは、ライブラリと同じフォルダに残してあります。",
+  "config.movedAside":
+    "設定ファイル（config.json）が壊れていたため、初期設定で起動しました",
+  "config.movedAsideDesc":
+    "登録していたワークスペースやコレクションは、壊れたファイルと一緒に config.json.corrupt-<日時> として同じフォルダに残してあります。",
+  "config.unreadable":
+    "設定ファイル（config.json）を読み込めなかったため、初期設定で起動しています",
+  "config.unreadableDesc":
+    "ファイルは変更していません。ほかのアプリが使っていないか確認して、{app}を再起動してください。",
   "settings.about": "このアプリについて",
   "about.version": "{name} バージョン {version}",
   "about.appLicense": "{name}は MIT License の下で公開されています。",
@@ -159,6 +165,16 @@ export const ja = {
   "home.scanCanceled": "スキャンをキャンセルしました",
   "home.escCloseHint": "もう一度 Esc を押すとウィンドウを閉じます",
   "home.scanError": "スキャン中にエラーが発生しました",
+  "home.scanRootUnreadable": "ワークスペースのフォルダにアクセスできません",
+  "home.scanRootUnreadableNamed": "「{name}」のフォルダにアクセスできません",
+  "home.scanRootUnreadableDesc":
+    "フォルダが移動・削除されていないか、ドライブやネットワーク共有が接続されているか、読み取りの権限があるかを確認してから、もう一度スキャンしてください。ファイル一覧はそのまま残しています。",
+  "home.scanSkipped":
+    "ワークスペースで、読み取れなかった{count}件のフォルダやファイルをスキップしました",
+  "home.scanSkippedNamed":
+    "「{name}」で、読み取れなかった{count}件のフォルダやファイルをスキップしました",
+  "home.scanSkippedDesc":
+    "読み取りの権限がないか、ほかのプログラムが使用中の可能性があります。ファイル一覧のその部分はそのまま残し、次のスキャンで再試行します。",
   "home.scanStartFailed": "スキャンを開始できませんでした",
   "home.scanAlreadyRunning": "スキャンは既に実行中です",
 
@@ -232,6 +248,10 @@ export const ja = {
   // メディア詳細（MediaDetail）
   "media.notFound": "ファイルが見つかりません。",
   "media.openExternal": "外部で開く",
+  "media.openExternalFailed": "外部で開けませんでした",
+  "fileMenu.open": "開く",
+  "fileMenu.inspect": "詳細を開く（再生しない）",
+  "fileMenu.some": "一部",
   "media.openFolder": "フォルダを開く",
   "media.copyFilePath": "ファイルパスをコピー",
   "media.filePathCopied": "ファイルパスをコピーしました",
@@ -266,6 +286,7 @@ export const ja = {
   "shortcuts.openFocused": "選択中の項目を開く",
   "shortcuts.inspectFocused": "選択中の項目の詳細を開く（再生しない）",
   "shortcuts.watchLater": "後で見るを切り替え",
+  "shortcuts.fileMenu": "ファイルのメニューを開く",
   "shortcuts.selectAll": "表示中をすべて選択",
   "shortcuts.bulkTags": "選択したメディアのタグを編集",
   "shortcuts.help": "このヘルプ",
@@ -304,6 +325,12 @@ export const ja = {
   "media.currentMainThumb": "現在のメインサムネ:",
 
   // プレイヤー操作
+  "player.subtitles": "字幕",
+  "player.subtitleAuto": "音声の言語に合わせる",
+  "player.subtitleOff": "オフ",
+  "player.subtitleLoading": "字幕を読み込み中…",
+  "player.subtitleUnavailable": "字幕トラックを読み込めませんでした。",
+  "player.subtitleTrackNumber": "トラック {number}",
   "player.play": "再生",
   "player.playKey": "再生 (Space)",
   "player.pauseKey": "一時停止 (Space)",
@@ -313,6 +340,11 @@ export const ja = {
   "player.unmute": "ミュート解除 (M)",
   "player.fullscreen": "全画面 (F)",
   "player.volume": "音量",
+  "player.audioTrack": "音声トラック",
+  "player.audioTrackNumber": "トラック {number}",
+  "player.audioTrackDefault": "既定",
+  "player.audioTrackUnavailable":
+    "音声トラックを再生できなかったため、前のトラックに戻しました。",
   "player.seek": "シーク",
   "player.playFailed": "内蔵プレイヤーで再生できませんでした。",
   "player.openExternal": "外部プレイヤーで開く",
@@ -552,7 +584,7 @@ export const ja = {
   "discover.empty": "おすすめできるメディアがありません。",
   "discover.emptyHint":
     "「スキャン」で動画や画像を取り込むと、ここでランダムにおすすめされます。",
-  "discover.sceneHint": "ホバーで拡大 · クリックでその時点から再生",
+  "discover.sceneHint": "シーンをクリックするとその位置に移動します",
   "discover.moreScenes": "+{count}",
 
   // 再生履歴
@@ -573,12 +605,32 @@ export const ja = {
   "duplicates.empty": "重複ファイルは見つかりませんでした。",
   "duplicates.emptyHint":
     "内容が同一（ハッシュとサイズが一致）のファイルが複数あるとここに表示されます。",
-  "duplicates.summary": "{groups} グループ / {files} ファイル / 重複 {size}",
+  "duplicates.loadFailed":
+    "重複ファイルを読み込めませんでした。もう一度お試しください。",
+  "duplicates.retry": "もう一度読み込む",
   "duplicates.fileCount": "{count} 件",
   "duplicates.truncated":
     "グループ数が多いため上位 {max} 件のみ表示しています。",
   "duplicates.filter": "重複ファイルのみ表示",
   "duplicates.chip": "重複",
+  "duplicates.groupCount": "{count} グループ",
+  "duplicates.reclaimable": "削減可能",
+  "duplicates.search": "ファイル名・パスで絞り込み",
+  "duplicates.sortLabel": "並び順",
+  "duplicates.sort.reclaimable": "削減可能サイズ",
+  "duplicates.sort.size": "ファイルサイズ",
+  "duplicates.sort.count": "コピー数",
+  "duplicates.sort.added": "最近追加",
+  "duplicates.groupList": "重複グループ",
+  "duplicates.groupDetail": "グループの詳細",
+  "duplicates.noMatch": "条件に一致するグループはありません。",
+  "duplicates.copies": "コピー",
+  "duplicates.diffLegend": "他のコピーと異なる部分をハイライトしています",
+  "duplicates.oldest": "最古",
+  "duplicates.oldestHint": "最初にインデックスされたコピー",
+  "duplicates.added": "追加 {date}",
+  "duplicates.lastViewed": "最終閲覧 {date}",
+  "duplicates.open": "開く",
 
   // タグ管理画面
   // auto tagging
@@ -1023,7 +1075,7 @@ export const ja = {
   "tour.languageTitle": "言語を選んでね",
   "tour.languageBody":
     "使う言語を選んでね。この案内もこの言語で進むよ。あとから設定でも変えられるよ",
-  "tour.welcomeTitle": "Meguriへようこそ",
+  "tour.welcomeTitle": "{app}へようこそ",
   "tour.welcomeBody": "使い方をざっと案内するね。Escでいつでも飛ばせるよ",
   "tour.addWorkspaceTitle": "フォルダを追加",
   "tour.addWorkspaceBody":

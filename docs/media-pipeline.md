@@ -10,7 +10,7 @@ ffmpeg/ffprobe binaries, whose path resolution is described at the end.
 walk → `syncFiles` → thumbnail/metadata extraction (via a parallel pool),
 reporting progress through a callback. `ScanManager` (`electron/scanManager.ts`)
 owns the scan state and fires a scan with `start()` whenever a workspace is
-added, switched to, or re-scanned; `main.ts` starts the initial scan and aborts
+added, switched to, or re-scanned; `app.ts` starts the initial scan and aborts
 them all on quit.
 
 ### Walk and incremental sync
@@ -19,7 +19,62 @@ them all on quit.
 database. It tracks moves and renames via `content_hash` and decides what changed
 incrementally from `mtime` and `size`, so unchanged files are skipped and a moved
 file keeps its identity (and therefore its metadata — see
+[`meta_key`](data-model.md#metadata-and-meta_key)). A new path counts as a move
+only when the match is unambiguous: among the rows with the same hash and size
+not seen in this scan, exactly one is live (or, when none is live, exactly one
+is soft-deleted). When identical copies disappear together, the file is
+inserted instead of taking over a copy's id at random; its metadata still
+follows through the shared hash. A file whose content changes at the same path
+keeps its metadata too: it is copied to the new hash (see
 [`meta_key`](data-model.md#metadata-and-meta_key)).
+
+A root that cannot be read (an unplugged drive, a share that is down) fails the
+scan before the index is touched, so its files are not soft-deleted, and the
+user is told which workspace's folder could not be reached. The root is
+read again at the end of the walk, so one that goes away partway through fails
+the scan too, instead of its folders reading as deleted (a subfolder or file
+that turns out to be gone triggers the same check right away).
+
+An unmounted mountpoint (an `/etc/fstab` entry whose drive is not attached) can
+be read, as an empty folder, so each scan records whether the root is a
+mountpoint: on another device than its parent folder (only those two are
+compared, since a network share can get a new device id on every mount). A root
+that was one at the last scan, is on its parent's device now and holds no media
+fails the scan the same way (whatever else the bare folder holds, such as a
+desktop's hidden file, does not count), and so does a root mounted or unmounted
+while it is walked. A drive unmounted during the thumbnails is reported the same
+way rather than as a broken ffmpeg. An existing workspace is covered from its
+first scan with the drive mounted.
+
+A rebuild resets the index only after the root has been read. It soft-deletes
+the rows (clearing their probed fields, thumbnails and search entries) instead
+of deleting them, so the rescan revives each file still there with the same
+`files.id`; rows of files already gone are deleted. The rescan
+hashes every file, so content replaced with its size and mtime kept is caught as
+a change; an unchanged file is not auto-tagged again, which "Apply to existing
+files" on the auto-tag screen does. A subdirectory that cannot be listed, or a
+file that cannot be stat'ed, is skipped: its rows are kept as they are, with
+their IDs and thumbnails, by a rebuild too (not soft-deleted, not taken over by
+move detection, and not sent to thumbnail generation).
+
+A file whose content cannot be read for hashing (permission denied, locked by
+another process, removed since the walk, shrunk while it was read) is skipped
+for that scan instead of failing it: a new file is not inserted, and an
+existing row is left as it is (not updated, not soft-deleted). The next scan
+tries it again. One exception:
+when a file was moved or renamed to a path that cannot be read, the move is not
+detected, so the row at the old path is soft-deleted; once the new path is
+readable, the next scan detects the move and revives that row with its ID and
+metadata. The scan log
+records only how many files were skipped, by error code, not their names.
+
+Both kinds are counted in the scan's `stats.skipped`, and the renderer shows a
+warning with that count and the workspace's name after a scan, automatic or
+not, since nothing else would show them; a startup scan that ends before the
+window listens is not reported, and the next scan reports the same items. It
+does not list the paths. The walk does not descend into `node_modules` or into
+the folders a file system keeps at a drive's root (`lost+found`,
+`System Volume Information`, `$RECYCLE.BIN`).
 
 ### Metadata and thumbnails
 
@@ -86,15 +141,23 @@ is currently focused.
 
 ### Range streaming
 
-`mp4` / `m4v` / `mov` / `webm` are served as raw files with HTTP Range support,
-giving full seeking.
+Directly playable files use HTTP Range requests for full seeking. The server
+serves MP4, M4V, and MOV this way when the default audio is directly playable,
+such as AAC. ProRes and MP4, M4V, or MOV with default Dolby Digital audio
+use the streaming preview paths below.
 
 ### On-the-fly remux
 
 Containers Chromium cannot demux — `REMUX_CONTAINERS` = `mkv` / `avi` / `wmv` /
 `flv` / `ts` — are remuxed to fragmented MP4 on the fly
 (`-movflags frag_keyframe+empty_moov+default_base_moof`). Time seeking uses a
-`?t=<seconds>` query parameter. Chromium-unsupported still images (`heic` /
+`?t=<seconds>` query parameter. The server also uses fragmented MP4 for MP4,
+M4V, and MOV with a default AC-3 or E-AC-3 audio track. It copies the primary
+picture stream and converts that audio track to AAC, keeping its channel count.
+ProRes uses a local H.264 preview. A ProRes clip tagged as PQ or HLG HDR is
+tone mapped to Rec.709 with zscale and tonemap (`electron/core/proResPreview.ts`),
+when the bundled ffmpeg has both filters; the server checks that once, with
+`ffmpeg -filters`, and retries after a failed check. Chromium-unsupported still images (`heic` /
 `heif` / `tiff`, `TRANSCODE_IMAGES`) are transcoded to JPEG.
 
 ### Frame previews

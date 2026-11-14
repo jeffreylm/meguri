@@ -146,11 +146,11 @@ export async function extractMeta(
   }
 }
 
-/** A HEIF/AVIF grid image (what phone cameras write): ffprobe 7 lists each tile
+/** A HEIF/AVIF grid image (what phone cameras write): ffprobe lists each tile
  *  (512x512 on an iPhone) as its own video stream, none marked default, and the
- *  full size only in a stream group, which 6.1 has no option to print. Its size
- *  is left unknown so the thumbnail pass treats it as a large image. A plain
- *  HEIF, and each stream of an animated AVIF, is marked default. */
+ *  full size only in a stream group, which this probe does not ask for. Its
+ *  size is left unknown so the thumbnail pass treats it as a large image. A
+ *  plain HEIF, and each stream of an animated AVIF, is marked default. */
 function isTiledImage(streams: FfprobeStream[]): boolean {
   const video = streams.filter((s) => s.codec_type === "video");
   return video.length > 1 && !video.some((s) => s.disposition?.default === 1);
@@ -194,6 +194,14 @@ export function coverArtStreamIndex(raw: unknown): number | null {
     (s) => s.codec_type === "video" && s.disposition?.attached_pic === 1,
   );
   return typeof cover?.index === "number" ? cover.index : null;
+}
+
+/** The codec a scan stores for a video (see extractMeta): its first video
+ *  stream's. Takes the already-probed JSON, like coverArtStreamIndex. */
+export function videoCodecOf(raw: unknown): string | null {
+  const streams = (raw as FfprobeOutput | null)?.streams;
+  if (!Array.isArray(streams)) return null;
+  return streams.find((s) => s?.codec_type === "video")?.codec_name ?? null;
 }
 
 // How many seconds of margin to leave when doing the coarse pre-input seek of the hybrid
@@ -350,6 +358,7 @@ async function runFfmpegThumb(
   offsetSec: number | undefined,
   keyframeOnly: boolean,
   coverStreamIndex?: number,
+  complexFilter = false,
 ): Promise<boolean> {
   const useOffset = typeof offsetSec === "number";
   // scale BEFORE thumbnail: the thumbnail filter keeps its whole scoring
@@ -365,7 +374,9 @@ async function runFfmpegThumb(
     "error",
     "-y",
     "-threads",
-    String(DECODE_FFMPEG_THREADS),
+    // A tiled HEIF/AVIF gets one decoder per tile (192 for a 48MP phone
+    // photo), each with this many threads. A still decodes as fast with one.
+    kind === "image" ? "1" : String(DECODE_FFMPEG_THREADS),
   ];
   if (useOffset) {
     if (keyframeOnly) {
@@ -389,7 +400,7 @@ async function runFfmpegThumb(
     args.push("-map", `0:${coverStreamIndex}`);
   }
   args.push(
-    "-vf",
+    complexFilter ? "-filter_complex" : "-vf",
     vf,
     "-frames:v",
     "1",
@@ -423,6 +434,27 @@ async function runFfmpegThumb(
         (err as { stderr?: string }).stderr ??
         (err as Error).message ??
         String(err);
+      // ffmpeg assembles a tiled HEIF/AVIF with a complex filtergraph of its
+      // own and refuses a simple one (-vf) on that output, so the scale goes
+      // into a complex one instead. Only then: with no input label it takes
+      // the assembled image, but for any other file it would take the first
+      // stream, where -vf takes the primary image.
+      if (
+        kind === "image" &&
+        !complexFilter &&
+        stderr.includes("complex filtergraph")
+      ) {
+        return runFfmpegThumb(
+          src,
+          kind,
+          dest,
+          signal,
+          offsetSec,
+          keyframeOnly,
+          coverStreamIndex,
+          true,
+        );
+      }
       log.warn(
         `ffmpeg thumb failed (offset=${offsetSec ?? "auto"}, mode=${keyframeOnly ? "keyframe" : "hybrid"}): ${stderr}`,
       );

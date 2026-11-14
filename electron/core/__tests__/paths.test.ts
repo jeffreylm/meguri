@@ -53,6 +53,26 @@ describe("backupDbPathForDataDir", () => {
 });
 
 describe("isInsideRoot", () => {
+  it.skipIf(process.platform !== "darwin")(
+    "checks the on-disk directory when the root and file use different casing",
+    () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), "meguri-root-"));
+      const root = path.join(dir, "Meguri");
+      const alternate = path.join(dir, "meguri");
+      fs.mkdirSync(root);
+      try {
+        const aliases = fs.existsSync(alternate);
+        if (!aliases) fs.mkdirSync(alternate);
+        const file = path.join(alternate, "thumb.webp");
+        fs.writeFileSync(file, "thumbnail");
+
+        expect(isInsideRoot(file, root)).toBe(aliases);
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    },
+  );
+
   it("accepts paths inside the root", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "meguri-root-"));
     const file = path.join(root, "a.mp4");
@@ -72,9 +92,12 @@ describe("isInsideRoot", () => {
     fs.writeFileSync(siblingFile, "x");
     try {
       expect(isInsideRoot(siblingFile, root)).toBe(false);
-      expect(isInsideRoot(path.join(root, "..", path.basename(sibling), "a.mp4"), root)).toBe(
-        false,
-      );
+      expect(
+        isInsideRoot(
+          path.join(root, "..", path.basename(sibling), "a.mp4"),
+          root,
+        ),
+      ).toBe(false);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
       fs.rmSync(sibling, { recursive: true, force: true });
@@ -168,7 +191,9 @@ describe("folderDirInsideRoot", () => {
     try {
       expect(folderDirInsideRoot(root, "a\\..\\b", "\\")).toBeNull();
       expect(folderDirInsideRoot(root, "C:", "\\")).toBeNull();
-      expect(folderDirInsideRoot(root, "dir::$INDEX_ALLOCATION", "\\")).toBeNull();
+      expect(
+        folderDirInsideRoot(root, "dir::$INDEX_ALLOCATION", "\\"),
+      ).toBeNull();
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }

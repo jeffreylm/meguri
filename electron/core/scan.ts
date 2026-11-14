@@ -5,7 +5,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import type { DB } from "./db.js";
 import { nowUnix, pathMetaKey } from "./db.js";
-import { migrateMetaKey } from "./queries.js";
+import { copyMetaKey, migrateMetaKey } from "./queries.js";
 import { pool } from "./concurrency.js";
 import type { Kind } from "./types.js";
 
@@ -107,6 +107,8 @@ export async function looksLikeMpegTs(file: string): Promise<boolean> {
     return (err as NodeJS.ErrnoException).code !== "ENOENT";
   }
   try {
+    // Windows opens directories too; a folder named *.ts is not a stream.
+    if ((await fd.stat()).isDirectory()) return false;
     // Network filesystems may return short reads; fill the probe window.
     while (len < buf.length) {
       const { bytesRead } = await fd.read(buf, len, buf.length - len, len);
@@ -124,8 +126,16 @@ export async function looksLikeMpegTs(file: string): Promise<boolean> {
   );
 }
 
-// Dependency trees of code repositories: never media, and often huge.
-const SKIPPED_DIRS = new Set(["node_modules"]);
+// Dependency trees of code repositories: never media, and often huge. And the
+// folders a file system keeps at a drive's root, which are usually not
+// readable: listing them would warn about skipped folders after every scan of
+// a dedicated drive (#314).
+const SKIPPED_DIRS = new Set([
+  "node_modules",
+  "lost+found",
+  "System Volume Information",
+  "$RECYCLE.BIN",
+]);
 
 export interface Discovered {
   absPath: string;
@@ -139,6 +149,77 @@ export interface Discovered {
   inode: number;
 }
 
+function errorCode(err: unknown): string | undefined {
+  return (err as NodeJS.ErrnoException | null)?.code;
+}
+
+/** The workspace's folder could not be read: an unplugged drive, a share that
+ *  is down. Told apart so the user can be told (#313). */
+export class ScanRootUnreadableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ScanRootUnreadableError";
+  }
+}
+
+/** No path in the message: the scan log may be shared. */
+function rootUnreadableError(code: string | undefined): Error {
+  return new ScanRootUnreadableError(
+    `the scan root cannot be read (${code ?? "unknown"})`,
+  );
+}
+
+/**
+ * Whether the root is a mountpoint: on another device than its parent folder.
+ * An unmounted one is a plain empty folder on its parent's device. Only the
+ * two are compared, since a network share can get a new device id on every
+ * mount. False for a file system's root ("/", "D:\\"), null when either
+ * cannot be stat'ed.
+ */
+export async function isMountpoint(root: string): Promise<boolean | null> {
+  const parent = path.dirname(root);
+  if (parent === root) return false;
+  try {
+    const [r, p] = await Promise.all([fsp.stat(root), fsp.stat(parent)]);
+    return r.dev !== p.dev;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Throws a ScanRootUnreadableError unless the root can be opened. Opening it
+ * (without listing it) answers "is it still there?" cheaply, even for a root
+ * with many entries on a network share.
+ */
+export async function assertScanRootReadable(root: string): Promise<void> {
+  try {
+    await (await fsp.opendir(root)).close();
+  } catch (err) {
+    throw rootUnreadableError(errorCode(err));
+  }
+}
+
+/**
+ * A predicate for rows walk() could not reach: the path itself, or anything
+ * under a directory, reported through onUnreadablePath. O(depth) per check, so
+ * it stays cheap with many reported paths.
+ */
+export function unreadableMatcher(
+  unreadablePaths: readonly string[],
+): (relPath: string) => boolean {
+  const paths = new Set(unreadablePaths);
+  return (relPath) => {
+    if (paths.size === 0) return false;
+    for (let p = relPath; ;) {
+      if (paths.has(p)) return true;
+      const parent = path.dirname(p);
+      if (parent === p || parent === ".") return false;
+      p = parent;
+    }
+  };
+}
+
 /**
  * Recursively enumerate media files under the root. Hidden directories and
  * dependency directories (node_modules) are excluded, and `.ts` files are kept
@@ -146,12 +227,29 @@ export interface Discovered {
  * Directory traversal (readdir) and file stat run in concurrent pools so that IO
  * waits don't stall even on network FS such as SMB (the main thread yields to the
  * event loop on each await, so it doesn't freeze).
+ *
+ * A root that cannot be read throws: an unplugged drive or a share that is down
+ * must not look like an empty folder. A subdirectory or a file that exists but
+ * cannot be read (permission denied, a share dropping mid-walk) is reported
+ * through onUnreadablePath (relative to the root) and skipped; one that is gone
+ * (ENOENT / ENOTDIR) is simply not found.
  */
 export async function walk(
   root: string,
   onProgress?: (count: number) => void,
   signal?: AbortSignal,
+  onUnreadablePath?: (relPath: string) => void,
 ): Promise<Discovered[]> {
+  const assertRootReadable = () => assertScanRootReadable(root);
+  const reportUnreadable = async (full: string, code: string | undefined) => {
+    if (code === "ENOENT" || code === "ENOTDIR") {
+      // Gone, unless the whole root went away (an unmounted drive): check now,
+      // while it is still away, rather than only at the end of the walk.
+      await assertRootReadable();
+      return;
+    }
+    onUnreadablePath?.(path.relative(root, full));
+  };
   const out: Discovered[] = [];
   // Directories pending traversal. Dequeued in BFS order, with discovered child directories appended.
   let level: string[] = [root];
@@ -169,7 +267,10 @@ export async function walk(
         let entries: fs.Dirent[];
         try {
           entries = await fsp.readdir(dir, { withFileTypes: true });
-        } catch {
+        } catch (err) {
+          const code = errorCode(err);
+          if (dir === root) throw rootUnreadableError(code);
+          await reportUnreadable(dir, code);
           return;
         }
         for (const ent of entries) {
@@ -200,7 +301,8 @@ export async function walk(
         let st: fs.Stats;
         try {
           st = await fsp.stat(t.full);
-        } catch {
+        } catch (err) {
+          await reportUnreadable(t.full, errorCode(err));
           return;
         }
         // Only the ambiguous extension pays for the extra read.
@@ -225,10 +327,47 @@ export async function walk(
     onProgress?.(out.length);
     level = next;
   }
+  // A share or a removable drive can go away after the root was listed (its
+  // entries then fail with ENOENT and would read as deleted); check the root
+  // once more before anyone acts on this result.
+  if (!signal?.aborted) await assertRootReadable();
   return out;
 }
 
 const SAMPLE = 1024 * 1024; // 1 MiB
+
+/**
+ * Fill buf from the file at position. A read can return fewer bytes than
+ * asked (a network share in particular), so read on until it is full; the end
+ * of the file before that means it shrank while it was read, which throws with
+ * a code, so the scan skips the file and tries it again next time (#263).
+ */
+async function readFully(
+  fd: fsp.FileHandle,
+  buf: Buffer,
+  position: number,
+): Promise<void> {
+  let filled = 0;
+  while (filled < buf.length) {
+    const { bytesRead } = await fd.read(
+      buf,
+      filled,
+      buf.length - filled,
+      position + filled,
+    );
+    if (bytesRead === 0) {
+      throw Object.assign(new Error("the file shrank while it was read"), {
+        code: "ESHRUNK",
+      });
+    }
+    filled += bytesRead;
+  }
+}
+
+/** The content_hash of every empty file (contentHash of size 0). */
+const EMPTY_CONTENT_HASH = createHash("sha256")
+  .update(Buffer.from(BigInt64Array.of(0n).buffer))
+  .digest("hex");
 
 /** Sampled content_hash (sha256 of size + the first/last 1MiB). */
 export async function contentHash(file: string): Promise<string> {
@@ -239,14 +378,14 @@ export async function contentHash(file: string): Promise<string> {
     h.update(Buffer.from(BigInt64Array.of(BigInt(size)).buffer));
     if (size <= SAMPLE * 2) {
       const buf = Buffer.alloc(size);
-      await fd.read(buf, 0, size, 0);
+      await readFully(fd, buf, 0);
       h.update(buf);
     } else {
       const head = Buffer.alloc(SAMPLE);
-      await fd.read(head, 0, SAMPLE, 0);
+      await readFully(fd, head, 0);
       h.update(head);
       const tail = Buffer.alloc(SAMPLE);
-      await fd.read(tail, 0, SAMPLE, size - SAMPLE);
+      await readFully(fd, tail, size - SAMPLE);
       h.update(tail);
     }
   } finally {
@@ -261,11 +400,30 @@ export interface ScanStats {
   moved: number;
   deleted: number;
   unchanged: number;
+  /** Folders and files left as they were because they could not be read
+   *  (the walk could not list or stat them, or their content could not be
+   *  hashed). Set by runScan; retried by the next scan. */
+  skipped: number;
+}
+
+/** A file skipped by a scan because its content could not be read. */
+export interface UnreadableFile {
+  relPath: string;
+  /** The fs error code, e.g. EACCES / EBUSY / ENOENT, or ESHRUNK when the
+   *  file shrank while it was read. */
+  code: string;
 }
 
 /** Stats for a scan that did nothing (aborted before starting, or failed). */
 export function emptyScanStats(): ScanStats {
-  return { inserted: 0, updated: 0, moved: 0, deleted: 0, unchanged: 0 };
+  return {
+    inserted: 0,
+    updated: 0,
+    moved: 0,
+    deleted: 0,
+    unchanged: 0,
+    skipped: 0,
+  };
 }
 
 /**
@@ -278,23 +436,54 @@ export function emptyScanStats(): ScanStats {
  *      and yield between chunks. Move detection uses values in the DB, so it doesn't depend on chunk order.
  *
  * ftsTargets are the file ids that need FTS re-sync (inserted/moved/updated). unchanged ones are excluded.
+ * ftsMissing are unchanged rows that have no FTS row. A soft-deleted row loses
+ * its FTS row when the file is removed from the index, or when the index is
+ * re-synced or rebuilt meanwhile (resyncFtsForKeys / rebuildFtsAll skip deleted
+ * rows); a scan aborted before its index phase leaves new rows without one.
+ * When such a file is found unchanged, its FTS row needs rebuilding, but
+ * unlike ftsTargets it is not auto-tagged again.
+ * unreadablePaths are directories and files (relative to the root) that walk()
+ * could not read: their rows (a file's own row, or every row under a directory)
+ * are kept as they are instead of being soft-deleted, and are not taken over by
+ * move detection.
+ * unreadable lists the files whose content could not be read for hashing
+ * (permission denied, locked by another process, gone since the walk). They
+ * are left as they are for this scan and retried on the next one.
  */
 export async function syncFiles(
   db: DB,
   rootId: number,
   discovered: Discovered[],
-  onHashProgress?: (done: number, total: number) => void,
-  signal?: AbortSignal,
-): Promise<{ stats: ScanStats; needsThumb: number[]; ftsTargets: number[] }> {
+  opts: {
+    onHashProgress?: (done: number, total: number) => void;
+    signal?: AbortSignal;
+    unreadablePaths?: readonly string[];
+    /** Hash every file, not only new and changed ones (a rebuild): a file whose
+     *  content changed with its size and mtime kept is then caught too. */
+    rehash?: boolean;
+  } = {},
+): Promise<{
+  stats: ScanStats;
+  needsThumb: number[];
+  ftsTargets: number[];
+  ftsMissing: number[];
+  unreadable: UnreadableFile[];
+}> {
+  const { onHashProgress, signal, unreadablePaths = [], rehash = false } = opts;
   const stats: ScanStats = {
     inserted: 0,
     updated: 0,
     moved: 0,
     deleted: 0,
     unchanged: 0,
+    skipped: 0,
   };
   const needsThumb: number[] = [];
   const ftsTargets: number[] = [];
+  const ftsMissing: number[] = [];
+  const unreadable: UnreadableFile[] = [];
+  // Read once to filter what is scanned; the apply step checks again for files
+  // removed from the index meanwhile (#266).
   const excluded = new Set(
     (
       db
@@ -326,7 +515,7 @@ export async function syncFiles(
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
   );
   const moveCandidates = db.prepare(
-    "SELECT id, rel_path, kind, ext FROM files WHERE root_id = ? AND content_hash = ? AND size = ? AND excluded_at IS NULL",
+    "SELECT id, rel_path, kind, ext, deleted_at FROM files WHERE root_id = ? AND content_hash = ? AND size = ? AND excluded_at IS NULL",
   );
   // A move can change the extension, and with it the kind (the same MPEG-4 bytes
   // are video as .mp4 and audio as .m4a). The row would otherwise keep the old
@@ -334,15 +523,22 @@ export async function syncFiles(
   const reclassifyMoved = db.prepare(
     "UPDATE files SET kind = ?, ext = ?, thumb_path = NULL, thumb_status = 'pending' WHERE id = ?",
   );
+  // A rebuild's re-hash gives a row that had none its first hash, without
+  // treating the unchanged file as changed.
+  const setHash = db.prepare("UPDATE files SET content_hash = ? WHERE id = ?");
 
   type Existing =
     | {
         id: number;
+        kind: string;
+        ext: string | null;
         size: number;
         mtime: number;
         content_hash: string | null;
         /** The key its metadata is stored under (META_KEY_EXPR). */
         meta_key: string;
+        /** Has no files_fts row (see ftsMissing). */
+        noFts: boolean;
       }
     | undefined;
 
@@ -354,37 +550,46 @@ export async function syncFiles(
     (
       db
         .prepare(
-          "SELECT id, rel_path, meta_key, size, mtime, content_hash FROM files WHERE root_id = ?",
+          `SELECT id, rel_path, kind, ext, meta_key, size, mtime, content_hash,
+                  NOT EXISTS (SELECT 1 FROM files_fts WHERE rowid = files.id) AS no_fts
+             FROM files WHERE root_id = ?`,
         )
         .all(rootId) as {
         id: number;
         rel_path: string;
+        kind: string;
+        ext: string | null;
         meta_key: string;
         size: number;
         mtime: number;
         content_hash: string | null;
+        no_fts: number;
       }[]
     ).map((r) => [
       r.rel_path,
       {
         id: r.id,
+        kind: r.kind,
+        ext: r.ext,
         size: r.size,
         mtime: r.mtime,
         content_hash: r.content_hash,
         meta_key: r.meta_key,
+        noFts: r.no_fts === 1,
       },
     ]),
   );
-  // hashIdx holds new files (move detection) plus changed files (content_hash refresh).
+  // hashIdx holds new files (move detection) plus changed files (content_hash
+  // refresh); with rehash, every file.
   const existingOf: Existing[] = new Array<Existing>(scannable.length);
   const hashIdx: number[] = [];
   for (let i = 0; i < scannable.length; i++) {
     if (signal?.aborted) break;
     const existing = existingByRelPath.get(scannable[i].relPath);
     existingOf[i] = existing;
-    if (!existing) {
-      hashIdx.push(i);
-    } else if (
+    if (
+      !existing ||
+      rehash ||
       existing.size !== scannable[i].size ||
       existing.mtime !== scannable[i].mtime
     ) {
@@ -395,7 +600,11 @@ export async function syncFiles(
 
   // --- 2. Compute content_hash for new + changed candidates concurrently ---
   // On network FS (SMB) this reads 2 MiB per file, so report progress (determinate total).
+  // A file that cannot be read is skipped instead of failing the whole scan:
+  // a new one is not inserted and a changed one keeps its row as it is (its
+  // path is still in `seen`, so it is not soft-deleted either).
   const hashOf = new Map<number, string>();
+  const unreadableIdx = new Set<number>();
   const hashTotal = hashIdx.length;
   let hashed = 0;
   await pool(
@@ -403,7 +612,16 @@ export async function syncFiles(
     SCAN_IO_CONCURRENCY,
     async (idx) => {
       if (signal?.aborted) return;
-      hashOf.set(idx, await contentHash(scannable[idx].absPath));
+      try {
+        hashOf.set(idx, await contentHash(scannable[idx].absPath));
+      } catch (error) {
+        // Only fs errors mean "this file can't be read"; anything else is a
+        // bug and should still fail the scan.
+        const code = errorCode(error);
+        if (typeof code !== "string") throw error;
+        unreadableIdx.add(idx);
+        unreadable.push({ relPath: scannable[idx].relPath, code });
+      }
       hashed++;
       if (hashed % 8 === 0 || hashed === hashTotal)
         onHashProgress?.(hashed, hashTotal);
@@ -411,13 +629,42 @@ export async function syncFiles(
     signal,
   );
 
-  if (signal?.aborted) return { stats, needsThumb, ftsTargets };
+  if (signal?.aborted)
+    return { stats, needsThumb, ftsTargets, ftsMissing, unreadable };
+
+  // Rows walk() could not reach were not seen, but may well still be there.
+  const isUnreadable = unreadableMatcher(unreadablePaths);
 
   // --- 3. DB apply (chunked tx + yield between chunks) ---
+  // A file can be removed from the index while this scan awaits (hashing, the
+  // yields between chunks), after the excluded set above was read. Each chunk
+  // re-reads it, so such a row is left removed instead of being restored (#266).
+  // Looked up by primary key for the chunk's rows only: excluded rows pile up
+  // until a rebuild, so reading all of them per chunk would grow with them.
+  const excludedAmong = db
+    .prepare(
+      "SELECT id FROM files WHERE id IN (SELECT value FROM json_each(?)) AND excluded_at IS NOT NULL",
+    )
+    .pluck();
   const applyChunk = db.transaction((idxs: number[]) => {
+    const ids = idxs.flatMap((i) => existingOf[i]?.id ?? []);
+    const excludedNow = new Set(
+      ids.length > 0
+        ? (excludedAmong.all(JSON.stringify(ids)) as number[])
+        : [],
+    );
     for (const i of idxs) {
       const d = scannable[i];
       const existing = existingOf[i];
+      if (existing && excludedNow.has(existing.id)) continue;
+      const sameStat =
+        existing !== undefined &&
+        existing.size === d.size &&
+        existing.mtime === d.mtime;
+      // Skipped when its content could not be read, unless only a rebuild's
+      // re-hash failed: the file looks unchanged, so it is revived as such
+      // rather than left soft-deleted by the reset.
+      if (unreadableIdx.has(i) && !(rehash && sameStat)) continue;
       if (existing) {
         // A row without a hash keys its metadata by its path (the path
         // fallback). The update below can change that key: a hash appears, or
@@ -428,20 +675,54 @@ export async function syncFiles(
             migrateMetaKey(db, existing.meta_key, newKey);
           }
         };
-        if (existing.size === d.size && existing.mtime === d.mtime) {
-          carryMeta(pathMetaKey(d.absPath));
+        const newHash = hashOf.get(i);
+        // On a re-hash, a different hash means changed content; a first hash
+        // for a row without one does not.
+        const unchanged =
+          sameStat &&
+          (newHash === undefined ||
+            existing.content_hash == null ||
+            newHash === existing.content_hash);
+        if (unchanged) {
+          if (newHash !== undefined && existing.content_hash == null) {
+            carryMeta(newHash);
+            setHash.run(newHash, existing.id);
+          } else {
+            carryMeta(pathMetaKey(d.absPath));
+          }
           touchUnchanged.run(d.absPath, d.inode, d.btime, existing.id);
+          // The extension-to-kind mapping can change between versions; follow
+          // it, as an inserted row would.
+          if (existing.kind !== d.kind || existing.ext !== d.ext) {
+            reclassifyMoved.run(d.kind, d.ext, existing.id);
+            if (d.kind !== "audio") needsThumb.push(existing.id);
+          }
+          if (existing.noFts) ftsMissing.push(existing.id);
           stats.unchanged++;
         } else {
-          const newHash = hashOf.get(i) ?? null;
-          carryMeta(newHash ?? pathMetaKey(d.absPath));
+          // Changed content at the same path is the same file to the user
+          // (tags or cover art edited, a recording that grew): its metadata
+          // follows the new content (#263). Copied rather than moved from a
+          // hash key, which another copy of the old content may still use.
+          // Neither to nor from empty content: every empty file (truncated by
+          // a failed sync, or not written yet) has the same hash, and it
+          // would gather and hand out all their metadata.
+          const newKey = newHash ?? pathMetaKey(d.absPath);
+          carryMeta(newKey);
+          if (
+            existing.content_hash != null &&
+            existing.content_hash !== EMPTY_CONTENT_HASH &&
+            newKey !== EMPTY_CONTENT_HASH
+          ) {
+            copyMetaKey(db, existing.meta_key, newKey);
+          }
           updateChanged.run(
             d.size,
             d.mtime,
             d.btime,
             d.absPath,
             d.inode,
-            newHash,
+            newHash ?? null,
             existing.id,
           );
           needsThumb.push(existing.id);
@@ -464,9 +745,23 @@ export async function syncFiles(
               rel_path: string;
               kind: string;
               ext: string | null;
+              deleted_at: number | null;
             }[])
           : [];
-      const moved = cands.find((c) => !seen.has(c.rel_path));
+      // A candidate walk() could not reach is probably still in place: this
+      // is a copy, not a move.
+      const unseen = cands.filter(
+        (c) => !seen.has(c.rel_path) && !isUnreadable(c.rel_path),
+      );
+      // Only an unambiguous match is a move: with identical copies gone at
+      // once, picking one would hand a file's id (which collections refer to)
+      // to another copy, so the file is inserted instead (its metadata follows
+      // through the shared content hash). A row that was still there before
+      // this scan is the likelier source than one long gone, so when any live
+      // row is unseen, only live rows count.
+      const live = unseen.filter((c) => c.deleted_at == null);
+      const choices = live.length > 0 ? live : unseen;
+      const moved = choices.length === 1 ? choices[0] : undefined;
       if (moved) {
         moveStmt.run(
           d.relPath,
@@ -516,7 +811,8 @@ export async function syncFiles(
     await yieldToLoop();
   }
 
-  if (signal?.aborted) return { stats, needsThumb, ftsTargets };
+  if (signal?.aborted)
+    return { stats, needsThumb, ftsTargets, ftsMissing, unreadable };
 
   // Soft-delete existing rows not seen this time (in a single transaction at the end).
   const softDelete = db.transaction(() => {
@@ -527,7 +823,7 @@ export async function syncFiles(
       .all(rootId) as { id: number; rel_path: string }[];
     const del = db.prepare("UPDATE files SET deleted_at = ? WHERE id = ?");
     for (const row of alive) {
-      if (!seen.has(row.rel_path)) {
+      if (!seen.has(row.rel_path) && !isUnreadable(row.rel_path)) {
         del.run(now, row.id);
         stats.deleted++;
       }
@@ -535,5 +831,5 @@ export async function syncFiles(
   });
   softDelete();
 
-  return { stats, needsThumb, ftsTargets };
+  return { stats, needsThumb, ftsTargets, ftsMissing, unreadable };
 }
