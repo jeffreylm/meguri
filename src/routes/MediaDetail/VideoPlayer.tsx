@@ -136,6 +136,8 @@ export const VideoPlayer = forwardRef<
     startAt: number;
     /** Whether the video should start playing automatically (default true). */
     autoplay?: boolean;
+    /** Reopen the stream once at its position after a network error mid-playback. */
+    reopenOnNetworkError?: boolean;
     /**
      * Whether playing here moves the file's resume point (default true). Off
      * for Discovery's in-place preview: sampling a file there must not replace
@@ -223,6 +225,7 @@ export const VideoPlayer = forwardRef<
     wsId,
     startAt,
     autoplay = true,
+    reopenOnNetworkError = false,
     recordPosition = true,
     shortcuts = true,
     audioTracks,
@@ -530,6 +533,25 @@ export const VideoPlayer = forwardRef<
       networkState: v.networkState,
       code,
     });
+    // The server can end a ProRes preview that stopped reading while another
+    // preview waits for its slot. Reopen it once where it stopped; a reopen
+    // that loads restores the retry (see onLoadedMetadata).
+    if (
+      code === MEDIA_ERR_NETWORK &&
+      reopenOnNetworkError &&
+      haveMetadataRef.current &&
+      !netRetriedRef.current
+    ) {
+      netRetriedRef.current = true;
+      const source = v.getAttribute("src") ?? src;
+      const at = streamOffsetOf(source) + v.currentTime;
+      const resume = !v.paused;
+      retryTimerRef.current = window.setTimeout(() => {
+        retryTimerRef.current = null;
+        if (ref.current === v && v.error) restartPreview(v, source, at, resume);
+      }, NETWORK_RETRY_DELAY_MS);
+      return;
+    }
     // A network error right after opening is often transient (the media
     // request can be starved while frame previews hold the origin's
     // connection slots) — reload once before surfacing the error. Only
@@ -777,8 +799,10 @@ export const VideoPlayer = forwardRef<
   /** Whether the element can reach `t` on its own, without re-serving. */
   const canSeekNatively = (v: HTMLVideoElement, t: number) => {
     if (!haveMetadataRef.current || !isFinite(v.duration)) return false;
+    const relative = t - streamOffsetOf(v.getAttribute("src"));
     for (let i = 0; i < v.seekable.length; i++) {
-      if (t >= v.seekable.start(i) && t <= v.seekable.end(i)) return true;
+      if (relative >= v.seekable.start(i) && relative <= v.seekable.end(i))
+        return true;
     }
     return false;
   };
@@ -1143,6 +1167,8 @@ export const VideoPlayer = forwardRef<
           // their merits rather than deferred.
           haveMetadataRef.current = true;
           pendingAudio.current = null;
+          // The stream works again, so a later interruption may retry too.
+          netRetriedRef.current = false;
 
           setLoaded(true);
           // Apply the shared volume/mute to this freshly-loaded element. The
@@ -1184,7 +1210,8 @@ export const VideoPlayer = forwardRef<
           if (!v || target == null) return;
           // The run moved on while this seek was in flight; go where it points
           // now. Landing on the target ends the chain.
-          if (Math.abs(v.currentTime - target) > SEEK_SETTLED_SEC) flushSeek();
+          const reached = streamOffsetOf(v.getAttribute("src")) + v.currentTime;
+          if (Math.abs(reached - target) > SEEK_SETTLED_SEC) flushSeek();
         }}
         onError={() => {
           const v = ref.current;

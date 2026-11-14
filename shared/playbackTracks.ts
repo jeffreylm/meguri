@@ -28,9 +28,14 @@ export function hasRemuxVideo(raw: unknown): boolean {
   );
 }
 
+/** ProRes plays through an H.264 preview the media server encodes. */
+export function isProResCodec(codec: string | null | undefined): boolean {
+  return codec === "prores";
+}
+
 export function isRemuxedVideo(
   codec: string | null,
   ext: string | null,
 ): boolean {
-  return codec === "prores" || REMUX_CONTAINERS.has(ext?.toLowerCase() ?? "");
+  return isProResCodec(codec) || REMUX_CONTAINERS.has(ext?.toLowerCase() ?? "");
 }

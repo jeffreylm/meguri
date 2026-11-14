@@ -37,7 +37,7 @@ import { useResumeStart } from "@/hooks/useResumeStart";
 import { ResumeNotice } from "@/components/ResumeNotice";
 import { MediaModal, TopBar } from "./MediaModal";
 import { VideoPlayer, type PlayerHandle } from "./VideoPlayer";
-import { isRemuxedVideo } from "@shared/playbackTracks";
+import { isProResCodec, isRemuxedVideo } from "@shared/playbackTracks";
 import { useAudioActions } from "@/audio/useAudioPlayer";
 import { hasThumbFile, thumbUrl } from "@/lib/thumbUrl";
 import { AudioCompact, AudioStage } from "./AudioStage";
@@ -397,7 +397,7 @@ export default function MediaDetail() {
                 }
                 subtitleTracks={readEmbeddedTracks(d.meta, "subtitle")}
                 subtitleAudioLanguage={
-                  d.codec === "prores" || audioTracks.length === 1
+                  isProResCodec(d.codec) || audioTracks.length === 1
                     ? audioTracks[0]?.language
                     : undefined
                 }
@@ -409,6 +409,8 @@ export default function MediaDetail() {
                 wsId={wsId}
                 startAt={startAt}
                 autoplay={autoplay}
+                // The server can end a ProRes preview that stops reading.
+                reopenOnNetworkError={isProResCodec(d.codec)}
                 navKeys={navBinding}
                 fullscreenTargetRef={modalRef}
                 bookmarks={d.bookmarks}
