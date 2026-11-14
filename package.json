@@ -1,7 +1,7 @@
 {
   "name": "meguri",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Footage Deck is a local media catalogue for post-production",
   "license": "MIT",
   "author": {
@@ -128,7 +128,7 @@
     "vitest": "^4.1.12"
   },
   "build": {
-    "buildVersion": "22",
+    "buildVersion": "1",
     "appId": "dev.amgsk.meguri",
     "productName": "Footage Deck",
     "directories": {

@@ -150,6 +150,7 @@ export function PexelsSourceReview({
   });
   const invalid = edits.some(({ source }) => !parsePexelsVideoUrl(source));
   const save = useMutation({
+    meta: { reportsOwnError: true },
     mutationFn: api.savePexelsSources,
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: [PEXELS_SOURCE_QUERY] });
@@ -158,6 +159,7 @@ export function PexelsSourceReview({
     },
   });
   const changeSource = useMutation({
+    meta: { reportsOwnError: true },
     mutationFn: async (edit: ChannelInput<"pexels_source_set">) => {
       if (!(await api.setPexelsSource(edit))) {
         throw new Error("The clip changed while editing its source");

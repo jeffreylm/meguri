@@ -116,20 +116,17 @@ export function WorkspaceRail() {
 
   // Also track changes from other paths (e.g. the add button in the empty state).
   useEffect(() => {
-    const unlistens: Array<() => void> = [];
-    void events
-      .onWorkspaceChanged(() => void invalidateWorkspaceScoped(qc))
-      .then((u) => unlistens.push(u));
-    void events
-      .onScanDone((done) => {
+    const unlistens = [
+      events.onWorkspaceChanged(() => void invalidateWorkspaceScoped(qc)),
+      events.onScanDone((done) => {
         if (!addedWorkspaceScanJobs.current.has(done.jobId)) return;
         addedWorkspaceScanJobs.current.delete(done.jobId);
         toast.success(t("home.scanComplete"), {
           description: t("home.scanCompleteDetail", done.stats),
         });
-      })
-      .then((u) => unlistens.push(u));
-    return () => unlistens.forEach((u) => u());
+      }),
+    ];
+    return () => unlistens.forEach((unlisten) => unlisten());
   }, [qc, t]);
 
   // What registering a folder did, however it was chosen: the picker or a
@@ -156,6 +153,7 @@ export function WorkspaceRail() {
       }
       onAdded(r);
     },
+    meta: { reportsOwnError: true },
     onError: (e, dir) =>
       toast.error(t("drop.addFailed", { name: dir.name }), {
         description: e instanceof Error ? e.message : String(e),

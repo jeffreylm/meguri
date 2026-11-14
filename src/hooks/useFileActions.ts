@@ -153,6 +153,7 @@ export function useFileActions(
         );
       }
     },
+    meta: { reportsOwnError: true },
     onError: (e) =>
       toast.error(t("collection.actionFailed"), { description: errorText(e) }),
   });

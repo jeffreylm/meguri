@@ -26,6 +26,7 @@ export function FilmInfoSection({
   const { t } = useI18n();
   const qc = useQueryClient();
   const remove = useMutation({
+    meta: { reportsOwnError: true },
     mutationFn: async (row: FilmReviewRow) => {
       if (!(await api.removeFilm({ workspaceId, id, metaKey: row.metaKey })))
         throw new Error("This file changed.");

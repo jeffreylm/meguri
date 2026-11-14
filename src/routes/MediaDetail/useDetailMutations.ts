@@ -126,6 +126,7 @@ export function useDetailMutations({
   const addTag = useMutation({
     mutationFn: (name: string) => api.fileAddTag(fileId, wsId, name),
     onSuccess: onTagsChanged,
+    meta: { reportsOwnError: true },
     onError: (error, name) => {
       // main rejects a name that impersonates a pipeline-owned namespace; any
       // other failure (DB error, unknown workspace) deserves its own message.
@@ -202,6 +203,7 @@ export function useDetailMutations({
       invalidateCollections();
       toast.success(t("collection.addedToast", { name: c.name }));
     },
+    meta: { reportsOwnError: true },
     onError: onCollectionError,
   });
   const removeFromCollection = useMutation({
@@ -211,6 +213,7 @@ export function useDetailMutations({
       invalidateCollections();
       toast.success(t("collection.removedFromToast", { name: c.name }));
     },
+    meta: { reportsOwnError: true },
     onError: onCollectionError,
   });
 

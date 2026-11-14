@@ -20,6 +20,7 @@ import { AudioPlayerBar } from "@/audio/AudioPlayerBar";
 import { StatusBar } from "@/components/StatusBar";
 import { useContentZoom } from "@/hooks/useContentZoom";
 import { useSelectAllGuard } from "@/hooks/useSelectAllGuard";
+import { useMutationErrorNotifier } from "@/hooks/useMutationErrorNotifier";
 import { useUpdateNotifier } from "@/hooks/useUpdateNotifier";
 import { registerRouterNavigate } from "@/lib/routerBridge";
 
@@ -70,6 +71,7 @@ function AppLayout() {
   useContentZoom();
   useSelectAllGuard();
   useUpdateNotifier();
+  useMutationErrorNotifier();
   if (window.location.hash.startsWith("#/note/"))
     return (
       <>

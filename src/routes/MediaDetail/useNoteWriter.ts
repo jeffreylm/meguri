@@ -30,7 +30,7 @@ export function useNoteWriter(
   const qc = useQueryClient();
   const { mutateAsync: save } = useMutation({
     mutationFn: (value: string | null) => api.fileSetNote(fileId, wsId, value),
-    meta: { catalogueChange: "note" },
+    meta: { catalogueChange: "note", reportsOwnError: true },
   });
   /** What the database holds, as far as this view knows. */
   const saved = useRef(normalizeNote(initial));

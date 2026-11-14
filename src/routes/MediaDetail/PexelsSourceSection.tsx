@@ -31,6 +31,7 @@ export function PexelsSourceSection({
   const row = query.data?.rows[0];
   const suggestion = row?.suggestion;
   const edit = useMutation({
+    meta: { reportsOwnError: true },
     mutationFn: async (source: string | null) => {
       if (
         !draft ||

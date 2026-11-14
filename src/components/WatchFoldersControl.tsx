@@ -19,18 +19,9 @@ export function WatchFoldersControl({ ready }: { ready: boolean }) {
   });
   useEffect(() => {
     if (!ready) return;
-    let disposed = false;
-    let unlisten: (() => void) | undefined;
-    void events
-      .onWatchChanged((value) => qc.setQueryData(["watch_get"], value))
-      .then((off) => {
-        if (disposed) off();
-        else unlisten = off;
-      });
-    return () => {
-      disposed = true;
-      unlisten?.();
-    };
+    return events.onWatchChanged((value) =>
+      qc.setQueryData(["watch_get"], value),
+    );
   }, [ready, qc]);
   return (
     <Popover>

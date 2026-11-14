@@ -307,29 +307,22 @@ export type {
   UpdateInfo,
 };
 
-// Returns a Promise so existing components can receive the unlisten function via `.then(unlisten => ...)`.
 type Unlisten = () => void;
 export const events = {
   onWatchChanged: (
     cb: (status: ChannelOutput<"watch_get">) => void,
-  ): Promise<Unlisten> =>
-    Promise.resolve(
-      bridge.on("watch:changed", (p) => cb(p as ChannelOutput<"watch_get">)),
+  ): Unlisten =>
+    bridge.on("watch:changed", (p) => cb(p as ChannelOutput<"watch_get">)),
+  onScanProgress: (cb: (p: ScanProgress) => void): Unlisten =>
+    bridge.on("scan:progress", (p) => cb(p as ScanProgress)),
+  onThumbDone: (cb: (event: ThumbDone) => void): Unlisten =>
+    bridge.on("thumb:done", (p) => cb(p as ThumbDone)),
+  onScanDone: (cb: (d: ScanDone) => void): Unlisten =>
+    bridge.on("scan:done", (p) => cb(p as ScanDone)),
+  onWorkspaceChanged: (cb: (activeId: string | null) => void): Unlisten =>
+    bridge.on("workspace:changed", (p) =>
+      cb((p as { activeId: string | null }).activeId),
     ),
-  onScanProgress: (cb: (p: ScanProgress) => void): Promise<Unlisten> =>
-    Promise.resolve(bridge.on("scan:progress", (p) => cb(p as ScanProgress))),
-  onThumbDone: (cb: (event: ThumbDone) => void): Promise<Unlisten> =>
-    Promise.resolve(bridge.on("thumb:done", (p) => cb(p as ThumbDone))),
-  onScanDone: (cb: (d: ScanDone) => void): Promise<Unlisten> =>
-    Promise.resolve(bridge.on("scan:done", (p) => cb(p as ScanDone))),
-  onWorkspaceChanged: (
-    cb: (activeId: string | null) => void,
-  ): Promise<Unlisten> =>
-    Promise.resolve(
-      bridge.on("workspace:changed", (p) =>
-        cb((p as { activeId: string | null }).activeId),
-      ),
-    ),
-  onUpdateAvailable: (cb: (info: UpdateInfo) => void): Promise<Unlisten> =>
-    Promise.resolve(bridge.on("update:available", (p) => cb(p as UpdateInfo))),
+  onUpdateAvailable: (cb: (info: UpdateInfo) => void): Unlisten =>
+    bridge.on("update:available", (p) => cb(p as UpdateInfo)),
 };

@@ -76,6 +76,7 @@ export function WatchLaterButton({
         next ? t("watchLater.addedToast") : t("watchLater.removedToast"),
       );
     },
+    meta: { reportsOwnError: true },
     onError: (error: unknown) => {
       toast.error(t("watchLater.actionFailed"), {
         description: error instanceof Error ? error.message : String(error),
