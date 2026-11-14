@@ -2,6 +2,27 @@
 import type { TranslationKey } from "./ja";
 
 export const en: Record<TranslationKey, string> = {
+  "origin.title": "Where from",
+  "origin.website": "Website",
+  "origin.searchWebsite": "Search website",
+  "origin.originalUrl": "Original page URL",
+  "origin.assetId": "Asset ID (optional)",
+  "origin.openSuggestion": "Open suggested page",
+  "origin.searchId": "Search for ID",
+  "origin.confirmSuggestion":
+    "Check the suggested page, then paste its URL here to save it.",
+  "origin.copy": "Copy",
+  "origin.copied": "Copied to clipboard",
+  "origin.copyFailed": "Could not copy to the clipboard.",
+  "origin.openFailed": "Could not open the link.",
+  "origin.readFailed": "Could not read the download source.",
+  "origin.noOriginal": "No original page saved",
+  "origin.openOriginal": "Open original page",
+  "origin.savedId": "Asset ID: {id}",
+  "origin.invalidWebsite": "Enter a website domain such as example.com.",
+  "origin.invalidUrl": "Enter a full HTTP or HTTPS URL.",
+  "origin.recordedUrls": "Recorded URLs",
+  "origin.openRecorded": "Open recorded link",
   // App name: the single-kanji display name (guideline 00), identical in every locale.
   "film.title": "Film details",
   "film.get": "Get film info",

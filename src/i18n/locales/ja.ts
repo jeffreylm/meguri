@@ -1,6 +1,27 @@
 // 日本語カタログ（原典）。キーはドット区切りのフラット構造。
 // 補間は {name} 形式。en.ts はこのキー集合と同型でなければならない（型で強制）。
 export const ja = {
+  "origin.title": "ダウンロード元",
+  "origin.website": "ウェブサイト",
+  "origin.searchWebsite": "サイトで検索",
+  "origin.originalUrl": "元のページのURL",
+  "origin.assetId": "素材ID（任意）",
+  "origin.openSuggestion": "候補ページを開く",
+  "origin.searchId": "IDで検索",
+  "origin.confirmSuggestion":
+    "候補ページを確認し、URLをここに貼り付けて保存してください。",
+  "origin.copy": "コピー",
+  "origin.copied": "クリップボードにコピーしました",
+  "origin.copyFailed": "クリップボードにコピーできませんでした。",
+  "origin.openFailed": "リンクを開けませんでした。",
+  "origin.readFailed": "ダウンロード元を読み取れませんでした。",
+  "origin.noOriginal": "元のページは未保存です",
+  "origin.openOriginal": "元のページを開く",
+  "origin.savedId": "素材ID：{id}",
+  "origin.invalidWebsite": "example.com のようなドメイン名を入力してください。",
+  "origin.invalidUrl": "完全なHTTPまたはHTTPSのURLを入力してください。",
+  "origin.recordedUrls": "記録されたURL",
+  "origin.openRecorded": "記録されたリンクを開く",
   // アプリ名（表示名の漢字1文字。ガイドライン00）
   "film.title": "映画情報",
   "film.get": "映画情報を取得",

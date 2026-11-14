@@ -2,6 +2,26 @@
 import type { TranslationKey } from "./ja";
 
 export const zhCN: Record<TranslationKey, string> = {
+  "origin.title": "下载来源",
+  "origin.website": "网站",
+  "origin.searchWebsite": "在网站上搜索",
+  "origin.originalUrl": "原始页面网址",
+  "origin.assetId": "素材 ID（可选）",
+  "origin.openSuggestion": "打开建议页面",
+  "origin.searchId": "按 ID 搜索",
+  "origin.confirmSuggestion": "核对建议页面后，将其网址粘贴到这里保存。",
+  "origin.copy": "复制",
+  "origin.copied": "已复制到剪贴板",
+  "origin.copyFailed": "无法复制到剪贴板。",
+  "origin.openFailed": "无法打开链接。",
+  "origin.readFailed": "无法读取下载来源。",
+  "origin.noOriginal": "尚未保存原始页面",
+  "origin.openOriginal": "打开原始页面",
+  "origin.savedId": "素材 ID：{id}",
+  "origin.invalidWebsite": "请输入 example.com 之类的网站域名。",
+  "origin.invalidUrl": "请输入完整的 HTTP 或 HTTPS 网址。",
+  "origin.recordedUrls": "记录的网址",
+  "origin.openRecorded": "打开记录的链接",
   // App name: the single-kanji display name (guideline 00), identical in every locale.
   "film.title": "电影信息",
   "film.get": "获取电影信息",

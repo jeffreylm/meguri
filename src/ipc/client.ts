@@ -174,6 +174,10 @@ export const api = {
     invoke("file_set_favorite", { id, workspaceId, favorite }),
   fileSetNote: (id: number, workspaceId: string, note: string | null) =>
     invoke("file_set_note", { id, workspaceId, note }),
+  downloadOrigin: (id: number, workspaceId: string) =>
+    invoke("download_origin_get", { id, workspaceId }),
+  saveDownloadOrigin: (input: ChannelInput<"download_origin_set">) =>
+    invoke("download_origin_set", input),
   fileDeleteFromIndex: (id: number, workspaceId: string) =>
     invoke("file_delete_from_index", { id, workspaceId }),
   fileAddTag: (id: number, workspaceId: string, name: string) =>

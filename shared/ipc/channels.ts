@@ -16,6 +16,14 @@ import {
 } from "../filmMetadata.js";
 import type { SubtitleCue } from "../embeddedSubtitles.js";
 import {
+  MAX_ASSET_ID,
+  MAX_ORIGIN_HOST,
+  MAX_ORIGIN_URL,
+  sourceWebUrl,
+  sourceWebsite,
+  type DownloadOrigin,
+} from "../downloadOrigin.js";
+import {
   MAX_SOURCE_URL,
   parsePexelsVideoUrl,
   type SourceReviewRow,
@@ -494,6 +502,26 @@ export const ChannelInputs = {
   file_set_note: FileTarget.extend({
     note: z.string().max(NOTE_MAX_MARKDOWN).nullable(),
   }),
+  download_origin_get: FileTarget,
+  download_origin_set: FileTarget.extend({
+    metaKey: z.string().min(1),
+    source: z
+      .object({
+        website: z
+          .string()
+          .trim()
+          .max(MAX_ORIGIN_HOST)
+          .refine((value) => value === "" || sourceWebsite(value) !== null),
+        url: z
+          .string()
+          .trim()
+          .max(MAX_ORIGIN_URL)
+          .refine((value) => value === "" || sourceWebUrl(value) !== null),
+        assetId: z.string().trim().max(MAX_ASSET_ID),
+      })
+      .refine(({ website, url }) => Boolean(website || url))
+      .nullable(),
+  }),
   file_delete_from_index: FileTarget,
   file_record_play: FileTarget.extend({
     via: z.enum(["browser", "external"]),
@@ -771,6 +799,8 @@ export interface ChannelOutputs {
   file_set_rating: void;
   file_set_favorite: void;
   file_set_note: void;
+  download_origin_get: DownloadOrigin;
+  download_origin_set: void;
   file_delete_from_index: { id: number; relPath: string };
   file_record_play: void;
   file_save_position: void;

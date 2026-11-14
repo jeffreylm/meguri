@@ -58,6 +58,7 @@ import { Scenes } from "./Scenes";
 import { SceneBookmarks } from "./SceneBookmarks";
 import { FilmInfoSection } from "./FilmInfoSection";
 import { PexelsSourceSection } from "./PexelsSourceSection";
+import { DownloadOriginSection } from "./DownloadOriginSection";
 import { MetaChips } from "./MetaChips";
 import { usePrevNextNavigation } from "./usePrevNextNavigation";
 import {
@@ -639,6 +640,15 @@ export default function MediaDetail({
               key={`${wsId}:${fileId}`}
               id={fileId}
               workspaceId={wsId}
+            />
+          )}
+
+          {wsId && (
+            <DownloadOriginSection
+              key={`origin:${wsId}:${fileId}`}
+              id={fileId}
+              workspaceId={wsId}
+              kind={d.kind}
             />
           )}
 

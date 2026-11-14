@@ -307,6 +307,10 @@ export function migrateMetaKey(db: DB, fromKey: string, toKey: string): void {
     ).run(toKey, fromKey);
     db.prepare("DELETE FROM pexels_sources WHERE meta_key = ?").run(fromKey);
     db.prepare(
+      "UPDATE OR IGNORE download_sources SET meta_key = ? WHERE meta_key = ?",
+    ).run(toKey, fromKey);
+    db.prepare("DELETE FROM download_sources WHERE meta_key = ?").run(fromKey);
+    db.prepare(
       "UPDATE OR IGNORE meta_tags SET meta_key = ? WHERE meta_key = ?",
     ).run(toKey, fromKey);
     db.prepare("DELETE FROM meta_tags WHERE meta_key = ?").run(fromKey);
@@ -336,6 +340,9 @@ export function pruneOrphanMeta(db: DB): void {
     );
     db.exec(
       "DELETE FROM pexels_sources WHERE meta_key NOT IN (SELECT meta_key FROM files)",
+    );
+    db.exec(
+      "DELETE FROM download_sources WHERE meta_key NOT IN (SELECT meta_key FROM files)",
     );
     db.exec(
       "DELETE FROM audio_artwork WHERE meta_key NOT IN (SELECT meta_key FROM files)",

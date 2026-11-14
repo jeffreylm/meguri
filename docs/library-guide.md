@@ -12,6 +12,7 @@ when reporting an issue.
 - [Make a Smart bin](#make-a-smart-bin)
 - [Find new downloads](#find-new-downloads)
 - [Recover Pexels source links](#recover-pexels-source-links)
+- [Find a download's original page](#find-a-downloads-original-page)
 - [Find audio by its properties](#find-audio-by-its-properties)
 - [Import audio covers](#import-audio-covers)
 - [Find Artlist covers](#find-artlist-covers)
@@ -105,6 +106,27 @@ The chosen date basis and active browsing filters survive a restart.
 see. You can use New files after a manual scan even with watching turned off.
 Watching uses filesystem notifications rather than repeatedly scanning idle
 folders. Network and removable drives can vary in notification support.
+
+## Find a download's original page
+
+Open a file's details and look for **Where from**. On macOS, Footage Deck
+reads the download links recorded on that file when you open its details.
+It shows the website even when the record only points to the provider's
+homepage. Expand **Recorded URLs** to inspect, open or copy the links.
+The recorded links can point to a temporary download or a referring page.
+
+Click **Search website** to open the site in your browser. Footage Deck
+opens the editor for the same file, so **Original page URL** is ready for
+you when you come back. Paste the page for the original photo or clip and
+click **Save**. You can add any website or full page URL by hand. Once
+saved, use **Open original page** to go straight back to it.
+
+If you know the provider's **Asset ID**, enter it beside the website.
+**Open suggested page** is available for supported Pexels video, Unsplash
+photo and Wikimedia Commons page IDs. Check the result and paste its page
+URL to save it. **Search for ID** opens a browser search limited to the
+website when a direct shortcut is unavailable. You can also copy the ID.
+Footage Deck keeps the fields you explicitly save in the catalogue.
 
 ## Recover Pexels source links
 

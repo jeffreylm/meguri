@@ -2,6 +2,27 @@
 import type { TranslationKey } from "./ja";
 
 export const ko: Record<TranslationKey, string> = {
+  "origin.title": "다운로드 출처",
+  "origin.website": "웹사이트",
+  "origin.searchWebsite": "웹사이트에서 검색",
+  "origin.originalUrl": "원본 페이지 URL",
+  "origin.assetId": "자료 ID (선택 사항)",
+  "origin.openSuggestion": "제안된 페이지 열기",
+  "origin.searchId": "ID로 검색",
+  "origin.confirmSuggestion":
+    "제안된 페이지를 확인한 후 URL을 여기에 붙여넣어 저장하세요.",
+  "origin.copy": "복사",
+  "origin.copied": "클립보드에 복사했습니다",
+  "origin.copyFailed": "클립보드에 복사하지 못했습니다.",
+  "origin.openFailed": "링크를 열지 못했습니다.",
+  "origin.readFailed": "다운로드 출처를 읽지 못했습니다.",
+  "origin.noOriginal": "저장된 원본 페이지 없음",
+  "origin.openOriginal": "원본 페이지 열기",
+  "origin.savedId": "자료 ID: {id}",
+  "origin.invalidWebsite": "example.com과 같은 도메인 이름을 입력하세요.",
+  "origin.invalidUrl": "전체 HTTP 또는 HTTPS URL을 입력하세요.",
+  "origin.recordedUrls": "기록된 URL",
+  "origin.openRecorded": "기록된 링크 열기",
   // App name: the single-kanji display name (guideline 00), identical in every locale.
   "film.title": "영화 정보",
   "film.get": "영화 정보 가져오기",

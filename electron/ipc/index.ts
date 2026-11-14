@@ -9,6 +9,7 @@ import { registerAutoTagHandlers } from "./autoTag.js";
 import { registerBookmarkHandlers } from "./bookmarks.js";
 import { registerFilmHandlers } from "./filmMetadata.js";
 import { registerFileHandlers } from "./files.js";
+import { registerDownloadOriginHandlers } from "./downloadOrigin.js";
 import { registerFolderHandlers } from "./folders.js";
 import { registerGraphHandlers } from "./graph.js";
 import { registerLogoHandlers } from "./logo.js";
@@ -30,6 +31,7 @@ export function registerIpc(ctx: IpcContext): void {
   registerWorkspaceHandlers(ctx);
   registerScanHandlers(ctx);
   registerFileHandlers(ctx);
+  registerDownloadOriginHandlers(ctx);
   registerFilmHandlers(ctx);
   registerPexelsSourceHandlers(ctx);
   registerFolderHandlers(ctx);

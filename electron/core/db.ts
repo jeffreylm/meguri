@@ -193,6 +193,14 @@ CREATE TABLE IF NOT EXISTS pexels_sources (
   url TEXT NOT NULL
 );
 
+-- Only sources saved explicitly by the user. OS download records are read on demand.
+CREATE TABLE IF NOT EXISTS download_sources (
+  meta_key TEXT PRIMARY KEY,
+  website TEXT NOT NULL,
+  url TEXT NOT NULL,
+  asset_id TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS audio_artwork_images (
   image_hash TEXT PRIMARY KEY,
   png BLOB NOT NULL
