@@ -39,17 +39,12 @@ describe("tags", () => {
     expect(count).toBe(1);
   });
 
-  it("mediaFileOf includes the indexed color metadata for ProRes", () => {
+  it("mediaFileOf returns a live file's path, codec and kind", () => {
     const id = insertFile(db, rootId, { relPath: "clip.mov", codec: "prores" });
-    const meta = JSON.stringify({
-      streams: [{ codec_type: "video", color_transfer: "smpte2084" }],
-    });
-    db.prepare("UPDATE files SET meta = ? WHERE id = ?").run(meta, id);
     expect(mediaFileOf(db, id)).toEqual({
       absPath: "/fake/root/clip.mov",
       codec: "prores",
       kind: "video",
-      proResMeta: meta,
     });
   });
 

@@ -22,6 +22,12 @@ better-sqlite3 ships prebuilt Node-API binaries. npm 12 still reports a
 `node-gyp rebuild` install script for it and warns that it was blocked, so
 `allowScripts` in `package.json` denies it explicitly.
 
+@zabuton-app/ffmpeg-binaries is installed from a tarball URL (see
+[CI](#ci)). npm 12 refuses URL dependencies by default, so `.npmrc` sets
+`allow-remote=root`, which allows only the URLs written in this `package.json`.
+Its install script downloads the binaries, and `allowScripts` allows it under
+the same URL, because npm matches a URL dependency by its URL, not its name.
+
 `dev`, `preview`, and `start` go through `scripts/run-electron-vite.mjs` rather
 than calling `electron-vite` directly. The wrapper strips
 `ELECTRON_RUN_AS_NODE` (which the test runner sets) from the environment before
@@ -30,14 +36,60 @@ launching, so Electron does not accidentally start in node mode.
 ## electron-vite config
 
 `electron.vite.config.ts` builds main, preload, and renderer from one config.
+The settings are in `appBuildConfig()` (`electron.vite.shared.ts`);
+`electron.vite.config.ts` only passes it Meguri's entry point.
 
 - Preload is emitted as **CommonJS** (`.js`); ESM `.mjs` preload can fail to
-  load, and `electron/main.ts` resolves the preload, the renderer entry and
+  load, and `electron/app.ts` resolves the preload, the renderer entry and
   the worker threads (`queryWorker.js`, `autoTagWorker.js`) through
   `__dirname`, which assumes CJS output. Each worker is its own main-build
-  entry in `electron.vite.config.ts`.
+  entry in `electron.vite.shared.ts`.
 - TypeScript uses separate tsconfigs for `src` and `electron`, both `strict` with
   `noUnusedLocals` / `noUnusedParameters`.
+
+### Building from another project
+
+`electron/app.ts` finds the workers, the preload and the renderer relative to
+its own output file, so it needs exactly this layout:
+
+```text
+out/main/main.js            the entry point that calls startApp()
+out/main/queryWorker.js
+out/main/autoTagWorker.js
+out/preload/preload.js      CommonJS
+out/renderer/index.html
+```
+
+A project that keeps this repository in a subdirectory gets the same layout
+from `appBuildConfig()`, without copying the config:
+
+```ts
+// electron.vite.config.ts of the other project
+import { defineConfig } from "electron-vite";
+import { resolve } from "node:path";
+import { appBuildConfig } from "./vendor/meguri/electron.vite.shared";
+
+export default defineConfig(
+  appBuildConfig({ mainEntry: resolve("app/main.ts") }),
+);
+```
+
+- `mainEntry` is that project's own entry point, which imports `startApp()`
+  from this repository's `electron/app.ts`. Everything else (the workers, the
+  preload, the renderer) is built from this repository's sources, wherever the
+  build runs.
+- `out/` is created in the working directory, so the project's package.json
+  uses `"main": "out/main/main.js"`.
+- Import the shared file by a relative path. electron-vite bundles relative
+  imports of the config file but leaves package imports to Node, which cannot
+  load a `.ts` file from `node_modules`.
+- The project installs this repository's `dependencies` and the build tools
+  the shared file imports (`electron-vite`, `@vitejs/plugin-react`,
+  `@tailwindcss/vite`). The main and preload builds keep those `dependencies`
+  external by name, whether or not the project's package.json lists them.
+- For @zabuton-app/ffmpeg-binaries the project also needs `allow-remote=root`
+  in its `.npmrc` and the tarball URL in its own `allowScripts` (see
+  [npm scripts](#npm-scripts)).
 
 ## Testing
 
@@ -45,12 +97,14 @@ Tests run under Vitest (`vitest.config.ts`) as two projects.
 
 ### Core project
 
-`npm run test:core` covers the main/core logic (`electron/**/*.test.ts`). Because
-the tests exercise the same native dependencies as the app, this **runs Electron as Node**
-(`ELECTRON_RUN_AS_NODE=1` plus `--experimental-require-module` to allow
-`require()` of ESM). It exercises real SQL against an in-memory SQLite database.
-The config carries a plugin that resolves NodeNext-style `.js` import specifiers
-to `.ts`.
+`npm run test:core` covers the main/core logic (`electron/**/*.test.ts`).
+Because the tests exercise the same native dependencies as the app, this **runs
+Electron as Node** (`ELECTRON_RUN_AS_NODE=1` plus `--experimental-require-module`
+to allow `require()` of ESM). `scripts/test-core.mjs` sets these and starts
+Electron, so the command does not depend on a POSIX shell; arguments after `--`
+go to Vitest. It exercises real SQL against an in-memory SQLite database. The
+config carries a plugin that resolves NodeNext-style `.js` import specifiers to
+`.ts`.
 
 ### Renderer project
 
@@ -63,16 +117,19 @@ the jsdom worker does not start under Electron's experimental loader.
 ## Packaging
 
 `npm run dist` runs `electron-vite build` then `electron-builder`. The builder's
-`asarUnpack` includes better-sqlite3, ffmpeg-static, and
-@derhuerst/ffprobe-static; code that uses ffmpeg paths must apply the
+`asarUnpack` includes better-sqlite3 and @zabuton-app/ffmpeg-binaries; code
+that uses ffmpeg paths must apply the
 `app.asar` → `app.asar.unpacked` substitution (see
 [ffmpeg/ffprobe path resolution](media-pipeline.md#ffmpegffprobe-path-resolution)).
 
-Distribution targets are Linux (AppImage / deb), Windows (nsis / portable), and
-macOS (dmg / zip).
+Distribution targets are Linux (AppImage / deb), Windows (nsis / portable /
+appx), and macOS (dmg / zip).
 
 Electron 45 packages require macOS 13 (Ventura) or later. The existing
 Windows x64 and Linux x64 release targets are supported by Electron 45.
+On Linux the bundled ffmpeg and ffprobe need glibc 2.35 or later (Ubuntu
+22.04, Debian 12); on an older system they do not start, so files get no
+metadata or thumbnails.
 The Node.js version used to run npm and the build scripts is separate from
 the Node.js version bundled with Electron.
 
@@ -106,9 +163,29 @@ GitHub Actions workflows live in `.github/workflows/`:
   The repository's Pages source must be set to "GitHub Actions"; after
   switching it, run the workflow once by hand so the site is redeployed.
 
-ffmpeg-static and @derhuerst/ffprobe-static each fetch a single-architecture
-binary at install time (`npm_config_arch || os.arch()`), so CI pins
-`npm_config_arch` to the target arch to keep the bundled binaries consistent.
+Dependabot (`.github/dependabot.yml`) opens update PRs weekly for npm packages
+and GitHub Actions. npm's minor and patch updates come grouped into one PR, and
+a major update gets its own; the Actions' updates, majors since the workflows
+reference major tags, come as one PR. A version update must be a week old
+before it is proposed. Security updates are not held back or grouped: they
+arrive as soon as an advisory is published.
+
+`allowScripts` in `package.json` names exact versions. A PR that updates one of
+those packages also needs its entry updated (`npm approve-scripts`), or npm 12
+skips the package's install script. CI's npm (the one bundled with Node 22) does
+not read `allowScripts`, so CI stays green either way.
+
+@zabuton-app/ffmpeg-binaries fetches the ffmpeg and ffprobe executables of a
+single architecture at install time (`npm_config_arch || process.arch`), so CI
+pins `npm_config_arch` to the target arch to keep the bundled binaries
+consistent. The package is
+[zabuton-app/ffmpeg-binaries](https://github.com/zabuton-app/ffmpeg-binaries),
+installed from the package tarball attached to one of its releases: the
+releases mirror upstream FFmpeg builds, and the install checks each download
+against a SHA-256 kept in the package. To move to a newer FFmpeg, publish a
+release there, change the URL in both `dependencies` and `allowScripts` in
+`package.json`, and run `npm install` to update the lockfile. With only one of
+the two changed, npm blocks the install script and the binaries are missing.
 
 ## Docker development
 

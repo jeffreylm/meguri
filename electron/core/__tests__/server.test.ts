@@ -9,6 +9,7 @@ import fs from "node:fs";
 import http from "node:http";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Server } from "node:http";
 import { openDb, nowUnix, type DB } from "../db.js";
 import { upsertScanRoot } from "../queries.js";
@@ -402,7 +403,352 @@ describe("frame serving (ffmpeg path)", () => {
   });
 });
 
+describe("still image transcoding (ffmpeg path)", () => {
+  it("serves the whole grid of a tiled HEIF as a JPEG", async () => {
+    const heic = path.join(root, "grid.heic");
+    fs.copyFileSync(
+      fileURLToPath(new URL("./fixtures/grid-1024x512.heic", import.meta.url)),
+      heic,
+    );
+    const id = insert("grid.heic", heic, null, "done", "image", "heic");
+    const res = await fetch(`${base}/ws/${WS}/media/${id}`, authHeaders());
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("image/jpeg");
+    const size = execFileSync(
+      FFPROBE,
+      [
+        "-v",
+        "error",
+        "-show_entries",
+        "stream=width,height",
+        "-of",
+        "csv=p=0",
+        "pipe:0",
+      ],
+      { input: Buffer.from(await res.arrayBuffer()), encoding: "utf8" },
+    );
+    // One 512x512 tile would come out square.
+    expect(size.trim()).toBe("1024,512");
+  });
+});
+
+describe("MKV audio track selection", () => {
+  const fixtures = [
+    { first: "96x64", second: "128x72", expectedWidth: 96 },
+    { first: "1920x1080", second: "3840x2160", expectedWidth: 3840 },
+  ];
+  it.each(fixtures)("keeps picture for $first / $second", async (fixture) => {
+    const { first, second, expectedWidth } = fixture;
+    const name = `alternate-language-${second}.mkv`;
+    const clip = path.join(root, name);
+    execFileSync(FFMPEG, [
+      "-v",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      `color=red:size=${first}:rate=12:duration=1`,
+      "-f",
+      "lavfi",
+      "-i",
+      `color=blue:size=${second}:rate=12:duration=1`,
+      "-f",
+      "lavfi",
+      "-i",
+      "sine=frequency=440:sample_rate=44100:duration=1",
+      "-f",
+      "lavfi",
+      "-i",
+      "sine=frequency=880:sample_rate=48000:duration=1",
+      "-map",
+      "0:v",
+      "-map",
+      "1:v",
+      "-map",
+      "2:a",
+      "-map",
+      "3:a",
+      "-c:v",
+      "libx264",
+      "-preset",
+      "ultrafast",
+      "-threads:v",
+      "2",
+      "-c:a:0",
+      "aac",
+      "-c:a:1",
+      "ac3",
+      "-ac:a:1",
+      "2",
+      "-disposition:v:0",
+      "default",
+      "-disposition:v:1",
+      "0",
+      "-disposition:a:0",
+      "0",
+      "-disposition:a:1",
+      "0",
+      clip,
+    ]);
+    const original = fs.readFileSync(clip);
+    const metadata = await extractMeta(clip, "video");
+    const id = insert(name, clip, null, "done", "video", "mkv");
+    db.prepare("UPDATE files SET codec = ?, meta = ? WHERE id = ?").run(
+      metadata.codec,
+      JSON.stringify(metadata.raw),
+      id,
+    );
+    const url = `${base}/ws/${WS}/media/${id}`;
+    const preview = async (search: string) => {
+      const result = await fetch(url + search, authHeaders());
+      expect(result.status).toBe(200);
+      return Buffer.from(await result.arrayBuffer());
+    };
+    const streams = (input: Buffer) =>
+      JSON.parse(
+        execFileSync(
+          FFPROBE,
+          [
+            "-v",
+            "error",
+            "-show_entries",
+            "stream=codec_name,width,sample_rate",
+            "-of",
+            "json",
+            "pipe:0",
+          ],
+          { input, encoding: "utf8" },
+        ),
+      ) as {
+        streams: {
+          codec_name: string;
+          width?: number;
+          sample_rate?: string;
+        }[];
+      };
+    const audioPacketHashes = (input: Buffer) => {
+      const { packets } = JSON.parse(
+        execFileSync(
+          FFPROBE,
+          [
+            "-v",
+            "error",
+            "-select_streams",
+            "a:0",
+            "-show_packets",
+            "-show_data_hash",
+            "sha256",
+            "-show_entries",
+            "packet=data_hash",
+            "-of",
+            "json",
+            "pipe:0",
+          ],
+          { input, encoding: "utf8" },
+        ),
+      ) as { packets: { data_hash: string }[] };
+      // ffprobe 9 also reports the container's side data on a packet (the
+      // AAC priming samples to skip); this compares the encoded payloads.
+      return packets.map(({ data_hash }) => data_hash);
+    };
+    const [automatic, aac, dolby] = await Promise.all([
+      preview(""),
+      preview("?audioTrack=0"),
+      preview("?audioTrack=1"),
+    ]);
+    expect(streams(automatic).streams).toEqual([
+      { codec_name: "h264", width: expectedWidth },
+      { codec_name: "aac", sample_rate: "48000" },
+    ]);
+    expect(streams(aac).streams).toEqual([
+      { codec_name: "h264", width: expectedWidth },
+      { codec_name: "aac", sample_rate: "44100" },
+    ]);
+    expect(streams(dolby).streams).toEqual(streams(automatic).streams);
+    const sourceHashes = audioPacketHashes(original);
+    expect(sourceHashes.length).toBeGreaterThan(0);
+    expect(audioPacketHashes(aac)).toEqual(sourceHashes);
+    expect((await fetch(url + "?audioTrack=2", authHeaders())).status).toBe(
+      400,
+    );
+    expect(fs.readFileSync(clip).equals(original)).toBe(true);
+  });
+});
+
+describe("unindexed ProRes playback", () => {
+  it("serves an H.264 preview before the scan writes the codec", async () => {
+    const clip = path.join(root, "unindexed.mov");
+    execFileSync(FFMPEG, [
+      "-v",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc2=size=96x64:rate=12:duration=1",
+      "-c:v",
+      "prores_ks",
+      "-profile:v",
+      "standard",
+      "-pix_fmt",
+      "yuv422p10le",
+      clip,
+    ]);
+    const id = insert("unindexed.mov", clip, null, "pending", "video", "mov");
+    const url = `${base}/ws/${WS}/media/${id}`;
+    const head = await fetch(url, { ...authHeaders(), method: "HEAD" });
+    expect(head.status).toBe(200);
+    expect(head.headers.get("content-type")).toBe("video/mp4");
+    const preview = await fetch(url, authHeaders());
+    expect(preview.status).toBe(200);
+    expect(preview.headers.get("content-type")).toBe("video/mp4");
+    const output = Buffer.from(await preview.arrayBuffer());
+    const streams = JSON.parse(
+      execFileSync(
+        FFPROBE,
+        [
+          "-v",
+          "error",
+          "-show_entries",
+          "stream=codec_name",
+          "-of",
+          "json",
+          "pipe:0",
+        ],
+        { input: output, encoding: "utf8" },
+      ),
+    ) as { streams: unknown };
+    expect(streams.streams).toEqual([{ codec_name: "h264" }]);
+    expect(db.prepare("SELECT codec FROM files WHERE id = ?").get(id)).toEqual({
+      codec: null,
+    });
+  });
+});
+
 describe("media remux (ffmpeg path)", () => {
+  it.each([
+    { container: "mp4", codec: "eac3", indexed: true },
+    { container: "m4v", codec: "ac3", indexed: true },
+    { container: "mov", codec: "eac3", indexed: false },
+  ])(
+    "converts default $codec in $container and preserves Range for default AAC",
+    async ({ container, codec, indexed }) => {
+      const clip = path.join(root, `dolby-default.${container}`);
+      const aac = path.join(root, `aac-default.${container}`);
+      const outputFormat = container === "mov" ? "mov" : "mp4";
+      execFileSync(FFMPEG, [
+        "-v",
+        "error",
+        "-nostdin",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc2=size=96x64:rate=12:duration=2",
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=440:sample_rate=48000:duration=2",
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=660:sample_rate=48000:duration=2",
+        "-map",
+        "0:v",
+        "-map",
+        "1:a",
+        "-map",
+        "2:a",
+        "-c:v",
+        "libx264",
+        "-g",
+        "6",
+        "-c:a:0",
+        "aac",
+        "-c:a:1",
+        codec,
+        "-ac:a:1",
+        "6",
+        "-disposition:a:0",
+        "0",
+        "-disposition:a:1",
+        "default",
+        "-f",
+        outputFormat,
+        clip,
+      ]);
+      execFileSync(FFMPEG, [
+        "-v",
+        "error",
+        "-nostdin",
+        "-i",
+        clip,
+        "-map",
+        "0",
+        "-c",
+        "copy",
+        "-disposition:a:0",
+        "default",
+        "-disposition:a:1",
+        "0",
+        "-f",
+        outputFormat,
+        aac,
+      ]);
+      const original = fs.readFileSync(clip);
+      async function route(file: string) {
+        const id = insert(
+          path.basename(file),
+          file,
+          null,
+          "done",
+          "video",
+          container,
+        );
+        if (indexed) {
+          const metadata = await extractMeta(file, "video");
+          db.prepare("UPDATE files SET codec = ?, meta = ? WHERE id = ?").run(
+            metadata.codec,
+            JSON.stringify(metadata.raw),
+            id,
+          );
+        }
+        return `${base}/ws/${WS}/media/${id}`;
+      }
+      const url = await route(clip);
+      const head = await fetch(url, { ...authHeaders(), method: "HEAD" });
+      expect(head.headers.get("Content-Type")).toBe("video/mp4");
+      for (const seek of ["", "?t=0.5"]) {
+        const response = await fetch(`${url}${seek}`, authHeaders());
+        expect(response.status).toBe(200);
+        const streams = execFileSync(
+          FFPROBE,
+          [
+            "-v",
+            "error",
+            "-show_entries",
+            "stream=codec_name,channels",
+            "-of",
+            "compact=p=0:nk=1",
+            "pipe:0",
+          ],
+          {
+            input: Buffer.from(await response.arrayBuffer()),
+            encoding: "utf8",
+          },
+        );
+        expect(streams.trim().split("\n")).toEqual(["h264", "aac|6"]);
+      }
+      expect(fs.readFileSync(clip)).toEqual(original);
+
+      const range = await fetch(await route(aac), {
+        headers: { ...authHeaders().headers, Range: "bytes=0-15" },
+      });
+      expect(range.status).toBe(206);
+      expect(Buffer.from(await range.arrayBuffer())).toEqual(
+        fs.readFileSync(aac).subarray(0, 16),
+      );
+    },
+  );
+
   it.each(["ac3", "eac3"])(
     "copies the HEVC picture and converts Dolby Digital %s surround audio to AAC",
     async (codec) => {
@@ -426,9 +772,9 @@ describe("media remux (ffmpeg path)", () => {
         "-preset",
         "ultrafast",
         "-x265-params",
-        "pools=none:frame-threads=1:log-level=error",
-        "-color_trc",
-        "bt709",
+        // With ffmpeg 9, -color_trc no longer tags this stream, so x265 is
+        // told the transfer directly.
+        "pools=none:frame-threads=1:log-level=error:transfer=bt709",
         "-c:a",
         codec,
         clip,
@@ -436,8 +782,10 @@ describe("media remux (ffmpeg path)", () => {
       const original = fs.readFileSync(clip);
       const metadata = await extractMeta(clip, "video");
       const id = insert(name, clip, null, "done", "video", "mkv");
-      const updateMeta = db.prepare("UPDATE files SET meta = ? WHERE id = ?");
-      updateMeta.run(JSON.stringify(metadata.raw), id);
+      const updateMeta = db.prepare(
+        "UPDATE files SET codec = ?, meta = ? WHERE id = ?",
+      );
+      updateMeta.run(metadata.codec, JSON.stringify(metadata.raw), id);
       const url = `${base}/ws/${WS}/media/${id}`;
 
       const videoPackets = (input: Buffer) => {
@@ -512,7 +860,7 @@ describe("media remux (ffmpeg path)", () => {
           );
         }
         // A subsequent seek still works if scan metadata is not ready.
-        updateMeta.run(null, id);
+        updateMeta.run(null, null, id);
       }
       expect(fs.readFileSync(clip)).toEqual(original);
     },
@@ -689,18 +1037,19 @@ describe("ProRes previews", () => {
         "lavfi",
         "-i",
         "testsrc2=size=96x64:rate=12:duration=1",
+        // ffmpeg 9 no longer tags the stream from -color_trc and friends.
+        ...(transfer === "unknown"
+          ? []
+          : [
+              "-vf",
+              `setparams=color_trc=${transfer}:color_primaries=${primaries}:colorspace=${matrix}`,
+            ]),
         "-c:v",
         "prores_ks",
         "-profile:v",
         "standard",
         "-pix_fmt",
         "yuv422p10le",
-        "-color_trc",
-        transfer,
-        "-color_primaries",
-        primaries,
-        "-colorspace",
-        matrix,
         "-movflags",
         "+write_colr",
         clip,
@@ -745,8 +1094,9 @@ describe("ProRes previews", () => {
         }[];
       };
       expect(streams[0].codec_name).toBe("h264");
-      const toneMapped =
-        (name === "PQ" || name === "HLG") && (await supportsToneMapping());
+      // The bundled ffmpeg has zscale and tonemap, so HDR must take that path.
+      expect(await supportsToneMapping()).toBe(true);
+      const toneMapped = name === "PQ" || name === "HLG";
       expect(streams[0].color_transfer ?? "unknown").toBe(
         toneMapped ? "bt709" : transfer,
       );

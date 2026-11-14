@@ -19,35 +19,34 @@ export function proResPreviewFilter(toneMap: boolean): string {
   ].join(",");
 }
 
-export function isTaggedHdr(meta: string | null): boolean {
-  if (meta == null) return false;
-  try {
-    const probe = JSON.parse(meta) as {
-      streams?: {
-        codec_type?: string;
-        color_transfer?: string;
-        color_primaries?: string;
-        color_space?: string;
-      }[];
-    } | null;
-    // Use the same first video stream as FFmpeg's 0:v:0 map. Leave SDR and
-    // missing or unrecognized color metadata on the regular preview path.
-    const video = probe?.streams?.find(
-      (stream) => stream?.codec_type === "video",
-    );
-    return (
-      (video?.color_transfer === "smpte2084" ||
-        video?.color_transfer === "arib-std-b67") &&
-      (video.color_primaries === "bt2020" ||
-        video.color_primaries === "smpte432" ||
-        video.color_primaries === "bt709") &&
-      (video.color_space === "bt2020nc" ||
-        video.color_space === "bt2020c" ||
-        video.color_space === "bt709")
-    );
-  } catch {
-    return false;
-  }
+/** Takes the already-probed JSON (files.meta, parsed). */
+export function isTaggedHdr(raw: unknown): boolean {
+  const streams = (
+    raw as {
+      streams?: unknown;
+    } | null
+  )?.streams;
+  if (!Array.isArray(streams)) return false;
+  // Use the same first video stream as FFmpeg's 0:v:0 map. Leave SDR and
+  // missing or unrecognized color metadata on the regular preview path.
+  const video = (
+    streams as ({
+      codec_type?: string;
+      color_transfer?: string;
+      color_primaries?: string;
+      color_space?: string;
+    } | null)[]
+  ).find((stream) => stream?.codec_type === "video");
+  return (
+    (video?.color_transfer === "smpte2084" ||
+      video?.color_transfer === "arib-std-b67") &&
+    (video.color_primaries === "bt2020" ||
+      video.color_primaries === "smpte432" ||
+      video.color_primaries === "bt709") &&
+    (video.color_space === "bt2020nc" ||
+      video.color_space === "bt2020c" ||
+      video.color_space === "bt709")
+  );
 }
 
 let toneMappingSupport: Promise<boolean> | undefined;
@@ -60,6 +59,9 @@ export function supportsToneMapping(): Promise<boolean> {
       ["-hide_banner", "-filters"],
       { timeout: 3000 },
       (error, stdout) => {
+        // A failed check (a busy start-up hitting the timeout) is asked again
+        // on the next HDR clip; only a real filter list is remembered.
+        if (error) toneMappingSupport = undefined;
         resolve(
           !error &&
             /\s+zscale\s+V->V\b/.test(stdout) &&
