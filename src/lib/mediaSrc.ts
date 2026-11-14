@@ -3,6 +3,8 @@ import {
   PREVIEW_AUDIO_TRACK_PARAM,
 } from "@shared/playbackTracks";
 
+import { SDR_PREVIEW_PARAM } from "@shared/videoPreviewRange";
+
 // The media server URL of a file and its seek query parameter, `t`: the second
 // a container the browser cannot seek by itself (mkv/avi/wmv/flv/ts, remuxed
 // on the fly) is re-served from. The player writes it, the hand-off between
@@ -31,6 +33,22 @@ export function withPreviewAudioTrack(src: string, track: number): string {
   return url.toString();
 }
 
+export function withSdrPreview(src: string, enabled: boolean): string {
+  const url = new URL(src);
+  url.searchParams.delete("t");
+  if (enabled) url.searchParams.set(SDR_PREVIEW_PARAM, "1");
+  else url.searchParams.delete(SDR_PREVIEW_PARAM);
+  return url.toString();
+}
+
+export function requestsSdrPreview(src: string | null): boolean {
+  try {
+    return !!src && new URL(src).searchParams.get(SDR_PREVIEW_PARAM) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export function previewAudioTrackOf(src: string | null): number {
   if (!src) return DEFAULT_AUDIO_TRACK;
   try {
@@ -51,6 +69,7 @@ export function withoutPlaybackOptions(src: string | null): string {
     const url = new URL(src);
     url.searchParams.delete("t");
     url.searchParams.delete(PREVIEW_AUDIO_TRACK_PARAM);
+    url.searchParams.delete(SDR_PREVIEW_PARAM);
     return url.toString();
   } catch {
     return src;

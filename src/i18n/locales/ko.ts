@@ -2,6 +2,28 @@
 import type { TranslationKey } from "./ja";
 
 export const ko: Record<TranslationKey, string> = {
+  "grade.viewer": "뷰어 범위",
+  "grade.hdrOption": "HDR 재생",
+  "grade.sdrOption": "SDR 미리보기",
+  "grade.nativeHdr": "영상을 조정하려면 SDR 미리보기로 전환하세요.",
+  "grade.rangeUnavailable":
+    "뷰어 범위를 바꿀 수 없어 이전 모드로 복원했습니다.",
+  "grade.cool": "차가움",
+  "grade.warm": "따뜻함",
+  "grade.green": "녹색",
+  "grade.magenta": "마젠타",
+  "grade.title": "영상 조정",
+  "grade.exposure": "노출",
+  "grade.contrast": "대비",
+  "grade.pivot": "피벗",
+  "grade.saturation": "감산 채도",
+  "grade.temperature": "색온도",
+  "grade.tint": "색조",
+  "grade.original": "원본",
+  "grade.reset": "초기화",
+  "grade.preview": "선형 sRGB 미리보기",
+  "grade.hdr": "HDR 소스 · 조정 시 SDR 미리보기 사용",
+  "grade.unavailable": "이 기기에서는 영상 조정을 사용할 수 없습니다.",
   "origin.title": "다운로드 출처",
   "origin.website": "웹사이트",
   "origin.searchWebsite": "웹사이트에서 검색",

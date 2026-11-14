@@ -1,6 +1,28 @@
 // 日本語カタログ（原典）。キーはドット区切りのフラット構造。
 // 補間は {name} 形式。en.ts はこのキー集合と同型でなければならない（型で強制）。
 export const ja = {
+  "grade.viewer": "ビューアのレンジ",
+  "grade.hdrOption": "HDR 再生",
+  "grade.sdrOption": "SDR プレビュー",
+  "grade.nativeHdr": "映像を調整するには SDR プレビューに切り替えてください。",
+  "grade.rangeUnavailable":
+    "レンジを切り替えられなかったため、元のモードに戻しました。",
+  "grade.cool": "寒色",
+  "grade.warm": "暖色",
+  "grade.green": "緑",
+  "grade.magenta": "マゼンタ",
+  "grade.title": "映像調整",
+  "grade.exposure": "露出",
+  "grade.contrast": "コントラスト",
+  "grade.pivot": "ピボット",
+  "grade.saturation": "減算彩度",
+  "grade.temperature": "色温度",
+  "grade.tint": "色かぶり補正",
+  "grade.original": "元の映像",
+  "grade.reset": "リセット",
+  "grade.preview": "リニア sRGB プレビュー",
+  "grade.hdr": "HDR ソース · 調整には SDR プレビューを使用",
+  "grade.unavailable": "このデバイスでは映像調整を使用できません。",
   "origin.title": "ダウンロード元",
   "origin.website": "ウェブサイト",
   "origin.searchWebsite": "サイトで検索",

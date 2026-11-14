@@ -6,10 +6,10 @@ const PREVIEW_SCALE =
 
 export function proResPreviewFilter(toneMap: boolean): string {
   if (!toneMap) return PREVIEW_SCALE;
-  // Scale in 10-bit before the more expensive linear-light conversion.
+  // Downscale before converting to linear float for tone mapping.
   return [
     PREVIEW_SCALE,
-    "format=yuv422p10le",
+    "format=yuv444p16le",
     "zscale=t=linear:npl=100",
     "format=gbrpf32le",
     "zscale=p=bt709",
@@ -25,15 +25,17 @@ export function isTaggedHdr(meta: string | null): boolean {
     const probe = JSON.parse(meta) as {
       streams?: {
         codec_type?: string;
+        disposition?: { attached_pic?: number };
         color_transfer?: string;
         color_primaries?: string;
         color_space?: string;
       }[];
     } | null;
-    // Use the same first video stream as FFmpeg's 0:v:0 map. Leave SDR and
+    // Use the first non-cover video stream. Leave SDR and
     // missing or unrecognized color metadata on the regular preview path.
     const video = probe?.streams?.find(
-      (stream) => stream?.codec_type === "video",
+      (stream) =>
+        stream?.codec_type === "video" && !stream.disposition?.attached_pic,
     );
     return (
       (video?.color_transfer === "smpte2084" ||

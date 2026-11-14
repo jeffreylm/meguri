@@ -40,11 +40,14 @@ import {
 import { matchAny, type NavBinding } from "@/settings/keybindings";
 import type { TFunc } from "@/i18n/I18nProvider";
 import { VideoElement } from "@/video/VideoElement";
+import { VideoGradeOverlay } from "@/video/VideoGradeOverlay";
 import { isSameSource } from "@/video/videoHandOff";
 import {
   previewAudioTrackOf,
+  requestsSdrPreview,
   streamOffsetOf,
   withPreviewAudioTrack,
+  withSdrPreview,
   withStreamSeek,
 } from "@/lib/mediaSrc";
 
@@ -146,6 +149,9 @@ export const VideoPlayer = forwardRef<
     audioTracks?: Pick<PlaybackTrack, "title" | "language">[];
     subtitleTracks?: PlaybackTrack[];
     preferenceKey?: string;
+    gradeKey?: string;
+    hdrSource?: boolean;
+    hdrUsesStream?: boolean;
     /** ProRes streams can be reopened at their current position after a network interruption. */
     isProResPreview?: boolean;
     /** Active paging chords; the player yields these keys so they don't also seek. */
@@ -225,6 +231,9 @@ export const VideoPlayer = forwardRef<
     audioTracks,
     subtitleTracks,
     preferenceKey,
+    gradeKey,
+    hdrSource = false,
+    hdrUsesStream = false,
     isProResPreview = false,
     navKeys,
     fullscreenTargetRef,
@@ -271,6 +280,16 @@ export const VideoPlayer = forwardRef<
   } | null>(null);
   const initialSource =
     src && initialAudio >= 0 ? withPreviewAudioTrack(src, initialAudio) : src;
+
+  const [sdrPreview, setSdrPreview] = useState(false);
+  const [rangeUnavailable, setRangeUnavailable] = useState(false);
+  const pendingRange = useRef<{
+    source: string;
+    at: number;
+    resume: boolean;
+    fallback: boolean;
+    useNativeSeek: boolean;
+  } | null>(null);
 
   const [loaded, setLoaded] = useState(false);
   // Whether this player is currently the fullscreen element (used to drop the max-height cap).
@@ -444,6 +463,9 @@ export const VideoPlayer = forwardRef<
       initialAudio >= 0
         ? { track: DEFAULT_AUDIO_TRACK, at: 0, resume: autoplay }
         : null;
+    setSdrPreview(false);
+    setRangeUnavailable(false);
+    pendingRange.current = null;
     setError(null);
     setPosition(0);
     setPlaying(false);
@@ -489,6 +511,59 @@ export const VideoPlayer = forwardRef<
     if (resume) void v.play().catch(() => {});
   };
 
+  const loadPreviewRange = (
+    video: HTMLVideoElement,
+    source: string,
+    at: number,
+    resume: boolean,
+    useNativeSeek: boolean,
+  ) => {
+    if (!useNativeSeek) {
+      restartPreview(video, source, at, resume);
+      return;
+    }
+    haveMetadataRef.current = false;
+    appliedStartRef.current = true;
+    setLoaded(false);
+    setPosition(at);
+    video.autoplay = false;
+    video.src = source;
+    video.load();
+  };
+
+  const choosePreviewRange = (next: boolean) => {
+    const video = ref.current;
+    if (!video || !haveMetadataRef.current || next === sdrPreview) return;
+    const source = video.getAttribute("src") ?? src;
+    if (!source) return;
+    const at = streamOffsetOf(source) + video.currentTime;
+    const resume = !video.paused;
+    // Direct media uses Range; remuxes and SDR previews use the server offset.
+    const useNativeSeek = !next && !hdrUsesStream;
+    pendingRange.current = {
+      source: withSdrPreview(source, sdrPreview),
+      at,
+      resume,
+      fallback: sdrPreview,
+      useNativeSeek,
+    };
+    cancelQueuedSeek();
+    if (retryTimerRef.current != null) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+    netRetriedRef.current = false;
+    setRangeUnavailable(false);
+    setSdrPreview(next);
+    loadPreviewRange(
+      video,
+      withSdrPreview(source, next),
+      at,
+      resume,
+      useNativeSeek,
+    );
+  };
+
   /** Handles both a live error event and a failed element adopted during a hand-off. */
   const chooseAudioTrack = (index: number) => {
     const v = ref.current;
@@ -516,6 +591,19 @@ export const VideoPlayer = forwardRef<
       log.debug("video load aborted", { src });
       return;
     }
+    const range = pendingRange.current;
+    if (range) {
+      const needsSeek = range.fallback ? false : !hdrUsesStream;
+      setSdrPreview(range.fallback);
+      setRangeUnavailable(true);
+      // Preserve the position on a direct-file fallback too.
+      pendingRange.current = { ...range, useNativeSeek: needsSeek, source: "" };
+      if (range.source) {
+        loadPreviewRange(v, range.source, range.at, range.resume, needsSeek);
+        return;
+      }
+      pendingRange.current = null;
+    }
     const fallback = pendingAudio.current;
     if (fallback) {
       pendingAudio.current = null;
@@ -527,6 +615,27 @@ export const VideoPlayer = forwardRef<
         withPreviewAudioTrack(v.getAttribute("src") ?? src, fallback.track),
         fallback.at,
         fallback.resume,
+      );
+      return;
+    }
+    if (
+      hdrSource &&
+      !isProResPreview &&
+      !range &&
+      !sdrPreview &&
+      isFatalMediaError(v.error) &&
+      (v.getAttribute("src") ?? src)
+    ) {
+      const source = v.getAttribute("src") ?? src;
+      const at =
+        streamOffsetOf(source) +
+        (haveMetadataRef.current ? v.currentTime : startAt);
+      setSdrPreview(true);
+      restartPreview(
+        v,
+        withSdrPreview(source, true),
+        at,
+        !v.paused || v.autoplay,
       );
       return;
     }
@@ -630,6 +739,7 @@ export const VideoPlayer = forwardRef<
     // A stream the other route re-served from `?t=` reports positions
     // relative to that second.
     const streamOffset = streamOffsetOf(v.getAttribute("src"));
+    setSdrPreview(requestsSdrPreview(v.getAttribute("src")));
     setAudioTrack(previewAudioTrackOf(v.getAttribute("src")));
     pendingAudio.current = null;
     setPosition(streamOffset + v.currentTime);
@@ -1172,6 +1282,15 @@ export const VideoPlayer = forwardRef<
             });
           }
 
+          const range = pendingRange.current;
+          pendingRange.current = null;
+          if (range?.useNativeSeek) {
+            v.currentTime = Math.max(
+              0,
+              range.at - streamOffsetOf(v.getAttribute("src")),
+            );
+            if (range.resume) void v.play().catch(() => {});
+          }
           setLoaded(true);
           // Apply the shared volume/mute to this freshly-loaded element. The
           // effect above only fires when the value changes, so this is what
@@ -1222,6 +1341,22 @@ export const VideoPlayer = forwardRef<
           if (v) handleElementError(v);
         }}
       />
+
+      {gradeKey && (
+        <VideoGradeOverlay
+          key={gradeKey}
+          clipKey={gradeKey}
+          hdrSource={hdrSource}
+          nativeHdr={hdrSource && !sdrPreview && !isProResPreview}
+          sdrPreview={sdrPreview || isProResPreview}
+          canToggleRange={hdrSource && !isProResPreview}
+          onRangeChange={choosePreviewRange}
+          rangeUnavailable={rangeUnavailable}
+          videoRef={ref}
+          loaded={loaded}
+          t={t}
+        />
+      )}
 
       {caption && (
         <div

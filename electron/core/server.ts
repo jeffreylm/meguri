@@ -27,6 +27,7 @@ import { isInsideRoot } from "./paths.js";
 import { FFMPEG } from "./ffmpeg-paths.js";
 import { QueueFullError, Semaphore } from "./concurrency.js";
 import { DECODE_FFMPEG_THREADS, videoDecodeSlots } from "./mediaConcurrency.js";
+import { SDR_PREVIEW_PARAM } from "../../shared/videoPreviewRange.js";
 import { scopedLog } from "./logger.js";
 import { extractMeta, type ExtractedMeta } from "./media.js";
 import {
@@ -371,6 +372,50 @@ async function handle(
       file.kind === "video" && (file.codec ?? probed?.codec) === "prores";
     const parsed = startT != null ? Number(startT) : NaN;
     const start = Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+    if (url.searchParams.has(SDR_PREVIEW_PARAM)) {
+      if (
+        file.kind !== "video" ||
+        url.searchParams.get(SDR_PREVIEW_PARAM) !== "1"
+      ) {
+        res.writeHead(400).end();
+        return;
+      }
+      const row = core.db
+        .prepare("SELECT meta FROM files WHERE id = ?")
+        .get(id) as { meta: string | null } | undefined;
+      const metadata =
+        row?.meta ??
+        JSON.stringify(
+          probed?.raw ?? (await probeUnindexedVideo(abs, res))?.raw ?? null,
+        );
+      if (res.destroyed || res.writableEnded) return;
+      if (!isTaggedHdr(metadata) || !(await supportsToneMapping())) {
+        res.writeHead(415).end();
+        return;
+      }
+      const requested = url.searchParams.get(PREVIEW_AUDIO_TRACK_PARAM);
+      const index =
+        requested != null && /^\d+$/.test(requested) ? Number(requested) : -1;
+      if (
+        requested != null &&
+        (index < 0 || index >= readPlaybackTracks(metadata, "audio").length)
+      ) {
+        res.writeHead(400).end();
+        return;
+      }
+      if (req.method === "HEAD") {
+        res.writeHead(200, { "Content-Type": "video/mp4" }).end();
+        return;
+      }
+      serveRemux(
+        res,
+        abs,
+        start,
+        "prores-hdr",
+        index >= 0 ? { audio: index } : directDolbyTracks(metadata),
+      );
+      return;
+    }
     // Chromium can show the picture from an MP4/MOV while silently dropping
     // Dolby audio. Copy the primary video and convert only its default audio.
     if (
@@ -738,7 +783,7 @@ function startRemuxSession(
   if (proResPreview) {
     args.push(
       "-map",
-      "0:v:0",
+      track?.video === undefined ? "0:V:0" : `0:${track.video}`,
       "-map",
       `0:a:${track?.audio ?? 0}?`,
       "-write_tmcd",

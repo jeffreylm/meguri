@@ -418,6 +418,37 @@ When Finder removes a file, the next completed scan of that folder removes
 film details and poster data if the workspace has no remaining copy. Watch
 folders can reconcile the removal automatically.
 
+## Video adjustments
+
+In a video's detail player, open **Video adjustments** at the top right. The
+same controls are available in fullscreen and in the detached detail player.
+They work while the video is playing or paused.
+
+- **Exposure** is measured in stops. One stop doubles linear light before the
+  display range is applied. A soft shoulder rolls bright tones toward white.
+- **Contrast** sets the slope of a smooth S-curve. **Pivot** is the point the
+  curve holds steady, and starts at 18% linear middle gray. At higher contrast,
+  the toe and shoulder ease into black and white. The graph shows
+  the curve and its pivot. A value of 1× leaves contrast neutral.
+- **Subtractive saturation** deepens color by reducing the weaker channels
+  as you go above 1×. Moving toward zero blends toward a luminance-matched
+  gray.
+- **Temperature** moves between cool and warm. **Tint** moves between green
+  and magenta. Both are relative corrections to the decoded image.
+
+**Original** temporarily bypasses the current grade. **Reset** clears the
+clip's adjustments. Each clip's settings are remembered locally across restarts
+by its workspace and path. Double-click a slider to reset that control.
+
+The controls work in linear light after the browser converts the decoded frame
+to sRGB. For supported PQ or HLG files, **Viewer range** switches between **HDR
+playback** (on a compatible display with HDR enabled) and **SDR preview**. The
+SDR preview tone-maps the HDR source to Rec.709 before the adjustments are
+applied. HDR ProRes uses its existing SDR playback preview. The viewer range
+defaults to the file's normal playback path when you open a clip. Camera log
+and RAW workflows need a separate input transform. The controls affect the detail
+player. The source file and reference-still export use their existing paths.
+
 ## Reference stills
 
 Pause on the frame you want and click the camera in the player. In Discovery,

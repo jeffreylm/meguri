@@ -2,6 +2,29 @@
 import type { TranslationKey } from "./ja";
 
 export const fr: Record<TranslationKey, string> = {
+  "grade.viewer": "Plage du moniteur",
+  "grade.hdrOption": "Lecture HDR",
+  "grade.sdrOption": "Aperçu SDR",
+  "grade.nativeHdr": "Passez en aperçu SDR pour régler l’image.",
+  "grade.rangeUnavailable":
+    "Impossible de changer la plage. Le mode précédent a été rétabli.",
+  "grade.cool": "Froid",
+  "grade.warm": "Chaud",
+  "grade.green": "Vert",
+  "grade.magenta": "Magenta",
+  "grade.title": "Réglages vidéo",
+  "grade.exposure": "Exposition",
+  "grade.contrast": "Contraste",
+  "grade.pivot": "Pivot",
+  "grade.saturation": "Saturation soustractive",
+  "grade.temperature": "Température",
+  "grade.tint": "Teinte",
+  "grade.original": "Original",
+  "grade.reset": "Réinitialiser",
+  "grade.preview": "Aperçu sRGB linéaire",
+  "grade.hdr": "Source HDR · les réglages utilisent un aperçu SDR",
+  "grade.unavailable":
+    "Les réglages vidéo sont indisponibles sur cet appareil.",
   "origin.title": "Origine du téléchargement",
   "origin.website": "Site web",
   "origin.searchWebsite": "Rechercher sur le site",

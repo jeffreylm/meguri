@@ -2,6 +2,28 @@
 import type { TranslationKey } from "./ja";
 
 export const en: Record<TranslationKey, string> = {
+  "grade.viewer": "Viewer range",
+  "grade.hdrOption": "HDR playback",
+  "grade.sdrOption": "SDR preview",
+  "grade.nativeHdr": "Switch to SDR preview to adjust the picture.",
+  "grade.rangeUnavailable":
+    "Could not switch viewer range. The previous mode was restored.",
+  "grade.cool": "Cool",
+  "grade.warm": "Warm",
+  "grade.green": "Green",
+  "grade.magenta": "Magenta",
+  "grade.title": "Video adjustments",
+  "grade.exposure": "Exposure",
+  "grade.contrast": "Contrast",
+  "grade.pivot": "Pivot",
+  "grade.saturation": "Subtractive saturation",
+  "grade.temperature": "Temperature",
+  "grade.tint": "Tint",
+  "grade.original": "Original",
+  "grade.reset": "Reset",
+  "grade.preview": "Linear sRGB preview",
+  "grade.hdr": "HDR source · adjustments use an SDR preview",
+  "grade.unavailable": "Video adjustments are unavailable on this device.",
   "origin.title": "Where from",
   "origin.website": "Website",
   "origin.searchWebsite": "Search website",
