@@ -32,6 +32,7 @@ import {
 } from "../../shared/playbackTracks.js";
 import { readEmbeddedTracks } from "../../shared/embeddedSubtitles.js";
 import { probePlaybackMetadata } from "./playbackMetadata.js";
+import { videoCodecOf } from "./media.js";
 
 const log = scopedLog("server");
 
@@ -95,6 +96,12 @@ const DIRECT_DOLBY_CONTAINERS = new Set(["mp4", "m4v", "mov"]);
 
 function ext(p: string): string {
   return path.extname(p).slice(1).toLowerCase();
+}
+
+function storedMeta(core: Core, id: number): string | null | undefined {
+  const row = core.db.prepare("SELECT meta FROM files WHERE id = ?").get(id) as
+    { meta: string | null } | undefined;
+  return row?.meta;
 }
 
 function contentType(p: string): string {
@@ -264,13 +271,31 @@ async function handle(
 
     // kind === "media"
     const startT = url.searchParams.get("t");
-    // Repack unsupported containers. ProRes needs a codec conversion even
-    // when it lives in a container Chromium can demux, such as MOV.
-    const proResPreview = file.kind === "video" && file.codec === "prores";
     const parsed = startT != null ? Number(startT) : NaN;
     const start = Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
     const extension = ext(abs);
-    const remux = proResPreview || REMUX_CONTAINERS.has(extension);
+    const remuxContainer = REMUX_CONTAINERS.has(extension);
+    let metadata: unknown;
+    let codec = file.codec;
+    // A scan can publish the file before writing its codec. Read the codec
+    // the scan would store, so an early ProRes open gets its preview too.
+    // Only where these requests probe anyway: a HEAD for a remux container
+    // gets video/mp4 whatever the codec, and other containers play directly.
+    if (
+      file.kind === "video" &&
+      codec == null &&
+      (remuxContainer
+        ? req.method !== "HEAD"
+        : DIRECT_DOLBY_CONTAINERS.has(extension))
+    ) {
+      metadata = await probePlaybackMetadata(abs, storedMeta(core, id));
+      if (res.destroyed || res.writableEnded) return;
+      codec = videoCodecOf(metadata);
+    }
+    // Repack unsupported containers. ProRes needs a codec conversion even
+    // when it lives in a container Chromium can demux, such as MOV.
+    const proResPreview = file.kind === "video" && codec === "prores";
+    const remux = proResPreview || remuxContainer;
     const directDolby =
       !proResPreview &&
       file.kind === "video" &&
@@ -280,12 +305,8 @@ async function handle(
       directDolby ||
       (remux &&
         (requested !== null || (!proResPreview && req.method !== "HEAD")));
-    let metadata: unknown;
-    if (needsStreams) {
-      const row = core.db
-        .prepare("SELECT meta FROM files WHERE id = ?")
-        .get(id) as { meta: string | null } | undefined;
-      metadata = await probePlaybackMetadata(abs, row?.meta);
+    if (needsStreams && metadata === undefined) {
+      metadata = await probePlaybackMetadata(abs, storedMeta(core, id));
       if (res.destroyed || res.writableEnded) return;
     }
 

@@ -196,6 +196,14 @@ export function coverArtStreamIndex(raw: unknown): number | null {
   return typeof cover?.index === "number" ? cover.index : null;
 }
 
+/** The codec a scan stores for a video (see extractMeta): its first video
+ *  stream's. Takes the already-probed JSON, like coverArtStreamIndex. */
+export function videoCodecOf(raw: unknown): string | null {
+  const streams = (raw as FfprobeOutput | null)?.streams;
+  if (!Array.isArray(streams)) return null;
+  return streams.find((s) => s?.codec_type === "video")?.codec_name ?? null;
+}
+
 // How many seconds of margin to leave when doing the coarse pre-input seek of the hybrid
 // thumbnail seek. The fine post-input seek then decodes that much (worst case) to land on
 // the exact target frame. Tuned to comfortably cover typical GOP lengths (1–4 s).
