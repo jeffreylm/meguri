@@ -1399,6 +1399,8 @@ export const VideoPlayer = forwardRef<
           onRangeChange={choosePreviewRange}
           rangeUnavailable={rangeUnavailable}
           videoRef={ref}
+          playerRef={wrapRef}
+          playing={playing}
           loaded={loaded}
           t={t}
         />

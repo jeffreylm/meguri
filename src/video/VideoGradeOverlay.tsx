@@ -19,6 +19,8 @@ import { createGradeRenderer } from "./colorGradeRenderer";
 
 interface Props {
   videoRef: React.RefObject<HTMLVideoElement | null>;
+  playerRef: React.RefObject<HTMLDivElement | null>;
+  playing: boolean;
   clipKey: string;
   hdrSource: boolean;
   nativeHdr: boolean;
@@ -32,6 +34,8 @@ interface Props {
 
 export function VideoGradeOverlay({
   videoRef,
+  playerRef,
+  playing,
   clipKey,
   hdrSource,
   nativeHdr,
@@ -46,6 +50,7 @@ export function VideoGradeOverlay({
     readGrade(clipKey),
   );
   const [open, setOpen] = useState(false);
+  const [pointerActive, setPointerActive] = useState(false);
   const [held, setHeld] = useState<GradeControl | null>(null);
   const [failed, setFailed] = useState(false);
   const [previewStarted, setPreviewStarted] = useState(() =>
@@ -60,6 +65,29 @@ export function VideoGradeOverlay({
     loaded &&
     gradeChangesPicture(previewGrade);
   const trigger = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player) return;
+    let timeout: number | undefined;
+    const hide = () => {
+      window.clearTimeout(timeout);
+      setPointerActive(false);
+    };
+    const reveal = () => {
+      setPointerActive(true);
+      window.clearTimeout(timeout);
+      if (playing) timeout = window.setTimeout(hide, 1800);
+    };
+    if (playing) timeout = window.setTimeout(hide, 1800);
+    player.addEventListener("pointermove", reveal);
+    player.addEventListener("pointerleave", hide);
+    return () => {
+      window.clearTimeout(timeout);
+      player.removeEventListener("pointermove", reveal);
+      player.removeEventListener("pointerleave", hide);
+    };
+  }, [playerRef, playing]);
 
   useEffect(() => {
     const release = () => setHeld(null);
@@ -91,7 +119,9 @@ export function VideoGradeOverlay({
           aria-label={t("grade.title")}
           title={t("grade.title")}
           aria-expanded={open}
-          className={`absolute right-2 top-2 z-10 rounded-md border p-1.5 shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-primary ${
+          className={`absolute right-2 top-2 z-10 rounded-md border p-1.5 shadow-sm transition-[color,background-color,border-color,opacity] duration-200 motion-reduce:transition-none focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-primary [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100 ${
+            pointerActive ? "opacity-100" : "pointer-events-none opacity-0"
+          } ${
             open || active
               ? "border-primary bg-bg text-primary"
               : "border-white/30 bg-black/70 text-white hover:bg-black/90"
