@@ -294,6 +294,8 @@ export const VideoPlayer = forwardRef<
 
   const [sdrPreview, setSdrPreview] = useState(false);
   const [rangeUnavailable, setRangeUnavailable] = useState(false);
+  const rangeFrameRef = useRef<HTMLCanvasElement>(null);
+  const [rangeFrameHeld, setRangeFrameHeld] = useState(false);
   const pendingRange = useRef<{
     source: string;
     at: number;
@@ -477,6 +479,7 @@ export const VideoPlayer = forwardRef<
     setSdrPreview(false);
     setRangeUnavailable(false);
     pendingRange.current = null;
+    setRangeFrameHeld(false);
     setError(null);
     setPosition(0);
     setPlaying(false);
@@ -542,9 +545,58 @@ export const VideoPlayer = forwardRef<
     video.load();
   };
 
+  const holdRangeFrame = (video: HTMLVideoElement) => {
+    const canvas = rangeFrameRef.current;
+    if (!canvas || video.readyState < HAVE_CURRENT_DATA) return;
+    const graded = wrapRef.current?.querySelector<HTMLCanvasElement>(
+      '[data-slot="graded-video"]',
+    );
+    const useGrade = graded?.style.visibility === "visible";
+    const width = useGrade ? graded.width : video.videoWidth;
+    const height = useGrade ? graded.height : video.videoHeight;
+    if (!width || !height) return;
+    try {
+      const scale = Math.min(1, 1920 / Math.max(width, height));
+      canvas.width = Math.max(1, Math.round(width * scale));
+      canvas.height = Math.max(1, Math.round(height * scale));
+      const context = canvas.getContext("2d");
+      if (!context) return;
+      context.drawImage(
+        useGrade ? graded : video,
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+      );
+      setRangeFrameHeld(true);
+    } catch {
+      // The stream can switch even if the current frame cannot be captured.
+    }
+  };
+
+  const finishRangeSwitch = () => {
+    const video = ref.current;
+    if (
+      !pendingRange.current ||
+      !video ||
+      !video.videoWidth ||
+      video.seeking ||
+      video.readyState < HAVE_CURRENT_DATA
+    )
+      return;
+    pendingRange.current = null;
+    setRangeFrameHeld(false);
+  };
+
   const choosePreviewRange = (next: boolean) => {
     const video = ref.current;
-    if (!video || !haveMetadataRef.current || next === sdrPreview) return;
+    if (
+      !video ||
+      !haveMetadataRef.current ||
+      pendingRange.current ||
+      next === sdrPreview
+    )
+      return;
     const source = video.getAttribute("src") ?? src;
     if (!source) return;
     const at = streamOffsetOf(source) + video.currentTime;
@@ -565,6 +617,7 @@ export const VideoPlayer = forwardRef<
     }
     netRetriedRef.current = false;
     setRangeUnavailable(false);
+    holdRangeFrame(video);
     setSdrPreview(next);
     loadPreviewRange(
       video,
@@ -614,6 +667,7 @@ export const VideoPlayer = forwardRef<
         return;
       }
       pendingRange.current = null;
+      setRangeFrameHeld(false);
     }
     const fallback = pendingAudio.current;
     if (fallback) {
@@ -1268,7 +1322,7 @@ export const VideoPlayer = forwardRef<
       {/* Skipped in the playlist player: the stage's blurred cover of this very
           file is already the placeholder, and a grey sheet over it would flash
           on every item change. */}
-      {!loaded && !chromeless && (
+      {!loaded && !rangeFrameHeld && !chromeless && (
         <Skeleton
           className="absolute inset-0 z-10 rounded-none bg-overlay"
           aria-hidden="true"
@@ -1285,7 +1339,7 @@ export const VideoPlayer = forwardRef<
             : isFullscreen
               ? "max-h-screen"
               : "max-h-[78vh]"
-        } ${loaded ? "opacity-100" : "opacity-0"}`}
+        } ${loaded || rangeFrameHeld ? "opacity-100" : "opacity-0"}`}
         onClick={togglePlay}
         onPlay={() => {
           setPlaying(true);
@@ -1329,7 +1383,6 @@ export const VideoPlayer = forwardRef<
           }
 
           const range = pendingRange.current;
-          pendingRange.current = null;
           if (range?.useNativeSeek) {
             v.currentTime = Math.max(
               0,
@@ -1360,6 +1413,7 @@ export const VideoPlayer = forwardRef<
             seekRef.current(deferred);
           }
         }}
+        onLoadedData={finishRangeSwitch}
         onTimeUpdate={() => {
           const v = ref.current;
           if (!v) return;
@@ -1370,6 +1424,7 @@ export const VideoPlayer = forwardRef<
           if (sample) playbackPosition.tick(sample);
         }}
         onSeeked={() => {
+          finishRangeSwitch();
           const v = ref.current;
           // A seek is a new place to come back to, playing or paused (a
           // paused seek has no `timeupdate` stream to carry it otherwise).
@@ -1387,6 +1442,16 @@ export const VideoPlayer = forwardRef<
           if (v) handleElementError(v);
         }}
       />
+
+      {gradeKey && hdrSource && !isProResPreview && (
+        <canvas
+          ref={rangeFrameRef}
+          data-slot="viewer-range-frame"
+          aria-hidden="true"
+          hidden={!rangeFrameHeld}
+          className="pointer-events-none absolute inset-0 h-full w-full object-contain"
+        />
+      )}
 
       {gradeKey && (
         <VideoGradeOverlay

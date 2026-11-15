@@ -159,6 +159,51 @@ describe("embedded subtitles", () => {
   });
 });
 
+describe("viewer range handoff", () => {
+  it("holds the picture until the SDR stream has decoded a frame", () => {
+    const drawImage = vi.fn();
+    const context = vi
+      .spyOn(HTMLCanvasElement.prototype, "getContext")
+      .mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
+    try {
+      const { video, view } = renderPlayer({
+        autoplay: false,
+        gradeKey: "test.hdr.frame",
+        hdrSource: true,
+      });
+      loadVideo(video);
+      Object.defineProperties(video, {
+        readyState: { configurable: true, value: 2 },
+        videoWidth: { value: 1920 },
+        videoHeight: { value: 1080 },
+      });
+      video.currentTime = 15;
+      fireEvent.click(screen.getByTitle("grade.title"));
+      const range = screen.getByRole("combobox", { name: "grade.viewer" });
+      const frame = view.container.querySelector<HTMLCanvasElement>(
+        '[data-slot="viewer-range-frame"]',
+      )!;
+
+      fireEvent.change(range, { target: { value: "sdr" } });
+      expect(video.src).toContain("sdrPreview=1");
+      expect(video.src).toContain("t=15");
+      expect(drawImage).toHaveBeenCalledWith(video, 0, 0, 1920, 1080);
+      expect(frame.hidden).toBe(false);
+
+      Object.defineProperty(video, "readyState", { value: 1 });
+      fireEvent.loadedMetadata(video);
+      expect(frame.hidden).toBe(false);
+
+      Object.defineProperty(video, "readyState", { value: 2 });
+      fireEvent.loadedData(video);
+      expect(frame.hidden).toBe(true);
+      expect(video.paused).toBe(true);
+    } finally {
+      context.mockRestore();
+    }
+  });
+});
+
 describe("ProRes preview audio tracks", () => {
   it("keeps a paused playhead and the selected track when seeking", () => {
     const { video, ref } = renderPlayer({

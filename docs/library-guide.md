@@ -459,7 +459,9 @@ The controls work in linear light after the browser converts the decoded frame
 to sRGB. For supported PQ or HLG files, **Viewer range** switches between **HDR
 playback** (on a compatible display with HDR enabled) and **SDR preview**. The
 SDR preview tone-maps the HDR source to Rec.709 before the adjustments are
-applied. HDR ProRes uses its existing SDR playback preview. The viewer range
+applied. The player holds the previous picture while the new range prepares
+its first frame and keeps your place in the clip. HDR ProRes uses its existing
+SDR playback preview. The viewer range
 defaults to the file's normal playback path when you open a clip. Camera log
 and RAW workflows need a separate input transform. The controls affect the detail
 player. The source file and reference-still export use their existing paths.
