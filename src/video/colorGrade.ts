@@ -63,9 +63,16 @@ export function saveGrade(
 }
 
 export const exposureKnee = 0.5;
+export const hdrReferenceWhiteNits = 203;
+export const pqPeak = 10_000 / hdrReferenceWhiteNits;
+export const hdrExposureKnee = 1;
 
-export function exposureShoulder(gain: number): number {
-  return gain > 1 ? 1 / (1 - exposureKnee) - 1 / (gain - exposureKnee) : 0;
+export function exposureShoulder(
+  gain: number,
+  peak = 1,
+  knee = exposureKnee,
+): number {
+  return gain > 1 ? 1 / (peak - knee) - 1 / (peak * gain - knee) : 0;
 }
 
 // In log-odds space the pivot is fixed and the multiplier sets the slope
@@ -85,20 +92,30 @@ type ToneGrade = Pick<VideoGrade, "exposure" | "contrast" | "pivot">;
 
 // Neutral-color response of the shader: linear exposure with a soft shoulder,
 // followed by contrast. Temperature, tint and saturation affect color.
-export function videoToneCurve(light: number, grade: ToneGrade): number {
+export function videoToneCurve(
+  light: number,
+  grade: ToneGrade,
+  hdr = false,
+): number {
+  const peak = hdr ? pqPeak : 1;
+  const knee = hdr ? hdrExposureKnee : exposureKnee;
   const gain = 2 ** grade.exposure;
   const boosted = light * gain;
-  const overKnee = Math.max(0, boosted - exposureKnee);
+  const overKnee = Math.max(0, boosted - knee);
   const exposed =
-    Math.min(boosted, exposureKnee) +
-    overKnee / (1 + exposureShoulder(gain) * overKnee);
+    Math.min(boosted, knee) +
+    overKnee / (1 + exposureShoulder(gain, peak, knee) * overKnee);
   return Math.min(
-    1,
-    Math.max(0, filmicContrast(exposed, grade.contrast, grade.pivot)),
+    peak,
+    Math.max(
+      0,
+      filmicContrast(exposed / peak, grade.contrast, grade.pivot / peak) * peak,
+    ),
   );
 }
 
-export function toneCurvePivotInput(grade: ToneGrade): number {
+export function toneCurvePivotInput(grade: ToneGrade, hdr = false): number {
+  if (hdr) return grade.pivot / 2 ** grade.exposure;
   const gain = 2 ** grade.exposure;
   if (grade.pivot <= exposureKnee) return grade.pivot / gain;
   // Invert the exposure shoulder to find the input that reaches the pivot.

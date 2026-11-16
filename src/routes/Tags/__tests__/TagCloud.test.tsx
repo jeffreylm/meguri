@@ -96,7 +96,7 @@ describe("Tags screen, cloud view", () => {
       measureText: (text: string) => ({ width: text.length * 10 }),
     };
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
-      ctx as unknown as CanvasRenderingContext2D,
+      ctx as unknown as ReturnType<HTMLCanvasElement["getContext"]>,
     );
     render();
     const beach = await screen.findByText("beach");

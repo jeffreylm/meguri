@@ -164,12 +164,14 @@ describe("viewer range handoff", () => {
     const drawImage = vi.fn();
     const context = vi
       .spyOn(HTMLCanvasElement.prototype, "getContext")
-      .mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
+      .mockReturnValue({ drawImage } as unknown as ReturnType<
+        HTMLCanvasElement["getContext"]
+      >);
     try {
       const { video, view } = renderPlayer({
         autoplay: false,
         gradeKey: "test.hdr.frame",
-        hdrSource: true,
+        hdrTransfer: "pq",
       });
       loadVideo(video);
       Object.defineProperties(video, {

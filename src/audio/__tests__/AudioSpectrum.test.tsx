@@ -104,7 +104,7 @@ beforeEach(() => {
         strokeStyle: "",
         lineWidth: 1,
         lineCap: "butt",
-      }) as unknown as CanvasRenderingContext2D,
+      }) as unknown as ReturnType<HTMLCanvasElement["getContext"]>,
   );
   Object.defineProperty(HTMLCanvasElement.prototype, "clientWidth", {
     configurable: true,

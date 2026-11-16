@@ -152,7 +152,7 @@ export const VideoPlayer = forwardRef<
     subtitleTracks?: PlaybackTrack[];
     preferenceKey?: string;
     gradeKey?: string;
-    hdrSource?: boolean;
+    hdrTransfer?: "pq" | "hlg";
     hdrUsesStream?: boolean;
     /** ProRes streams can be reopened at their current position after a network interruption. */
     isProResPreview?: boolean;
@@ -237,7 +237,7 @@ export const VideoPlayer = forwardRef<
     subtitleTracks,
     preferenceKey,
     gradeKey,
-    hdrSource = false,
+    hdrTransfer,
     hdrUsesStream = false,
     isProResPreview = false,
     navKeys,
@@ -545,13 +545,18 @@ export const VideoPlayer = forwardRef<
     video.load();
   };
 
+  const hdrSource = hdrTransfer !== undefined;
+
   const holdRangeFrame = (video: HTMLVideoElement) => {
     const canvas = rangeFrameRef.current;
     if (!canvas || video.readyState < HAVE_CURRENT_DATA) return;
     const graded = wrapRef.current?.querySelector<HTMLCanvasElement>(
       '[data-slot="graded-video"]',
     );
-    const useGrade = graded?.style.visibility === "visible";
+    // A WebGPU canvas can lose its presented surface between frames. Capture
+    // the native picture during the brief handoff from a graded HDR frame.
+    const useGrade =
+      graded?.dataset.range === "sdr" && graded.style.visibility === "visible";
     const width = useGrade ? graded.width : video.videoWidth;
     const height = useGrade ? graded.height : video.videoHeight;
     if (!width || !height) return;
@@ -1458,7 +1463,7 @@ export const VideoPlayer = forwardRef<
           key={gradeKey}
           clipKey={gradeKey}
           hdrSource={hdrSource}
-          nativeHdr={hdrSource && !sdrPreview && !isProResPreview}
+          nativeHdr={sdrPreview || isProResPreview ? undefined : hdrTransfer}
           sdrPreview={sdrPreview || isProResPreview}
           canToggleRange={hdrSource && !isProResPreview}
           onRangeChange={choosePreviewRange}

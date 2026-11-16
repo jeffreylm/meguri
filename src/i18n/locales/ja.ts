@@ -5,6 +5,8 @@ export const ja = {
   "grade.hdrOption": "HDR 再生",
   "grade.sdrOption": "SDR プレビュー",
   "grade.nativeHdr": "映像を調整するには SDR プレビューに切り替えてください。",
+  "grade.pqPreview": "リニア光の PQ プレビュー · SDR とは別に調整を保存",
+  "grade.hdrUnavailable": "HDR 調整は利用できません。元の映像を再生します。",
   "grade.rangeUnavailable":
     "レンジを切り替えられなかったため、元のモードに戻しました。",
   "grade.cool": "寒色",

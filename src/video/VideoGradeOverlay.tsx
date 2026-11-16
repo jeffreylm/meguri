@@ -8,6 +8,7 @@ import {
   gradeControls,
   gradeKeys,
   neutralGrade,
+  pqPeak,
   readGrade,
   saveGrade,
   toneCurvePivotInput,
@@ -16,6 +17,9 @@ import {
   type VideoGrade,
 } from "./colorGrade";
 import { createGradeRenderer } from "./colorGradeRenderer";
+import { createHdrGradeRenderer } from "./hdrGradeRenderer";
+
+type GradeRange = "sdr" | "hdr";
 
 interface Props {
   videoRef: React.RefObject<HTMLVideoElement | null>;
@@ -23,7 +27,7 @@ interface Props {
   playing: boolean;
   clipKey: string;
   hdrSource: boolean;
-  nativeHdr: boolean;
+  nativeHdr?: "pq" | "hlg";
   sdrPreview: boolean;
   canToggleRange: boolean;
   onRangeChange: (sdr: boolean) => void;
@@ -46,22 +50,29 @@ export function VideoGradeOverlay({
   loaded,
   t,
 }: Props) {
-  const [{ grade, enabled }, setPreferences] = useState(() =>
-    readGrade(clipKey),
-  );
+  const [preferences, setPreferences] = useState(() => ({
+    sdr: readGrade(clipKey),
+    hdr: readGrade(`${clipKey}.hdr`),
+  }));
+  const range: GradeRange = nativeHdr ? "hdr" : "sdr";
+  const { grade, enabled } = preferences[range];
+  const pq = nativeHdr === "pq";
+  const canGrade = nativeHdr !== "hlg";
   const [open, setOpen] = useState(false);
   const [pointerActive, setPointerActive] = useState(false);
   const [held, setHeld] = useState<GradeControl | null>(null);
-  const [failed, setFailed] = useState(false);
-  const [previewStarted, setPreviewStarted] = useState(() =>
-    gradeChangesPicture(grade),
-  );
+  const [failedRange, setFailedRange] = useState<GradeRange>();
+  const failed = failedRange === range;
+  const [started, setStarted] = useState(() => ({
+    sdr: gradeChangesPicture(preferences.sdr.grade),
+    hdr: gradeChangesPicture(preferences.hdr.grade),
+  }));
   const hintId = useId();
   const previewGrade = held ? { ...grade, [held]: neutralGrade[held] } : grade;
   const active =
     enabled &&
     !failed &&
-    !nativeHdr &&
+    canGrade &&
     loaded &&
     gradeChangesPicture(previewGrade);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -97,19 +108,22 @@ export function VideoGradeOverlay({
 
   function update(value: VideoGrade, nextEnabled = enabled) {
     const next = { grade: value, enabled: nextEnabled };
-    setPreferences(next);
-    if (gradeChangesPicture(value)) setPreviewStarted(true);
-    saveGrade(clipKey, next);
+    setPreferences((previous) => ({ ...previous, [range]: next }));
+    if (gradeChangesPicture(value) && !started[range])
+      setStarted((previous) => ({ ...previous, [range]: true }));
+    saveGrade(pq ? `${clipKey}.hdr` : clipKey, next);
   }
 
   return (
     <>
-      {previewStarted && !failed && !nativeHdr && loaded && (
+      {started[range] && !failed && canGrade && loaded && (
         <GradedFrame
+          key={range}
+          range={range}
           videoRef={videoRef}
           grade={previewGrade}
           active={active}
-          onError={setFailed}
+          onError={setFailedRange}
         />
       )}
       {(loaded || open) && (
@@ -159,7 +173,7 @@ export function VideoGradeOverlay({
                 variant={enabled ? "default" : "outline"}
                 aria-label={t("grade.toggle")}
                 aria-pressed={enabled}
-                disabled={failed || nativeHdr}
+                disabled={failed || !canGrade}
                 title={t("grade.toggle")}
                 onClick={() => {
                   setHeld(null);
@@ -173,11 +187,11 @@ export function VideoGradeOverlay({
                 type="button"
                 size="sm"
                 variant="outline"
-                disabled={nativeHdr}
+                disabled={!canGrade}
                 onClick={() => {
                   update(neutralGrade);
                   setHeld(null);
-                  setFailed(false);
+                  setFailedRange(undefined);
                 }}
               >
                 {t("grade.resetAll")}
@@ -191,9 +205,10 @@ export function VideoGradeOverlay({
                 value={sdrPreview ? "sdr" : "hdr"}
                 disabled={!loaded}
                 className="rounded border border-border bg-bg px-2 py-1 text-fg"
-                onChange={(event) =>
-                  onRangeChange(event.currentTarget.value === "sdr")
-                }
+                onChange={(event) => {
+                  setHeld(null);
+                  onRangeChange(event.currentTarget.value === "sdr");
+                }}
               >
                 <option value="hdr">{t("grade.hdrOption")}</option>
                 <option value="sdr">{t("grade.sdrOption")}</option>
@@ -205,15 +220,18 @@ export function VideoGradeOverlay({
               {t("grade.rangeUnavailable")}
             </p>
           )}
-          {!nativeHdr && (
+          {canGrade && (
             <>
-              <ToneCurve grade={enabled ? previewGrade : neutralGrade} />
+              <ToneCurve
+                grade={enabled ? previewGrade : neutralGrade}
+                hdr={pq}
+              />
               <p id={hintId} className="text-xs text-muted">
                 {t("grade.holdHint")}
               </p>
             </>
           )}
-          {!nativeHdr &&
+          {canGrade &&
             gradeKeys.map((key) => {
               const { min, max, step, neutral } = gradeControls[key];
               const value = grade[key];
@@ -315,12 +333,16 @@ export function VideoGradeOverlay({
           <p className="text-xs text-muted">
             {t(
               failed
-                ? "grade.unavailable"
-                : nativeHdr
-                  ? "grade.nativeHdr"
-                  : hdrSource
-                    ? "grade.hdr"
-                    : "grade.preview",
+                ? pq
+                  ? "grade.hdrUnavailable"
+                  : "grade.unavailable"
+                : pq
+                  ? "grade.pqPreview"
+                  : nativeHdr === "hlg"
+                    ? "grade.nativeHdr"
+                    : hdrSource
+                      ? "grade.hdr"
+                      : "grade.preview",
             )}
           </p>
         </section>
@@ -329,14 +351,18 @@ export function VideoGradeOverlay({
   );
 }
 
-function ToneCurve({ grade }: { grade: VideoGrade }) {
-  // Higher visual resolution around middle gray, where small moves matter.
-  const chart = (value: number) => Math.sqrt(value) * 100;
-  const points = Array.from({ length: 65 }, (_, index) => {
-    const x = index / 64;
-    return `${x * 100},${100 - chart(videoToneCurve(x * x, grade))}`;
+function ToneCurve({ grade, hdr }: { grade: VideoGrade; hdr: boolean }) {
+  // The HDR graph includes everything above reference white and uses a log
+  // scale to keep the pivot and the shadow response easy to read.
+  const logRange = Math.log1p(pqPeak / 0.04);
+  const chart = (value: number) =>
+    (hdr ? Math.log1p(value / 0.04) / logRange : Math.sqrt(value)) * 100;
+  const points = Array.from({ length: 97 }, (_, index) => {
+    const x = index / 96;
+    const input = hdr ? 0.04 * Math.expm1(x * logRange) : x * x;
+    return `${x * 100},${100 - chart(videoToneCurve(input, grade, hdr))}`;
   }).join(" ");
-  const pivotInput = toneCurvePivotInput(grade);
+  const pivotInput = toneCurvePivotInput(grade, hdr);
   return (
     <svg
       viewBox="0 0 100 100"
@@ -350,6 +376,17 @@ function ToneCurve({ grade }: { grade: VideoGrade }) {
         opacity="0.3"
         fill="none"
       />
+      {hdr && (
+        <line
+          x1={chart(1)}
+          x2={chart(1)}
+          y2={100}
+          stroke="currentColor"
+          opacity={0.3}
+          strokeDasharray="3 3"
+          vectorEffect="non-scaling-stroke"
+        />
+      )}
       <polyline
         points={points}
         className="stroke-primary"
@@ -357,7 +394,7 @@ function ToneCurve({ grade }: { grade: VideoGrade }) {
         strokeWidth={2}
         fill="none"
       />
-      {pivotInput <= 1 && (
+      {pivotInput <= (hdr ? pqPeak : 1) && (
         <circle
           cx={chart(pivotInput)}
           cy={100 - chart(grade.pivot)}
@@ -370,15 +407,17 @@ function ToneCurve({ grade }: { grade: VideoGrade }) {
 }
 
 function GradedFrame({
+  range,
   videoRef,
   grade,
   active,
   onError,
 }: {
+  range: GradeRange;
   videoRef: Props["videoRef"];
   grade: VideoGrade;
   active: boolean;
-  onError: (failed: boolean) => void;
+  onError: (range: GradeRange) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const settings = useRef({ grade, active });
@@ -390,34 +429,53 @@ function GradedFrame({
     if (!canvas || !video) return;
     let frame: number | undefined;
     let stopped = false;
-    let renderer: ReturnType<typeof createGradeRenderer>;
-    try {
-      renderer = createGradeRenderer(canvas);
-    } catch (error) {
-      log.warn("Video adjustments could not start", error);
-      onError(true);
-      return;
-    }
-    const failed = () => {
+    type Renderer =
+      | ReturnType<typeof createGradeRenderer>
+      | Awaited<ReturnType<typeof createHdrGradeRenderer>>;
+    let renderer: Renderer | undefined;
+    let drawing = false;
+    let drawPending = false;
+    const failed = (error?: unknown) => {
+      if (stopped) return;
       stopped = true;
       canvas.style.visibility = "hidden";
-      onError(true);
+      log.warn("Video adjustments unavailable", error);
+      onError(range);
     };
     const draw = () => {
       if (
         stopped ||
+        !renderer ||
         !settings.current.active ||
+        video.seeking ||
         video.readyState < 2 ||
         !video.videoWidth ||
         !video.videoHeight
       )
         return;
+
+      const show = () => {
+        if (!stopped && settings.current.active)
+          canvas.style.visibility = "visible";
+      };
+      if (drawing) {
+        drawPending = true;
+        return;
+      }
       try {
-        renderer.draw(video, settings.current.grade);
-        canvas.style.visibility = "visible";
+        const result = renderer.draw(video, settings.current.grade);
+        if (result) {
+          drawing = true;
+          void result.then(show, failed).finally(() => {
+            drawing = false;
+            if (drawPending) {
+              drawPending = false;
+              draw();
+            }
+          });
+        } else show();
       } catch (error) {
-        log.warn("Video adjustments could not draw", error);
-        failed();
+        failed(error);
       }
     };
     const queueFrame = () => {
@@ -442,7 +500,22 @@ function GradedFrame({
       draw();
       queueFrame();
     };
-    redraw.current();
+    if (range === "hdr") {
+      void createHdrGradeRenderer(canvas, failed).then((created) => {
+        if (stopped) created.dispose();
+        else {
+          renderer = created;
+          redraw.current?.();
+        }
+      }, failed);
+    } else {
+      try {
+        renderer = createGradeRenderer(canvas);
+        redraw.current();
+      } catch (error) {
+        failed(error);
+      }
+    }
     return () => {
       stopped = true;
       redraw.current = null;
@@ -451,9 +524,9 @@ function GradedFrame({
       canvas.removeEventListener("webglcontextlost", failed);
       video.removeEventListener("loadeddata", draw);
       video.removeEventListener("seeked", draw);
-      renderer.dispose();
+      renderer?.dispose();
     };
-  }, [videoRef, onError]);
+  }, [range, videoRef, onError]);
 
   useLayoutEffect(() => {
     settings.current = { grade, active };
@@ -466,6 +539,7 @@ function GradedFrame({
     <canvas
       ref={canvasRef}
       data-slot="graded-video"
+      data-range={range}
       aria-hidden="true"
       style={{ visibility: "hidden" }}
       className="pointer-events-none absolute inset-0 h-full w-full object-contain"

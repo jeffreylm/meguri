@@ -1,6 +1,6 @@
 export const SDR_PREVIEW_PARAM = "sdrPreview";
 
-export function isHdrVideo(metadata: unknown): boolean {
+export function videoHdrTransfer(metadata: unknown): "pq" | "hlg" | undefined {
   try {
     const { streams } = (
       typeof metadata === "string" ? JSON.parse(metadata) : (metadata ?? {})
@@ -17,11 +17,13 @@ export function isHdrVideo(metadata: unknown): boolean {
             stream?.codec_type === "video" && !stream.disposition?.attached_pic,
         )
       : undefined;
-    return (
-      video?.color_transfer === "smpte2084" ||
-      video?.color_transfer === "arib-std-b67"
-    );
+    if (video?.color_transfer === "smpte2084") return "pq";
+    if (video?.color_transfer === "arib-std-b67") return "hlg";
   } catch {
-    return false;
+    return undefined;
   }
+}
+
+export function isHdrVideo(metadata: unknown): boolean {
+  return videoHdrTransfer(metadata) !== undefined;
 }

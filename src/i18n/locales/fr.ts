@@ -6,6 +6,10 @@ export const fr: Record<TranslationKey, string> = {
   "grade.hdrOption": "Lecture HDR",
   "grade.sdrOption": "Aperçu SDR",
   "grade.nativeHdr": "Passez en aperçu SDR pour régler l’image.",
+  "grade.pqPreview":
+    "Aperçu PQ en lumière linéaire · réglages distincts du SDR",
+  "grade.hdrUnavailable":
+    "Les réglages HDR sont indisponibles. La vidéo d’origine est affichée.",
   "grade.rangeUnavailable":
     "Impossible de changer la plage. Le mode précédent a été rétabli.",
   "grade.cool": "Froid",

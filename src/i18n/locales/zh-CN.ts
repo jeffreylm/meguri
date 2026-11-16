@@ -6,6 +6,8 @@ export const zhCN: Record<TranslationKey, string> = {
   "grade.hdrOption": "HDR 播放",
   "grade.sdrOption": "SDR 预览",
   "grade.nativeHdr": "切换到 SDR 预览以调整画面。",
+  "grade.pqPreview": "线性光 PQ 预览 · 调整与 SDR 分开保存",
+  "grade.hdrUnavailable": "HDR 调整不可用。正在显示原始画面。",
   "grade.rangeUnavailable": "无法切换查看器范围，已恢复之前的模式。",
   "grade.cool": "冷",
   "grade.warm": "暖",

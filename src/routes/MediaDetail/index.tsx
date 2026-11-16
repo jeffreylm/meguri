@@ -26,7 +26,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { applyTagFilter, showFolderInLibrary } from "@/lib/ui-events";
 import { fileNameOf, folderPathOf } from "@/lib/relPath";
 import { directDolbyTracks } from "@shared/dolbyAudio";
-import { isHdrVideo } from "@shared/videoPreviewRange";
+import { videoHdrTransfer } from "@shared/videoPreviewRange";
 import { isNormalizedFolderPath } from "@shared/folderPath";
 import { api, ALL_ID, COLLECTION_ID_PREFIX } from "@/ipc/client";
 import { useAppStatus } from "@/hooks/useAppStatus";
@@ -483,7 +483,7 @@ export default function MediaDetail({
               subtitleTracks={readPlaybackTracks(d.meta, "subtitle")}
               preferenceKey={playbackPreferenceKey(wsId, d.relPath)}
               gradeKey={`footageDeck.videoGrade.${JSON.stringify([wsId, d.relPath])}`}
-              hdrSource={isHdrVideo(d.meta)}
+              hdrTransfer={videoHdrTransfer(d.meta)}
               hdrUsesStream={
                 isRemuxedVideo(d.codec, d.ext) ||
                 directDolbyTracks(d.meta) != null

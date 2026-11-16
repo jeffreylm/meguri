@@ -455,16 +455,24 @@ contrast at the default 18% pivot.
 control. Each clip's settings and on/off state are remembered locally across
 restarts by its workspace and path.
 
-The controls work in linear light after the browser converts the decoded frame
-to sRGB. For supported PQ or HLG files, **Viewer range** switches between **HDR
-playback** (on a compatible display with HDR enabled) and **SDR preview**. The
-SDR preview tone-maps the HDR source to Rec.709 before the adjustments are
-applied. The player holds the previous picture while the new range prepares
-its first frame and keeps your place in the clip. HDR ProRes uses its existing
-SDR playback preview. The viewer range
-defaults to the file's normal playback path when you open a clip. Camera log
-and RAW workflows need a separate input transform. The controls affect the detail
-player. The source file and reference-still export use their existing paths.
+**Viewer range** switches between **HDR playback** and **SDR preview** for
+supported PQ or HLG footage. For Rec.2020 PQ footage, both modes offer the same
+controls. HDR adjustments work in linear light with room above reference white.
+The dashed line in the HDR curve marks reference white. Exposure uses stops
+below the shoulder, and the shoulder smooths the brightest highlights. Your
+HDR and SDR grades and their on/off settings are saved separately for each clip.
+Use **Off** to compare your grade with the original HDR playback, including the
+source's native HDR processing. The HDR grading preview uses an 8-bit sample
+of the PQ base image and processes it in floating point.
+
+Use a display with HDR enabled to judge the full range of the HDR preview.
+**SDR preview** tone-maps HDR footage to Rec.709 before applying its grade. HLG
+adjustments work in SDR preview. HDR ProRes uses the built-in SDR playback
+preview. The player holds a picture while the new range prepares its first
+frame and keeps your place in the clip. The viewer opens each clip in its
+normal playback range. Camera log and RAW workflows need a separate input
+transform. Viewer adjustments affect the detail player. Reference stills use
+the separate export color settings.
 
 ## Reference stills
 
