@@ -296,6 +296,7 @@ export const VideoPlayer = forwardRef<
   const [rangeUnavailable, setRangeUnavailable] = useState(false);
   const rangeFrameRef = useRef<HTMLCanvasElement>(null);
   const [rangeFrameHeld, setRangeFrameHeld] = useState(false);
+  const [rangeSwitching, setRangeSwitching] = useState(false);
   const pendingRange = useRef<{
     source: string;
     at: number;
@@ -479,6 +480,7 @@ export const VideoPlayer = forwardRef<
     setSdrPreview(false);
     setRangeUnavailable(false);
     pendingRange.current = null;
+    setRangeSwitching(false);
     setRangeFrameHeld(false);
     setError(null);
     setPosition(0);
@@ -590,6 +592,7 @@ export const VideoPlayer = forwardRef<
     )
       return;
     pendingRange.current = null;
+    setRangeSwitching(false);
     setRangeFrameHeld(false);
   };
 
@@ -622,6 +625,7 @@ export const VideoPlayer = forwardRef<
     }
     netRetriedRef.current = false;
     setRangeUnavailable(false);
+    setRangeSwitching(true);
     holdRangeFrame(video);
     setSdrPreview(next);
     loadPreviewRange(
@@ -672,6 +676,7 @@ export const VideoPlayer = forwardRef<
         return;
       }
       pendingRange.current = null;
+      setRangeSwitching(false);
       setRangeFrameHeld(false);
     }
     const fallback = pendingAudio.current;
@@ -1468,6 +1473,7 @@ export const VideoPlayer = forwardRef<
           canToggleRange={hdrSource && !isProResPreview}
           onRangeChange={choosePreviewRange}
           rangeUnavailable={rangeUnavailable}
+          rangeSwitching={rangeSwitching}
           videoRef={ref}
           playerRef={wrapRef}
           playing={playing}

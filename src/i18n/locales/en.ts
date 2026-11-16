@@ -5,9 +5,8 @@ export const en: Record<TranslationKey, string> = {
   "grade.viewer": "Viewer range",
   "grade.hdrOption": "HDR playback",
   "grade.sdrOption": "SDR preview",
-  "grade.nativeHdr": "Switch to SDR preview to adjust the picture.",
-  "grade.pqPreview":
-    "Linear-light PQ preview · grades saved separately from SDR",
+  "grade.hdrGradePreview":
+    "10-bit HDR preview · grades saved separately from SDR",
   "grade.hdrUnavailable":
     "HDR adjustments are unavailable. Original playback is shown.",
   "grade.rangeUnavailable":

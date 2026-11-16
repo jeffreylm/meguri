@@ -9,7 +9,7 @@
 // also needs a compatible H.264 picture instead of stream copy.
 // Both streams support time seeking via ?t=<seconds>.
 //
-// URLs have the form /ws/<workspaceId>/<kind>/<fileId> (kind = thumb|media|frame|poster).
+// URLs have the form /ws/<workspaceId>/<kind>/<fileId> (kind = thumb|media|frame|poster|hdr-frames).
 // Requests must include X-Api-Token; the Electron session injects it for in-app media loads.
 // Resolving the DB by workspace ID lets it serve correctly without depending on the active switch,
 // and the browser cache key is naturally separated by ID as well.
@@ -27,7 +27,13 @@ import { isInsideRoot } from "./paths.js";
 import { FFMPEG } from "./ffmpeg-paths.js";
 import { QueueFullError, Semaphore } from "./concurrency.js";
 import { DECODE_FFMPEG_THREADS, videoDecodeSlots } from "./mediaConcurrency.js";
-import { SDR_PREVIEW_PARAM } from "../../shared/videoPreviewRange.js";
+import {
+  HDR_PREVIEW_FPS,
+  HDR_PREVIEW_HEIGHT,
+  HDR_PREVIEW_WIDTH,
+  hdrGradeTransfer,
+  SDR_PREVIEW_PARAM,
+} from "../../shared/videoPreviewRange.js";
 import { scopedLog } from "./logger.js";
 import { extractMeta, type ExtractedMeta } from "./media.js";
 import {
@@ -61,6 +67,7 @@ const remuxSlots = new Semaphore(REMUX_MAX_CONCURRENT);
 // Playback can stay open for a long time. Keep transcoding separate from the
 // thumbnail and scrub pool, and cap concurrent previews and FFmpeg threads.
 const previewSlots = new Semaphore(2);
+const hdrGradeSlots = new Semaphore(2);
 const DOLBY_DIGITAL_CODECS = new Set(["ac3", "eac3"]);
 // Reclaim a preview only under contention, after sustained socket backpressure.
 const PREVIEW_READER_TIMEOUT_MS = 120_000;
@@ -223,7 +230,8 @@ export function startServer(
 const AUTH_HEADER = "x-api-token";
 
 // URLs have the form /ws/<workspaceId>/<kind>/<fileId>.
-const ROUTE = /^\/ws\/([0-9a-f]+)\/(thumb|media|frame|poster)\/(\d+)$/;
+const ROUTE =
+  /^\/ws\/([0-9a-f]+)\/(thumb|media|frame|poster|hdr-frames)\/(\d+)$/;
 
 async function handle(
   req: http.IncomingMessage,
@@ -356,6 +364,44 @@ async function handle(
       const t = Number(url.searchParams.get("t") ?? "0");
       const q = parseFrameQuality(url.searchParams.get("q"));
       serveFrame(res, abs, isFinite(t) && t > 0 ? t : 0, q);
+      return;
+    }
+
+    if (kind === "hdr-frames") {
+      if (req.method !== "GET" || file.kind !== "video") {
+        res.writeHead(400).end();
+        return;
+      }
+      const start = Number(url.searchParams.get("t"));
+      const width = Number(url.searchParams.get("w"));
+      const height = Number(url.searchParams.get("h"));
+      const still = url.searchParams.get("still") === "1";
+      if (
+        !Number.isFinite(start) ||
+        start < 0 ||
+        !Number.isSafeInteger(width) ||
+        width < 2 ||
+        width > HDR_PREVIEW_WIDTH ||
+        width % 2 !== 0 ||
+        !Number.isSafeInteger(height) ||
+        height < 2 ||
+        height > HDR_PREVIEW_HEIGHT ||
+        height % 2 !== 0
+      ) {
+        res.writeHead(400).end();
+        return;
+      }
+      const row = core.db
+        .prepare("SELECT meta FROM files WHERE id = ?")
+        .get(id) as { meta: string | null } | undefined;
+      const metadata = row?.meta ?? (await probeUnindexedVideo(abs, res))?.raw;
+      if (res.destroyed || res.writableEnded) return;
+      const transfer = hdrGradeTransfer(metadata);
+      if (!transfer) {
+        res.writeHead(415).end();
+        return;
+      }
+      await serveHdrFrames(res, abs, start, width, height, still, transfer);
       return;
     }
 
@@ -983,6 +1029,102 @@ function serveTranscodedImage(res: http.ServerResponse, file: string) {
     "pipe:1",
   ];
   serveBufferedFfmpeg(res, args, "image/jpeg");
+}
+
+async function serveHdrFrames(
+  res: http.ServerResponse,
+  file: string,
+  start: number,
+  width: number,
+  height: number,
+  still: boolean,
+  transfer: "pq" | "hlg",
+) {
+  const release = await acquireForResponse(hdrGradeSlots, res);
+  if (!release) return;
+  if (res.destroyed) {
+    release();
+    return;
+  }
+
+  const filters = [
+    `fps=${HDR_PREVIEW_FPS}:start_time=0:round=up`,
+    `scale=${width}:${height}:flags=bilinear:out_range=tv:out_h_chr_pos=128:out_v_chr_pos=128`,
+    "format=p010le",
+  ].join(",");
+  const spawnDecoder = () => {
+    return spawn(
+      FFMPEG,
+      [
+        "-nostdin",
+        "-v",
+        "error",
+        "-threads",
+        String(DECODE_FFMPEG_THREADS),
+        "-filter_threads",
+        "2",
+        "-ss",
+        start.toFixed(6),
+        "-i",
+        file,
+        "-map",
+        "0:V:0",
+        "-an",
+        "-sn",
+        "-dn",
+        "-vf",
+        filters,
+        ...(still ? ["-frames:v", "1"] : []),
+        "-pix_fmt",
+        "p010le",
+        "-f",
+        "rawvideo",
+        "pipe:1",
+      ],
+      { stdio: ["ignore", "pipe", "pipe"] },
+    );
+  };
+  let child: ReturnType<typeof spawnDecoder>;
+  try {
+    child = spawnDecoder();
+  } catch (error) {
+    release();
+    throw error;
+  }
+  const stop = () => child.kill(FFMPEG_KILL_SIGNAL);
+  const watchdog = setTimeout(() => {
+    if (res.writableNeedDrain) watchdog.refresh();
+    else stop();
+  }, 20_000);
+  res.once("close", stop);
+  res.on("drain", () => watchdog.refresh());
+  res.setHeader("Content-Type", "application/octet-stream");
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Access-Control-Expose-Headers", "X-Hdr-Transfer");
+  res.setHeader("X-Hdr-Transfer", transfer);
+  let stderr = "";
+  child.stderr.on("data", (chunk: Buffer) => {
+    if (stderr.length < 2000)
+      stderr += chunk.toString().slice(0, 2000 - stderr.length);
+  });
+  child.stdout.on("data", () => watchdog.refresh());
+  child.stdout.pipe(res, { end: false });
+  child.on("error", (error) => {
+    log.warn("HDR frame decoder could not start:", error);
+  });
+  child.once("close", (code) => {
+    clearTimeout(watchdog);
+    res.off("close", stop);
+    release();
+    if (res.destroyed) return;
+    if (code !== 0) {
+      log.warn("HDR frame decoder stopped:", stderr);
+      if (res.headersSent) res.destroy();
+      else res.writeHead(500).end();
+    } else {
+      res.end();
+    }
+  });
 }
 
 function serveRemux(

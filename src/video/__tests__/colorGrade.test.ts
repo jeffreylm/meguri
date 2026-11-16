@@ -37,13 +37,13 @@ describe("preview color curves", () => {
   it("preserves HDR headroom and holds the pivot in reference-white units", () => {
     const raised = { ...neutralGrade, exposure: 1 };
     const contrast = { ...neutralGrade, contrast: 1.4 };
-    expect(videoToneCurve(0.18, raised, true)).toBeCloseTo(0.36, 12);
-    expect(videoToneCurve(0.18, contrast, true)).toBeCloseTo(0.18, 12);
-    expect(videoToneCurve(1, { ...raised, exposure: -1 }, true)).toBe(0.5);
-    expect(videoToneCurve(4, neutralGrade, true)).toBeCloseTo(4, 12);
-    expect(videoToneCurve(4, raised, true)).toBeGreaterThan(4);
-    expect(videoToneCurve(4, raised, true)).toBeLessThan(8);
-    expect(videoToneCurve(pqPeak, raised, true)).toBeCloseTo(pqPeak, 12);
+    expect(videoToneCurve(0.18, raised, pqPeak)).toBeCloseTo(0.36, 12);
+    expect(videoToneCurve(0.18, contrast, pqPeak)).toBeCloseTo(0.18, 12);
+    expect(videoToneCurve(1, { ...raised, exposure: -1 }, pqPeak)).toBe(0.5);
+    expect(videoToneCurve(4, neutralGrade, pqPeak)).toBeCloseTo(4, 12);
+    expect(videoToneCurve(4, raised, pqPeak)).toBeGreaterThan(4);
+    expect(videoToneCurve(4, raised, pqPeak)).toBeLessThan(8);
+    expect(videoToneCurve(pqPeak, raised, pqPeak)).toBeCloseTo(pqPeak, 12);
   });
 
   it("marks the contrast pivot after exposure, including above the shoulder knee", () => {

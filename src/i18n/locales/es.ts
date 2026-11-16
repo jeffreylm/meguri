@@ -5,9 +5,8 @@ export const es: Record<TranslationKey, string> = {
   "grade.viewer": "Rango del visor",
   "grade.hdrOption": "Reproducción HDR",
   "grade.sdrOption": "Vista previa SDR",
-  "grade.nativeHdr": "Cambia a la vista previa SDR para ajustar la imagen.",
-  "grade.pqPreview":
-    "Vista previa PQ en luz lineal · ajustes guardados por separado de SDR",
+  "grade.hdrGradePreview":
+    "Vista previa HDR de 10 bits · ajustes guardados por separado de SDR",
   "grade.hdrUnavailable":
     "Los ajustes HDR no están disponibles. Se muestra la reproducción original.",
   "grade.rangeUnavailable":

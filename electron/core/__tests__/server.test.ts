@@ -173,6 +173,81 @@ afterAll(async () => {
   db.close();
 });
 
+describe("HDR grading frames", () => {
+  it.each([
+    ["smpte2084", "pq"],
+    ["arib-std-b67", "hlg"],
+  ])(
+    "preserves adjacent 10-bit luma codes from %s",
+    async (colorTransfer, expectedTransfer) => {
+      const width = 32;
+      const height = 16;
+      const frame = Buffer.alloc(width * height * 3);
+      for (let pixel = 0; pixel < width * height; pixel++) {
+        frame.writeUInt16LE(500 + (pixel % width), pixel * 2);
+      }
+      for (
+        let offset = width * height * 2;
+        offset < frame.length;
+        offset += 2
+      ) {
+        frame.writeUInt16LE(512, offset);
+      }
+      const fixture = `hdr-${expectedTransfer}.mkv`;
+      const clip = path.join(root, fixture);
+      execFileSync(
+        FFMPEG,
+        [
+          "-v",
+          "error",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "yuv420p10le",
+          "-s",
+          `${width}x${height}`,
+          "-i",
+          "pipe:0",
+          "-vf",
+          `setparams=range=limited:color_primaries=bt2020:color_trc=${colorTransfer}:colorspace=bt2020nc`,
+          "-c:v",
+          "ffv1",
+          "-color_range",
+          "tv",
+          "-color_primaries",
+          "bt2020",
+          "-colorspace",
+          "bt2020nc",
+          "-color_trc",
+          colorTransfer,
+          clip,
+        ],
+        { input: frame },
+      );
+      const id = insert(fixture, clip, null, "pending", "video", "mkv");
+      const meta = await extractMeta(clip, "video");
+      db.prepare("UPDATE files SET codec = ?, meta = ? WHERE id = ?").run(
+        meta.codec,
+        JSON.stringify(meta.raw),
+        id,
+      );
+
+      const url = `${base}/ws/${WS}/hdr-frames/${id}?t=0&w=${width}&h=${height}&still=1`;
+      expect((await fetch(url)).status).toBe(401);
+      expect(
+        (await fetch(url.replace("w=32", "w=31"), authHeaders())).status,
+      ).toBe(400);
+      const response = await fetch(url, authHeaders());
+      expect(response.status).toBe(200);
+      expect(response.headers.get("x-hdr-transfer")).toBe(expectedTransfer);
+      const bytes = Buffer.from(await response.arrayBuffer());
+      expect(bytes.length).toBe(frame.length);
+      for (let x = 0; x < width; x++)
+        expect(bytes.readUInt16LE(x * 2) >> 6).toBe(500 + x);
+    },
+  );
+});
+
 describe("routing", () => {
   it("rejects requests without the media token header", async () => {
     expect((await fetch(`${base}/ws/${WS}/media/${mediaId}`)).status).toBe(401);

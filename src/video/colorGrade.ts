@@ -65,6 +65,7 @@ export function saveGrade(
 export const exposureKnee = 0.5;
 export const hdrReferenceWhiteNits = 203;
 export const pqPeak = 10_000 / hdrReferenceWhiteNits;
+export const hlgPeak = 1_000 / hdrReferenceWhiteNits;
 export const hdrExposureKnee = 1;
 
 export function exposureShoulder(
@@ -95,9 +96,9 @@ type ToneGrade = Pick<VideoGrade, "exposure" | "contrast" | "pivot">;
 export function videoToneCurve(
   light: number,
   grade: ToneGrade,
-  hdr = false,
+  peak = 1,
 ): number {
-  const peak = hdr ? pqPeak : 1;
+  const hdr = peak > 1;
   const knee = hdr ? hdrExposureKnee : exposureKnee;
   const gain = 2 ** grade.exposure;
   const boosted = light * gain;

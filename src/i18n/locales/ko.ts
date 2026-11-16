@@ -5,8 +5,7 @@ export const ko: Record<TranslationKey, string> = {
   "grade.viewer": "뷰어 범위",
   "grade.hdrOption": "HDR 재생",
   "grade.sdrOption": "SDR 미리보기",
-  "grade.nativeHdr": "영상을 조정하려면 SDR 미리보기로 전환하세요.",
-  "grade.pqPreview": "선형광 PQ 미리보기 · SDR과 별도로 조정값 저장",
+  "grade.hdrGradePreview": "10비트 HDR 미리보기 · SDR과 별도로 조정값 저장",
   "grade.hdrUnavailable":
     "HDR 조정을 사용할 수 없습니다. 원본 영상이 표시됩니다.",
   "grade.rangeUnavailable":

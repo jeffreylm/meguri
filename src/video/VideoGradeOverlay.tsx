@@ -9,6 +9,7 @@ import {
   gradeKeys,
   neutralGrade,
   pqPeak,
+  hlgPeak,
   readGrade,
   saveGrade,
   toneCurvePivotInput,
@@ -32,6 +33,7 @@ interface Props {
   canToggleRange: boolean;
   onRangeChange: (sdr: boolean) => void;
   rangeUnavailable: boolean;
+  rangeSwitching: boolean;
   loaded: boolean;
   t: TFunc;
 }
@@ -47,6 +49,7 @@ export function VideoGradeOverlay({
   canToggleRange,
   onRangeChange,
   rangeUnavailable,
+  rangeSwitching,
   loaded,
   t,
 }: Props) {
@@ -56,8 +59,7 @@ export function VideoGradeOverlay({
   }));
   const range: GradeRange = nativeHdr ? "hdr" : "sdr";
   const { grade, enabled } = preferences[range];
-  const pq = nativeHdr === "pq";
-  const canGrade = nativeHdr !== "hlg";
+  const peak = nativeHdr === "hlg" ? hlgPeak : nativeHdr ? pqPeak : 1;
   const [open, setOpen] = useState(false);
   const [pointerActive, setPointerActive] = useState(false);
   const [held, setHeld] = useState<GradeControl | null>(null);
@@ -70,11 +72,7 @@ export function VideoGradeOverlay({
   const hintId = useId();
   const previewGrade = held ? { ...grade, [held]: neutralGrade[held] } : grade;
   const active =
-    enabled &&
-    !failed &&
-    canGrade &&
-    loaded &&
-    gradeChangesPicture(previewGrade);
+    enabled && !failed && loaded && gradeChangesPicture(previewGrade);
   const trigger = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -111,15 +109,16 @@ export function VideoGradeOverlay({
     setPreferences((previous) => ({ ...previous, [range]: next }));
     if (gradeChangesPicture(value) && !started[range])
       setStarted((previous) => ({ ...previous, [range]: true }));
-    saveGrade(pq ? `${clipKey}.hdr` : clipKey, next);
+    saveGrade(nativeHdr ? `${clipKey}.hdr` : clipKey, next);
   }
 
   return (
     <>
-      {started[range] && !failed && canGrade && loaded && (
+      {started[range] && !failed && loaded && (
         <GradedFrame
           key={range}
           range={range}
+          transfer={nativeHdr}
           videoRef={videoRef}
           grade={previewGrade}
           active={active}
@@ -173,7 +172,7 @@ export function VideoGradeOverlay({
                 variant={enabled ? "default" : "outline"}
                 aria-label={t("grade.toggle")}
                 aria-pressed={enabled}
-                disabled={failed || !canGrade}
+                disabled={failed}
                 title={t("grade.toggle")}
                 onClick={() => {
                   setHeld(null);
@@ -187,7 +186,6 @@ export function VideoGradeOverlay({
                 type="button"
                 size="sm"
                 variant="outline"
-                disabled={!canGrade}
                 onClick={() => {
                   update(neutralGrade);
                   setHeld(null);
@@ -203,7 +201,7 @@ export function VideoGradeOverlay({
               {t("grade.viewer")}
               <select
                 value={sdrPreview ? "sdr" : "hdr"}
-                disabled={!loaded}
+                disabled={!loaded || rangeSwitching}
                 className="rounded border border-border bg-bg px-2 py-1 text-fg"
                 onChange={(event) => {
                   setHeld(null);
@@ -220,129 +218,122 @@ export function VideoGradeOverlay({
               {t("grade.rangeUnavailable")}
             </p>
           )}
-          {canGrade && (
-            <>
-              <ToneCurve
-                grade={enabled ? previewGrade : neutralGrade}
-                hdr={pq}
-              />
-              <p id={hintId} className="text-xs text-muted">
-                {t("grade.holdHint")}
-              </p>
-            </>
-          )}
-          {canGrade &&
-            gradeKeys.map((key) => {
-              const { min, max, step, neutral } = gradeControls[key];
-              const value = grade[key];
-              const directions =
-                key === "temperature"
+          <ToneCurve
+            grade={enabled ? previewGrade : neutralGrade}
+            peak={peak}
+          />
+          <p id={hintId} className="text-xs text-muted">
+            {t("grade.holdHint")}
+          </p>
+          {gradeKeys.map((key) => {
+            const { min, max, step, neutral } = gradeControls[key];
+            const value = grade[key];
+            const directions =
+              key === "temperature"
+                ? ({
+                    low: "grade.cool",
+                    high: "grade.warm",
+                    colors: ["text-blue-400", "text-orange-400"],
+                  } as const)
+                : key === "tint"
                   ? ({
-                      low: "grade.cool",
-                      high: "grade.warm",
-                      colors: ["text-blue-400", "text-orange-400"],
+                      low: "grade.green",
+                      high: "grade.magenta",
+                      colors: ["text-green-400", "text-fuchsia-400"],
                     } as const)
-                  : key === "tint"
-                    ? ({
-                        low: "grade.green",
-                        high: "grade.magenta",
-                        colors: ["text-green-400", "text-fuchsia-400"],
-                      } as const)
-                    : null;
-              const display =
-                key === "exposure"
-                  ? `${value > 0 ? "+" : ""}${value.toFixed(2)} EV`
-                  : key === "pivot"
-                    ? `${Math.round(value * 100)}%`
-                    : key === "contrast" || key === "saturation"
-                      ? `${value.toFixed(2)}×`
-                      : String(value);
-              return (
-                <div key={key} className="text-xs">
-                  <div className="flex justify-between gap-2">
-                    <button
-                      type="button"
-                      aria-pressed={held === key}
-                      aria-describedby={hintId}
-                      title={t("grade.holdHint")}
-                      disabled={!enabled || failed || value === neutral}
-                      className="touch-none select-none rounded text-left enabled:cursor-pointer enabled:hover:text-primary focus-visible:outline-2 focus-visible:outline-primary aria-pressed:text-primary"
-                      onPointerDown={(event) => {
-                        if (!event.isPrimary || event.button !== 0) return;
-                        event.currentTarget.setPointerCapture(event.pointerId);
-                        setHeld(key);
-                      }}
-                      onPointerUp={() => setHeld(null)}
-                      onPointerCancel={() => setHeld(null)}
-                      onLostPointerCapture={() => setHeld(null)}
-                      onBlur={() => setHeld(null)}
-                      onKeyDown={(event) => {
-                        if (event.key !== " " && event.key !== "Enter") return;
-                        event.preventDefault();
-                        if (!event.repeat) setHeld(key);
-                      }}
-                      onKeyUp={(event) => {
-                        if (event.key !== " " && event.key !== "Enter") return;
-                        event.preventDefault();
-                        setHeld(null);
-                      }}
-                    >
-                      {t(`grade.${key}`)}
-                    </button>
-                    <span className="tabular-nums" aria-hidden="true">
-                      {display}
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    className="w-full accent-primary"
-                    min={min}
-                    max={max}
-                    step={step}
-                    value={value}
-                    aria-label={t(`grade.${key}`)}
-                    aria-valuetext={
-                      directions && value !== 0
-                        ? `${display} ${t(value < 0 ? directions.low : directions.high)}`
-                        : display
-                    }
-                    onChange={(event) =>
-                      update({
-                        ...grade,
-                        [key]: Number(event.currentTarget.value),
-                      })
-                    }
-                    onDoubleClick={() => update({ ...grade, [key]: neutral })}
-                  />
-                  {directions && (
-                    <span
-                      aria-hidden="true"
-                      className="flex justify-between text-[11px]"
-                    >
-                      <span className={directions.colors[0]}>
-                        {t(directions.low)}
-                      </span>
-                      <span className={directions.colors[1]}>
-                        {t(directions.high)}
-                      </span>
-                    </span>
-                  )}
+                  : null;
+            const display =
+              key === "exposure"
+                ? `${value > 0 ? "+" : ""}${value.toFixed(2)} EV`
+                : key === "pivot"
+                  ? `${Math.round(value * 100)}%`
+                  : key === "contrast" || key === "saturation"
+                    ? `${value.toFixed(2)}×`
+                    : String(value);
+            return (
+              <div key={key} className="text-xs">
+                <div className="flex justify-between gap-2">
+                  <button
+                    type="button"
+                    aria-pressed={held === key}
+                    aria-describedby={hintId}
+                    title={t("grade.holdHint")}
+                    disabled={!enabled || failed || value === neutral}
+                    className="touch-none select-none rounded text-left enabled:cursor-pointer enabled:hover:text-primary focus-visible:outline-2 focus-visible:outline-primary aria-pressed:text-primary"
+                    onPointerDown={(event) => {
+                      if (!event.isPrimary || event.button !== 0) return;
+                      event.currentTarget.setPointerCapture(event.pointerId);
+                      setHeld(key);
+                    }}
+                    onPointerUp={() => setHeld(null)}
+                    onPointerCancel={() => setHeld(null)}
+                    onLostPointerCapture={() => setHeld(null)}
+                    onBlur={() => setHeld(null)}
+                    onKeyDown={(event) => {
+                      if (event.key !== " " && event.key !== "Enter") return;
+                      event.preventDefault();
+                      if (!event.repeat) setHeld(key);
+                    }}
+                    onKeyUp={(event) => {
+                      if (event.key !== " " && event.key !== "Enter") return;
+                      event.preventDefault();
+                      setHeld(null);
+                    }}
+                  >
+                    {t(`grade.${key}`)}
+                  </button>
+                  <span className="tabular-nums" aria-hidden="true">
+                    {display}
+                  </span>
                 </div>
-              );
-            })}
+                <input
+                  type="range"
+                  className="w-full accent-primary"
+                  min={min}
+                  max={max}
+                  step={step}
+                  value={value}
+                  aria-label={t(`grade.${key}`)}
+                  aria-valuetext={
+                    directions && value !== 0
+                      ? `${display} ${t(value < 0 ? directions.low : directions.high)}`
+                      : display
+                  }
+                  onChange={(event) =>
+                    update({
+                      ...grade,
+                      [key]: Number(event.currentTarget.value),
+                    })
+                  }
+                  onDoubleClick={() => update({ ...grade, [key]: neutral })}
+                />
+                {directions && (
+                  <span
+                    aria-hidden="true"
+                    className="flex justify-between text-[11px]"
+                  >
+                    <span className={directions.colors[0]}>
+                      {t(directions.low)}
+                    </span>
+                    <span className={directions.colors[1]}>
+                      {t(directions.high)}
+                    </span>
+                  </span>
+                )}
+              </div>
+            );
+          })}
           <p className="text-xs text-muted">
             {t(
               failed
-                ? pq
+                ? nativeHdr
                   ? "grade.hdrUnavailable"
                   : "grade.unavailable"
-                : pq
-                  ? "grade.pqPreview"
-                  : nativeHdr === "hlg"
-                    ? "grade.nativeHdr"
-                    : hdrSource
-                      ? "grade.hdr"
-                      : "grade.preview",
+                : nativeHdr
+                  ? "grade.hdrGradePreview"
+                  : hdrSource
+                    ? "grade.hdr"
+                    : "grade.preview",
             )}
           </p>
         </section>
@@ -351,16 +342,17 @@ export function VideoGradeOverlay({
   );
 }
 
-function ToneCurve({ grade, hdr }: { grade: VideoGrade; hdr: boolean }) {
+function ToneCurve({ grade, peak }: { grade: VideoGrade; peak: number }) {
+  const hdr = peak > 1;
   // The HDR graph includes everything above reference white and uses a log
   // scale to keep the pivot and the shadow response easy to read.
-  const logRange = Math.log1p(pqPeak / 0.04);
+  const logRange = Math.log1p(peak / 0.04);
   const chart = (value: number) =>
     (hdr ? Math.log1p(value / 0.04) / logRange : Math.sqrt(value)) * 100;
   const points = Array.from({ length: 97 }, (_, index) => {
     const x = index / 96;
     const input = hdr ? 0.04 * Math.expm1(x * logRange) : x * x;
-    return `${x * 100},${100 - chart(videoToneCurve(input, grade, hdr))}`;
+    return `${x * 100},${100 - chart(videoToneCurve(input, grade, peak))}`;
   }).join(" ");
   const pivotInput = toneCurvePivotInput(grade, hdr);
   return (
@@ -394,7 +386,7 @@ function ToneCurve({ grade, hdr }: { grade: VideoGrade; hdr: boolean }) {
         strokeWidth={2}
         fill="none"
       />
-      {pivotInput <= (hdr ? pqPeak : 1) && (
+      {pivotInput <= peak && (
         <circle
           cx={chart(pivotInput)}
           cy={100 - chart(grade.pivot)}
@@ -408,12 +400,14 @@ function ToneCurve({ grade, hdr }: { grade: VideoGrade; hdr: boolean }) {
 
 function GradedFrame({
   range,
+  transfer,
   videoRef,
   grade,
   active,
   onError,
 }: {
   range: GradeRange;
+  transfer?: Props["nativeHdr"];
   videoRef: Props["videoRef"];
   grade: VideoGrade;
   active: boolean;
@@ -454,9 +448,9 @@ function GradedFrame({
       )
         return;
 
-      const show = () => {
+      const show = (painted = true) => {
         if (!stopped && settings.current.active)
-          canvas.style.visibility = "visible";
+          canvas.style.visibility = painted ? "visible" : "hidden";
       };
       if (drawing) {
         drawPending = true;
@@ -489,19 +483,31 @@ function GradedFrame({
     // Paused videos repaint on control changes, a resize, or seeking.
     const resize = new ResizeObserver(draw);
     resize.observe(canvas);
+    const invalidate = () => {
+      if (renderer && "invalidate" in renderer) {
+        renderer.invalidate();
+        canvas.style.visibility = "hidden";
+      }
+    };
     canvas.addEventListener("webglcontextlost", failed);
+    video.addEventListener("seeking", invalidate);
     video.addEventListener("loadeddata", draw);
     video.addEventListener("seeked", draw);
+    video.addEventListener("play", draw);
+    video.addEventListener("pause", draw);
     redraw.current = () => {
-      if (!settings.current.active && frame !== undefined) {
-        video.cancelVideoFrameCallback(frame);
-        frame = undefined;
+      if (!settings.current.active) {
+        invalidate();
+        if (frame !== undefined) {
+          video.cancelVideoFrameCallback(frame);
+          frame = undefined;
+        }
       }
       draw();
       queueFrame();
     };
-    if (range === "hdr") {
-      void createHdrGradeRenderer(canvas, failed).then((created) => {
+    if (transfer) {
+      void createHdrGradeRenderer(canvas, transfer, failed).then((created) => {
         if (stopped) created.dispose();
         else {
           renderer = created;
@@ -522,11 +528,14 @@ function GradedFrame({
       if (frame !== undefined) video.cancelVideoFrameCallback(frame);
       resize.disconnect();
       canvas.removeEventListener("webglcontextlost", failed);
+      video.removeEventListener("seeking", invalidate);
       video.removeEventListener("loadeddata", draw);
       video.removeEventListener("seeked", draw);
+      video.removeEventListener("play", draw);
+      video.removeEventListener("pause", draw);
       renderer?.dispose();
     };
-  }, [range, videoRef, onError]);
+  }, [range, transfer, videoRef, onError]);
 
   useLayoutEffect(() => {
     settings.current = { grade, active };
