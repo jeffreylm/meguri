@@ -24,7 +24,6 @@ type GradeRange = "sdr" | "hdr";
 
 interface Props {
   videoRef: React.RefObject<HTMLVideoElement | null>;
-  playerRef: React.RefObject<HTMLDivElement | null>;
   playing: boolean;
   clipKey: string;
   hdrSource: boolean;
@@ -40,7 +39,6 @@ interface Props {
 
 export function VideoGradeOverlay({
   videoRef,
-  playerRef,
   playing,
   clipKey,
   hdrSource,
@@ -61,7 +59,6 @@ export function VideoGradeOverlay({
   const { grade, enabled } = preferences[range];
   const peak = nativeHdr === "hlg" ? hlgPeak : nativeHdr ? pqPeak : 1;
   const [open, setOpen] = useState(false);
-  const [pointerActive, setPointerActive] = useState(false);
   const [held, setHeld] = useState<GradeControl | null>(null);
   const [failedRange, setFailedRange] = useState<GradeRange>();
   const failed = failedRange === range;
@@ -74,29 +71,6 @@ export function VideoGradeOverlay({
   const active =
     enabled && !failed && loaded && gradeChangesPicture(previewGrade);
   const trigger = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    const player = playerRef.current;
-    if (!player) return;
-    let timeout: number | undefined;
-    const hide = () => {
-      window.clearTimeout(timeout);
-      setPointerActive(false);
-    };
-    const reveal = () => {
-      setPointerActive(true);
-      window.clearTimeout(timeout);
-      if (playing) timeout = window.setTimeout(hide, 1800);
-    };
-    if (playing) timeout = window.setTimeout(hide, 1800);
-    player.addEventListener("pointermove", reveal);
-    player.addEventListener("pointerleave", hide);
-    return () => {
-      window.clearTimeout(timeout);
-      player.removeEventListener("pointermove", reveal);
-      player.removeEventListener("pointerleave", hide);
-    };
-  }, [playerRef, playing]);
 
   useEffect(() => {
     const release = () => setHeld(null);
@@ -133,7 +107,9 @@ export function VideoGradeOverlay({
           title={t("grade.title")}
           aria-expanded={open}
           className={`absolute right-2 top-2 z-10 rounded-md border p-1.5 shadow-sm transition-[color,background-color,border-color,opacity] duration-200 motion-reduce:transition-none focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-primary [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100 ${
-            pointerActive ? "opacity-100" : "pointer-events-none opacity-0"
+            playing
+              ? "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100"
+              : "opacity-100"
           } ${
             open || active
               ? "border-primary bg-bg text-primary"

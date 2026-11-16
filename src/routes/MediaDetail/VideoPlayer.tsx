@@ -1475,7 +1475,6 @@ export const VideoPlayer = forwardRef<
           rangeUnavailable={rangeUnavailable}
           rangeSwitching={rangeSwitching}
           videoRef={ref}
-          playerRef={wrapRef}
           playing={playing}
           loaded={loaded}
           t={t}

@@ -429,8 +429,8 @@ folders can reconcile the removal automatically.
 In a video's detail player, open **Video adjustments** at the top right. The
 same controls are available in fullscreen and in the detached detail player.
 They work while the video is playing or paused.
-Move the pointer over the picture to reveal the adjustment button. It fades
-when the pointer leaves the player or stays still during playback.
+During playback, move the pointer over the player to show the adjustment
+button and playback bar. Both are visible while paused.
 
 - **Exposure** is measured in stops. One stop doubles linear light before the
   display range is applied. A soft shoulder rolls bright tones toward white.
